@@ -68,7 +68,7 @@ class ZoneList {
 
  public:
   ZoneList(void *data, unsigned int zone_count)
-      : data_(data), zone_count_(zone_count){};
+      : data_(data), zone_count_(zone_count) {};
   void *GetData() { return data_; };
   unsigned int ZoneCount() { return zone_count_; };
   ~ZoneList() { free(data_); };
@@ -163,7 +163,7 @@ class ZonedBlockDeviceBackend {
   //  uint64_t GetBlockSize() { return 4096; };
   uint64_t GetZoneSize() { return zone_sz_; };
   uint32_t GetNrZones() { return nr_zones_; };
-  virtual ~ZonedBlockDeviceBackend(){};
+  virtual ~ZonedBlockDeviceBackend() {};
 };
 
 enum class ZbdBackendType {
@@ -218,6 +218,8 @@ class ZonedBlockDevice {
   };
   std::vector<ZCStat> zc_timelapse_;
   std::vector<uint64_t> zc_copied_timelapse_;
+
+  DB *db_ptr_;
 
   std::mutex io_lock_;
   struct IOBlockStat {
@@ -444,6 +446,7 @@ class ZonedBlockDevice {
     //   CalculateResetThreshold(f);
     // }
   }
+  void SetDBPtr(DB *db_ptr) { db_ptr_ = db_ptr; }
 
  private:
   IOStatus GetZoneDeferredStatus();

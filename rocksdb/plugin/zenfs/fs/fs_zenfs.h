@@ -167,6 +167,8 @@ class ZenFS : public FileSystemWrapper {
 
   std::atomic<int> mount_time_{0};
 
+  DB* db_ptr_ = nullptr;
+
   struct ZenFSMetadataWriter : public MetadataWriter {
     ZenFS* zenFS;
     IOStatus Persist(ZoneFile* zoneFile) {
@@ -466,6 +468,10 @@ class ZenFS : public FileSystemWrapper {
         "MemoryMappedFileBuffer is not implemented in ZenFS");
   }
   //////////////////////////////////////
+  void SetDBPtr(DB* ptr) override {
+    db_ptr_ = ptr;
+    zbd_->SetDBPtr(ptr);
+  }
   void SetResetScheme(uint32_t r, bool f, uint64_t T) override;
   bool IsZoneDevice() { return true; }
   // void ZoneCleaningWorker(bool run_once=false) override;

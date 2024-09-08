@@ -248,6 +248,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   assert(batch_per_txn_ || seq_per_batch_);
   // TODO: Check for an error here
   env_->GetAbsolutePath(dbname, &db_absolute_path_).PermitUncheckedError();
+  fs_->SetDBPtr(this);
 
   // Reserve ten files or so for other uses and give the rest to TableCache.
   // Give a large number for setting of "infinite" open files.
@@ -770,6 +771,7 @@ Status DBImpl::CloseImpl() { return CloseHelper(); }
 
 DBImpl::~DBImpl() {
   // TODO: remove this.
+  fs_->SetDBPtr(nullptr);
   init_logger_creation_s_.PermitUncheckedError();
 
   InstrumentedMutexLock closing_lock_guard(&closing_mutex_);

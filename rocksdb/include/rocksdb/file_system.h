@@ -413,6 +413,7 @@ class FileSystem : public Customizable {
     return IOStatus::NotSupported(
         "MemoryMappedFileBuffer is not implemented in this FileSystem");
   }
+  virtual void SetDBPtr(DB*) {}
 
   // Create an object that represents a directory. Will fail if directory
   // doesn't exist. If the directory exists, it will open the directory
@@ -1376,7 +1377,7 @@ class FileSystemWrapper : public FileSystem {
     return target_->NewMemoryMappedFileBuffer(fname, result);
   }
   ///
-  // void SetDBPtr(DB* ptr) { target_->SetDBPtr(ptr); }
+  void SetDBPtr(DB* ptr) { target_->SetDBPtr(ptr); }
   // bool IsZoneDevice(void) { return target_->IsZoneDevice(); }
   // bool PreserveZoneSpace(uint64_t approx_size) {
   // return target_->PreserveZoneSpace(approx_size);
