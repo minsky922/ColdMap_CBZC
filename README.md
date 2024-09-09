@@ -1,6 +1,6 @@
 # EZC
 
-지금까지 **EZC** 레포지토리에 **rocksdb**와 **zenfs**를 서브트리로 추가하고 푸시한 과정을 요약하면 다음과 같습니다.
+지금까지 **EZC** 레포지토리에 **rocksdb**와 **zenfs**를 서브트리로 추가하고 푸시한 과정을 요약
 (rocksdb와 zenfs는 bare clone 하고 myrocksdb/myzenfs로 mirror push 한 상태) 
 
 ### 1. **EZC 리포지토리에 rocksdb 추가**
