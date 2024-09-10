@@ -12,10 +12,10 @@
 #ifdef OS_SOLARIS
 #include <alloca.h>
 #endif
-
 #include <algorithm>
 #include <cinttypes>
 #include <cstdio>
+#include <iostream>
 #include <map>
 #include <set>
 #include <sstream>
