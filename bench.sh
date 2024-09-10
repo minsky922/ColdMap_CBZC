@@ -4,9 +4,8 @@ RAW_ZNS=/nvme0n1
 RAW_ZNS_PATH=/sys/block/${RAW_ZNS}/queue/scheduler
 RESULT_DIR_PATH=$HOME/EZC/data
 
-## Algorithm
-EAGER=0
-LAZY=1
+#Algorithm
+ALGORITHM=0
 
 ## Dataset
 #MED=12582912 # 12
