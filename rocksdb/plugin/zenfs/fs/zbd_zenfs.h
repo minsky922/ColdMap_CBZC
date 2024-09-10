@@ -27,10 +27,11 @@
 #include <vector>
 
 #include "metrics.h"
+#include "rocksdb/comparator.h"
+#include "rocksdb/db.h"
 #include "rocksdb/env.h"
 #include "rocksdb/file_system.h"
 #include "rocksdb/io_status.h"
-
 namespace ROCKSDB_NAMESPACE {
 
 class ZonedBlockDevice;
