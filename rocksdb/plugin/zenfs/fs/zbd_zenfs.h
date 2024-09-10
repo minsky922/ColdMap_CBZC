@@ -460,7 +460,10 @@ class ZonedBlockDevice {
   IOStatus GetAnyLargestRemainingZone(Zone **zone_out,
                                       uint32_t min_capacity = 0);
   IOStatus AllocateEmptyZone(Zone **zone_out);
-
+  //
+  void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+                         bool exclude_being_compacted = true);
+  //
   inline uint64_t LazyLog(uint64_t sz, uint64_t fr, uint64_t T);
   inline uint64_t LazyLinear(uint64_t sz, uint64_t fr, uint64_t T);
   inline uint64_t Custom(uint64_t sz, uint64_t fr, uint64_t T);

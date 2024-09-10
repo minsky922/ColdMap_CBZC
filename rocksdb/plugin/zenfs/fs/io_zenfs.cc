@@ -503,7 +503,7 @@ IOStatus ZoneFile::AllocateNewZone() {
       // uint64_t z = zbd_->CalculateCapacityRemain std::cout
       //              << "AllocateNewZone: CalculateCapacityRemain: " << z <<
       //              "\n";
-      //std::cout << "@@@@ io_zf::AllocateIOZone: " << zone << "\n";
+      // std::cout << "@@@@ io_zf::AllocateIOZone: " << zone << "\n";
       // zenfs_->ZCUnLock();
       // std::cout << "###### ZCUnLock" << "\n";
       if (zone != nullptr) {
@@ -840,6 +840,7 @@ IOStatus ZoneFile::RemoveLinkName(const std::string& linkf) {
 
 IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime) {
   lifetime_ = lifetime;
+  printf("SetWriteLifeTimeHint : %s %d\n", linkfiles_[0].c_str(), lifetime);
   return IOStatus::OK();
 }
 

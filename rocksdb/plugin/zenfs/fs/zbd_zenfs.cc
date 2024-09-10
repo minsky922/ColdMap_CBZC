@@ -1041,32 +1041,33 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
   // IOStatus s;
   // s = ResetUnusedIOZones();
   Zone *allocated_zone = nullptr;
-  unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
-  int new_zone = 0;
+  unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;  // 수명차이
+  int new_zone = 0;  // 새로운 영역인지 여부
   IOStatus s;
 
   // std::cout << "@@@ zbd::AllocateIOZone - life_time: " << file_lifetime
   //           << "// out_zone: " << out_zone << "\n";
 
+  // I/O 유형에 따라 적절한 추적 태그 설정
   auto tag = ZENFS_WAL_IO_ALLOC_LATENCY;
   if (io_type != IOType::kWAL) {
-    // L0 flushes have lifetime MEDIUM
+    // L0 플러시는 중간 수명을 갖음
     if (file_lifetime == Env::WLTH_MEDIUM) {
       tag = ZENFS_L0_IO_ALLOC_LATENCY;
     } else {
       tag = ZENFS_NON_WAL_IO_ALLOC_LATENCY;
     }
   }
-
+  // Latency Guard 생성
   ZenFSMetricsLatencyGuard guard(metrics_, tag, Env::Default());
-  metrics_->ReportQPS(ZENFS_IO_ALLOC_QPS, 1);
+  metrics_->ReportQPS(ZENFS_IO_ALLOC_QPS, 1);  // QPS(초당 작업 수) 리포트
 
-  // Check if a deferred IO error was set
+  // Deferred I/O 에러가 있는지 확인
   s = GetZoneDeferredStatus();
   if (!s.ok()) {
     return s;
   }
-
+  // WAL이 아닌 경우 Finish Threshold 적용
   if (io_type != IOType::kWAL) {
     s = ApplyFinishThreshold();
     if (!s.ok()) {
@@ -1074,27 +1075,28 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
     }
   }
 
-  WaitForOpenIOZoneToken(io_type == IOType::kWAL);
+  WaitForOpenIOZoneToken(io_type == IOType::kWAL);  // I/O 토큰 대기
+
+  // allocatecompactionawaredzone //
 
   /* Try to fill an already open zone(with the best life time diff) */
+  // 열린 영역에서 수명과 가장 잘 맞는 영역을 찾음
   s = GetBestOpenZoneMatch(file_lifetime, &best_diff, &allocated_zone);
   if (!s.ok()) {
-    PutOpenIOZoneToken();
+    PutOpenIOZoneToken();  // 오류 발생 시 토큰 반환
     return s;
-  }
-  if (allocated_zone == nullptr) {
-    // printf("GetBestOpenZone return nullptr\n");
   }
 
   // Holding allocated_zone if != nullptr
-
+  // 최적 영역이 없으면 새로 할당
   if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
-    bool got_token = GetActiveIOZoneTokenIfAvailable();
+    bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
 
     /* If we did not get a token, try to use the best match, even if the life
      * time diff not good but a better choice than to finish an existing zone
      * and open a new one
      */
+    // 이미 할당된 영역이 없으면 새 영역을 할당
     if (allocated_zone != nullptr) {
       if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
         Debug(logger_,
@@ -1115,19 +1117,19 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
     if (allocated_zone == nullptr) {
       /* We have to make sure we can open an empty zone */
       while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-        s = FinishCheapestIOZone();
+        s = FinishCheapestIOZone();  // 가장 저렴한 I/O 영역 마무리
         if (!s.ok()) {
           PutOpenIOZoneToken();
           return s;
         }
       }
 
-      s = AllocateEmptyZone(&allocated_zone);
-      //
-      if (s.ok() && allocated_zone == nullptr) {
-        s = GetAnyLargestRemainingZone(&allocated_zone);
-      }
-      //
+      s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+      // //
+      // if (s.ok() && allocated_zone == nullptr) {
+      //   s = GetAnyLargestRemainingZone(&allocated_zone);
+      // }
+      // //
       if (!s.ok()) {
         PutActiveIOZoneToken();
         PutOpenIOZoneToken();
@@ -1136,14 +1138,14 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
 
       if (allocated_zone != nullptr) {
         assert(allocated_zone->IsBusy());
-        allocated_zone->lifetime_ = file_lifetime;
+        allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
         new_zone = true;
       } else {
         PutActiveIOZoneToken();
       }
     }
   }
-
+  // 할당된 영역 정보 출력
   if (allocated_zone) {
     assert(allocated_zone->IsBusy());
     Debug(logger_,
@@ -1151,11 +1153,11 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
           new_zone, allocated_zone->start_, allocated_zone->wp_,
           allocated_zone->lifetime_, file_lifetime);
   } else {
-    PutOpenIOZoneToken();
+    PutOpenIOZoneToken();  // 할당 실패 시 토큰 반환
   }
 
   if (io_type != IOType::kWAL) {
-    LogZoneStats();
+    LogZoneStats();  // WAL이 아닐 경우 영역 통계 로깅
   }
 
   *out_zone = allocated_zone;
@@ -1215,6 +1217,15 @@ void ZonedBlockDevice::GetZoneSnapshot(std::vector<ZoneSnapshot> &snapshot) {
   for (auto *zone : io_zones) {
     snapshot.emplace_back(*zone);
   }
+}
+
+void ZonedBlockDevice::SameLevelFileList(int level,
+                                         std::vector<uint64_t> &fno_list,
+                                         bool exclude_being_compacted) {
+  assert(db_ptr_ != nullptr);
+  fno_list.clear();
+  printf("zbd::samelevelfilelist->level: %d", level);
+  db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
 }
 
 }  // namespace ROCKSDB_NAMESPACE

@@ -2901,6 +2901,24 @@ Status DBImpl::DropColumnFamilies(
   return s;
 }
 
+void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
+                               bool exclude_being_compacted) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  const std::vector<int>& files_by_compactio_pri =
+      vstorage->FilesByCompactionPri(level);
+
+  auto files = vstorage->LevelFiles(level);
+  for (size_t i = 0; i < files_by_compactio_pri.size(); i++) {
+    int index = files_by_compactio_pri[i];
+    auto file = files[index];
+    if (file->being_compacted && exclude_being_compacted) {
+      continue;
+    }
+    fno_list.push_back(file->fd.GetNumber());
+  }
+}
+
 Status DBImpl::DropColumnFamilyImpl(ColumnFamilyHandle* column_family) {
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(column_family);
   auto cfd = cfh->cfd();
@@ -4290,6 +4308,12 @@ Status DB::DropColumnFamilies(
     const std::vector<ColumnFamilyHandle*>& /*column_families*/) {
   return Status::NotSupported("");
 }
+
+//
+void DB::SameLevelFileList(int, std::vector<uint64_t>&, bool) {
+  std::cout << "DB::SameLevelFileList not Supported\n";
+}
+//
 
 Status DB::DestroyColumnFamilyHandle(ColumnFamilyHandle* column_family) {
   if (DefaultColumnFamily() == column_family) {

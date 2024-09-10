@@ -281,7 +281,6 @@ class DB {
       const std::vector<ColumnFamilyDescriptor>& column_families,
       std::vector<ColumnFamilyHandle*>* handles, DB** dbptr);
 
-
   // Open DB and run the compaction.
   // It's a read-only operation, the result won't be installed to the DB, it
   // will be output to the `output_directory`. The API should only be used with
@@ -380,6 +379,10 @@ class DB {
   virtual Status DropColumnFamilies(
       const std::vector<ColumnFamilyHandle*>& column_families);
 
+  //
+  virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
+                                 bool exclude_being_compacted = true);
+  //
   // Release and deallocate a column family handle. A column family is only
   // removed once it is dropped (DropColumnFamily) and all handles have been
   // destroyed (DestroyColumnFamilyHandle). Use this method to destroy
