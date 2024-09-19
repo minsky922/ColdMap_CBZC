@@ -1184,8 +1184,10 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
     zoneFile->AddLinkName(fname);
 
     /* RocksDB does not set the right io type(!)*/
+    zoneFile->is_sst_ = ends_with(fname, ".sst");
     if (ends_with(fname, ".log")) {
       zoneFile->SetIOType(IOType::kWAL);
+      zoneFile->is_wal_ = true;
       zoneFile->SetSparse(!file_opts.use_direct_writes);
     } else {
       zoneFile->SetIOType(IOType::kUnknown);

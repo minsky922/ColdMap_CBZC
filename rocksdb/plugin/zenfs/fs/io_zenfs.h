@@ -81,10 +81,10 @@ class ZoneFile {
   FileSystemWrapper* zenfs_;
 
  public:
-  // bool is_sst_ = false;
-  // bool is_wal_ = false;
+  bool is_sst_ = false;
+  bool is_wal_ = false;
   uint64_t fno_;
-  // uint64_t predicted_size_ = 0;
+  uint64_t predicted_size_ = 0;
   std::vector<uint64_t> input_fno_;
   Slice smallest_;
   Slice largest_;

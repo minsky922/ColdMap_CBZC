@@ -852,6 +852,10 @@ IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime,
   // lifetime에 .log는 SHORT라 정수변환수 2로 찍히는데
   // level로 수명을 정수로 변환수에 -1씩해서 SHORT(1), MEDIUM(2), LONG(3),
   // EXTREME(4)으로 변환
+  if (is_wal_) {
+    lifetime_ = Env::WLTH_SHORT;
+    return IOStatus::OK();
+  }
   switch (level) {
     case 0:
       /* fall through */
@@ -1170,6 +1174,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
 }
 
 void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
+  printf("ZonedWritableFile::SetWriteLifeTimeHint: level_ = %d\n", level_);
   // if (zoneFile_->is_sst_) {
   zoneFile_->fno_ = fno_;
   zoneFile_->input_fno_ = input_fno_;
