@@ -38,6 +38,8 @@ class ZonedBlockDevice;
 class ZonedBlockDeviceBackend;
 class ZoneSnapshot;
 class ZenFSSnapshotOptions;
+class Zone;
+class ZoneFile;
 
 #define ZONE_CLEANING_KICKING_POINT (20)
 
@@ -74,6 +76,11 @@ class ZoneList {
   unsigned int ZoneCount() { return zone_count_; };
   ~ZoneList() { free(data_); };
 };
+
+inline bool ends_with(std::string const &value, std::string const &ending) {
+  if (ending.size() > value.size()) return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
 
 class Zone {
   ZonedBlockDevice *zbd_;
