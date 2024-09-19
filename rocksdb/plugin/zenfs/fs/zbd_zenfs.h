@@ -222,6 +222,8 @@ class ZonedBlockDevice {
 
   DB *db_ptr_;
 
+  ZoneFile **sst_file_bitmap_;
+
   std::mutex io_lock_;
   struct IOBlockStat {
     pid_t tid;
@@ -448,6 +450,8 @@ class ZonedBlockDevice {
     // }
   }
   void SetDBPtr(DB *db_ptr) { db_ptr_ = db_ptr; }
+
+  bool SetSSTFileforZBDNoLock(uint64_t fno, ZoneFile *zoneFile);
 
  private:
   IOStatus GetZoneDeferredStatus();

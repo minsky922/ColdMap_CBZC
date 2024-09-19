@@ -841,7 +841,8 @@ IOStatus ZoneFile::RemoveLinkName(const std::string& linkf) {
 IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime,
                                         int level) {
   // lifetime_ = lifetime;
-  printf("SetWriteLifeTimeHint : %s %d\n", linkfiles_[0].c_str(), lifetime);
+  printf("SetWriteLifeTimeHint : %s %d %d\n", linkfiles_[0].c_str(), lifetime,
+         level);
   (void)(lifetime);
   // wal-log 파일은 수명이 SHORT
   // sst 파일은 3부터시작
@@ -1175,12 +1176,12 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
 
 void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
   printf("ZonedWritableFile::SetWriteLifeTimeHint: level_ = %d\n", level_);
-  // if (zoneFile_->is_sst_) {
-  zoneFile_->fno_ = fno_;
-  zoneFile_->input_fno_ = input_fno_;
-  // zoneFile_->GetZbd()->SetSSTFileforZBDNoLock(fno_, zoneFile_.get());
-  zoneFile_->level_ = level_;
-  // }
+  if (zoneFile_->is_sst_) {
+    zoneFile_->fno_ = fno_;
+    zoneFile_->input_fno_ = input_fno_;
+    zoneFile_->GetZbd()->SetSSTFileforZBDNoLock(fno_, zoneFile_.get());
+    zoneFile_->level_ = level_;
+  }
   zoneFile_->SetWriteLifeTimeHint(hint, level_);
 }
 

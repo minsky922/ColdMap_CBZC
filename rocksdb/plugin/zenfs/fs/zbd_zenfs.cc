@@ -1220,6 +1220,18 @@ void ZonedBlockDevice::GetZoneSnapshot(std::vector<ZoneSnapshot> &snapshot) {
   }
 }
 
+bool ZonedBlockDevice::SetSSTFileforZBDNoLock(uint64_t fno,
+                                              ZoneFile *zoneFile) {
+  auto sst = sst_file_bitmap_[fno];
+  if (sst != nullptr) {  // already set
+    return false;
+  }
+  printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
+  zoneFile->fno_ = fno;
+  sst_file_bitmap_[fno] = zoneFile;
+  return true;
+}
+
 void ZonedBlockDevice::SameLevelFileList(int level,
                                          std::vector<uint64_t> &fno_list,
                                          bool exclude_being_compacted) {
