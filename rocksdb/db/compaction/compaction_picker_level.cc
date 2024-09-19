@@ -7,11 +7,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include "db/compaction/compaction_picker_level.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "db/compaction/compaction_picker_level.h"
 #include "logging/log_buffer.h"
 #include "test_util/sync_point.h"
 
@@ -179,8 +180,11 @@ void LevelCompactionBuilder::SetupInitialFiles() {
         // may starve.
         continue;
       }
+      // start_level이 0이면 base_level로, 아니면 현재 레벨에서 +1로 출력 레벨
+      // 설정
       output_level_ =
           (start_level_ == 0) ? vstorage_->base_level() : start_level_ + 1;
+      // 컴팩션할 파일을 선택. 선택된 파일이 있으면 컴팩션 이유 설정
       if (PickFileToCompact()) {
         // found the compaction!
         if (start_level_ == 0) {
@@ -316,12 +320,14 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
 
   // If it is a L0 -> base level compaction, we need to set up other L0
   // files if needed.
+  // L0에서 시작하는 컴팩션 작업이 필요할 때, 추가로 파일을 설정
   if (!SetupOtherL0FilesIfNeeded()) {
     return nullptr;
   }
 
   // Pick files in the output level and expand more files in the start level
   // if needed.
+  // 출력 레벨에서 컴팩션할 추가 파일을 설정
   if (!SetupOtherInputsIfNeeded()) {
     return nullptr;
   }
@@ -422,24 +428,30 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   // than one concurrent compactions at this level. This
   // could be made better by looking at key-ranges that are
   // being compacted at level 0.
+  // L0 레벨은 파일들이 겹치므로 동시에 여러 컴팩션을 수행할 수 없음
   if (start_level_ == 0 &&
       !compaction_picker_->level0_compactions_in_progress()->empty()) {
     TEST_SYNC_POINT("LevelCompactionPicker::PickCompactionBySize:0");
     return false;
   }
-
+  // 시작 레벨 파일 목록 초기화
   start_level_inputs_.clear();
 
   assert(start_level_ >= 0);
 
   // Pick the largest file in this level that is not already
   // being compacted
+  // 현재 레벨에서 크기 순으로 파일 목록을 가져옴
   const std::vector<int>& file_size =
       vstorage_->FilesByCompactionPri(start_level_);
   const std::vector<FileMetaData*>& level_files =
       vstorage_->LevelFiles(start_level_);
-
+  // printf("---------------------------------------\n");
+  // printf("PickFileToCompact(%lu) :: start level %d size
+  // %lu\n",ioptions_.compaction_scheme,start_level_,file_size.size());
+  // 컴팩션진행을 위한 파일 선택
   unsigned int cmp_idx;
+  /////////////////////////////////////////////////////////////////
   for (cmp_idx = vstorage_->NextCompactionIndex(start_level_);
        cmp_idx < file_size.size(); cmp_idx++) {
     int index = file_size[cmp_idx];
@@ -447,16 +459,20 @@ bool LevelCompactionBuilder::PickFileToCompact() {
 
     // do not pick a file to compact if it is being compacted
     // from n-1 level.
+    // 컴팩션 중인 파일은 선택하지 않음
     if (f->being_compacted) {
       continue;
     }
-
+    // 선택된 파일을 시작 레벨에 추가
     start_level_inputs_.files.push_back(f);
     start_level_inputs_.level = start_level_;
+    // 파일의 범위를 확장하여 유저 키가 겹치는 파일을 모두 포함하도록 설정
     if (!compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
                                                     &start_level_inputs_) ||
         compaction_picker_->FilesRangeOverlapWithCompaction(
             {start_level_inputs_}, output_level_)) {
+      // 키가 겹치면서 다른 컴팩션 중인 파일이 있는 경우, 선택된 파일 목록을
+      // 초기화
       // A locked (pending compaction) input-level file was pulled in due to
       // user-key overlap.
       start_level_inputs_.clear();
@@ -469,25 +485,30 @@ bool LevelCompactionBuilder::PickFileToCompact() {
     // Note we rely on ExpandInputsToCleanCut() to tell us whether any output-
     // level files are locked, not just the extra ones pulled in for user-key
     // overlap.
+    // 입력 레벨 파일을 확장한 후 출력 레벨에서 겹치는 파일이 있는지 확인
     InternalKey smallest, largest;
     compaction_picker_->GetRange(start_level_inputs_, &smallest, &largest);
     CompactionInputFiles output_level_inputs;
     output_level_inputs.level = output_level_;
+    // 선택된 키 범위에 겹치는 출력 레벨의 파일을 추가
     vstorage_->GetOverlappingInputs(output_level_, &smallest, &largest,
                                     &output_level_inputs.files);
+    // 출력 레벨에서 선택된 파일이 컴팩션 중이거나 확장할 수 없는 경우 다시 시도
     if (!output_level_inputs.empty() &&
         !compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
                                                     &output_level_inputs)) {
       start_level_inputs_.clear();
       continue;
     }
+    // 컴팩션을 위한 파일 인덱스를 저장
     base_index_ = index;
     break;
   }
 
   // store where to start the iteration in the next call to PickCompaction
+  // 다음 컴팩션에서 시작할 인덱스를 저장
   vstorage_->SetNextCompactionIndex(start_level_, cmp_idx);
-
+  // 선택된 파일이 있는지 여부를 반환
   return start_level_inputs_.size() > 0;
 }
 

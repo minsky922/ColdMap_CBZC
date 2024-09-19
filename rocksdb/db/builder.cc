@@ -53,6 +53,8 @@ TableBuilder* NewTableBuilder(const TableBuilderOptions& tboptions,
   return tboptions.ioptions.table_factory->NewTableBuilder(tboptions, file);
 }
 
+/*  memtable에 저장된 데이터를 디스크에 SST 파일 형식으로 저장하는 과정에서
+ * 사용 - Flush 작업의 일환*/
 Status BuildTable(
     const std::string& dbname, VersionSet* versions,
     const ImmutableDBOptions& db_options, const TableBuilderOptions& tboptions,
@@ -99,7 +101,7 @@ Status BuildTable(
         range_del_iter->total_tombstone_payload_bytes();
     range_del_agg->AddTombstones(std::move(range_del_iter));
   }
-
+  // sst 파일이름 생성(컬럼패밀리경로와 파일id 기반으로)
   std::string fname = TableFileName(ioptions.cf_paths, meta->fd.GetNumber(),
                                     meta->fd.GetPathId());
   std::vector<std::string> blob_file_paths;
@@ -137,8 +139,9 @@ Status BuildTable(
             "anymore.");
       }
     }
-
+    // SST 파일을 작성하는 역할
     TableBuilder* builder;
+    // 파일에 데이터를 실제로 쓰는 역할
     std::unique_ptr<WritableFileWriter> file_writer;
     {
       std::unique_ptr<FSWritableFile> file;
@@ -160,26 +163,36 @@ Status BuildTable(
             file_checksum_func_name);
         return s;
       }
-
+      // 파일이 성공적으로 생성되었음을 기록
       table_file_created = true;
       FileTypeSet tmp_set = ioptions.checksum_handoff_file_types;
+      // 파일에 I/O 우선순위와 수명 힌트를 설정
       file->SetIOPriority(io_priority);
+      //
+      std::string sst(".sst");
+      if (std::equal(sst.rbegin(), sst.rend(), fname.rbegin())) {
+        file->level_ = tboptions.level_at_creation;
+        // builder->SetFileNumber(meta->fd.GetNumber());
+        file->fno_ = meta->fd.GetNumber();  // 파일 번호 설정
+        file->input_fno_.clear();  // 입력 파일 번호 목록 초기화
+      }
+      //
       file->SetWriteLifeTimeHint(write_hint);
       file_writer.reset(new WritableFileWriter(
           std::move(file), fname, file_options, ioptions.clock, io_tracer,
           ioptions.stats, ioptions.listeners,
           ioptions.file_checksum_gen_factory.get(),
           tmp_set.Contains(FileType::kTableFile), false));
-
+      // TableBuilder를 통해 SST 파일을 생성
       builder = NewTableBuilder(tboptions, file_writer.get());
     }
-
+    // MergeHelper는 컴팩션 과정에서 데이터 병합을 관리
     MergeHelper merge(
         env, tboptions.internal_comparator.user_comparator(),
         ioptions.merge_operator.get(), compaction_filter.get(), ioptions.logger,
         true /* internal key corruption is not ok */,
         snapshots.empty() ? 0 : snapshots.back(), snapshot_checker);
-
+    // Blob 파일 빌더 초기화 (Blob 파일이 활성화된 경우에만)
     std::unique_ptr<BlobFileBuilder> blob_file_builder(
         (mutable_cf_options.enable_blob_files &&
          tboptions.level_at_creation >=
@@ -193,6 +206,7 @@ Status BuildTable(
                   &blob_file_paths, blob_file_additions)
             : nullptr);
 
+    // 컴팩션 작업 중 병합, 삭제 및 스냅샷 처리
     const std::atomic<bool> kManualCompactionCanceledFalse{false};
     CompactionIterator c_iter(
         iter, tboptions.internal_comparator.user_comparator(), &merge,
@@ -205,27 +219,34 @@ Status BuildTable(
         /*manual_compaction_canceled=*/kManualCompactionCanceledFalse,
         /*compaction=*/nullptr, compaction_filter.get(),
         /*shutting_down=*/nullptr, db_options.info_log, full_history_ts_low);
-
+    // 이터레이터를 첫 번째 키로 이동하고, 데이터를 순차적으로 처리
     c_iter.SeekToFirst();
     for (; c_iter.Valid(); c_iter.Next()) {
-      const Slice& key = c_iter.key();
-      const Slice& value = c_iter.value();
-      const ParsedInternalKey& ikey = c_iter.ikey();
+      const Slice& key = c_iter.key();                // 현재 키 가져오기
+      const Slice& value = c_iter.value();            // 현재 값 가져오기
+      const ParsedInternalKey& ikey = c_iter.ikey();  // 내부 키 구문 분석
       // Generate a rolling 64-bit hash of the key and values
       // Note :
       // Here "key" integrates 'sequence_number'+'kType'+'user key'.
+      // 키와 값에 대한 해시 생성 및 테이블 빌더에 추가
       s = output_validator.Add(key, value);
       if (!s.ok()) {
         break;
       }
+      // 키-값 쌍을 테이블에 추가
       builder->Add(key, value);
+      /* // TableBuilder는 추상 클래스.
+      // NewTableBuilder() 함수는 BlockBasedTableBuilder 인스턴스를 반환.
+      // builder->Add() 호출 시 BlockBasedTableBuilder::Add()가 실행.*/
 
+      // 메타데이터 경계 업데이트
       s = meta->UpdateBoundaries(key, value, ikey.sequence, ikey.type);
       if (!s.ok()) {
         break;
       }
 
       // TODO(noetzli): Update stats after flush, too.
+      // 쓰기 중 통계 업데이트
       if (io_priority == Env::IO_HIGH &&
           IOSTATS(bytes_written) >= kReportFlushIOStatsEvery) {
         ThreadStatusUtil::SetThreadOperationProperty(
@@ -237,7 +258,7 @@ Status BuildTable(
     } else if (!c_iter.status().ok()) {
       s = c_iter.status();
     }
-
+    // 삭제 범위를 처리하는 이터레이터를 통해 삭제 범위 추가
     if (s.ok()) {
       auto range_del_it = range_del_agg->NewIterator();
       for (range_del_it->SeekToFirst(); range_del_it->Valid();
@@ -250,7 +271,7 @@ Status BuildTable(
                                        tboptions.internal_comparator);
       }
     }
-
+    // 테이블 빌더가 비어있지 않으면 테이블을 완성
     TEST_SYNC_POINT("BuildTable:BeforeFinishBuildTable");
     const bool empty = builder->IsEmpty();
     if (num_input_entries != nullptr) {
@@ -265,13 +286,15 @@ Status BuildTable(
     if (io_status->ok()) {
       *io_status = builder->io_status();
     }
-
+    // 테이블 빌드가 성공적으로 완료되었으면 메타데이터 업데이트
     if (s.ok() && !empty) {
       uint64_t file_size = builder->FileSize();
       meta->fd.file_size = file_size;
       meta->marked_for_compaction = builder->NeedCompact();
       assert(meta->fd.GetFileSize() > 0);
-      tp = builder->GetTableProperties(); // refresh now that builder is finished
+      tp = builder
+               ->GetTableProperties();  // refresh now that builder is finished
+      // 메모리 테이블에서 실제 데이터 크기와 쓰레기 데이터 크기를 계산
       if (memtable_payload_bytes != nullptr &&
           memtable_garbage_bytes != nullptr) {
         const CompactionIterationStats& ci_stats = c_iter.iter_stats();
@@ -300,20 +323,24 @@ Status BuildTable(
     // Finish and check for file errors
     TEST_SYNC_POINT("BuildTable:BeforeSyncTable");
     if (s.ok() && !empty) {
+      // 파일을 동기화 (쓰기 완료를 보장하기 위한 단계)
       StopWatch sw(ioptions.clock, ioptions.stats, TABLE_SYNC_MICROS);
       *io_status = file_writer->Sync(ioptions.use_fsync);
     }
     TEST_SYNC_POINT("BuildTable:BeforeCloseTableFile");
     if (s.ok() && io_status->ok() && !empty) {
+      // 파일을 닫음 (파일을 닫기 전에 동기화가 완료되어야 함)
       *io_status = file_writer->Close();
     }
     if (s.ok() && io_status->ok() && !empty) {
+      // 체크섬 정보를 메타데이터에 추가 (데이터 무결성을 보장)
       // Add the checksum information to file metadata.
       meta->file_checksum = file_writer->GetFileChecksum();
       meta->file_checksum_func_name = file_writer->GetFileChecksumFuncName();
       file_checksum = meta->file_checksum;
       file_checksum_func_name = meta->file_checksum_func_name;
       // Set unique_id only if db_id and db_session_id exist
+      // 파일에 고유 ID 설정
       if (!tboptions.db_id.empty() && !tboptions.db_session_id.empty()) {
         if (!GetSstInternalUniqueId(tboptions.db_id, tboptions.db_session_id,
                                     meta->fd.GetNumber(), &(meta->unique_id))
@@ -329,6 +356,7 @@ Status BuildTable(
     }
 
     if (blob_file_builder) {
+      // Blob 파일 빌더가 존재하면 마무리 (Finish) 작업 진행
       if (s.ok()) {
         s = blob_file_builder->Finish();
       } else {
@@ -341,6 +369,7 @@ Status BuildTable(
 
     TEST_SYNC_POINT("BuildTable:BeforeOutputValidation");
     if (s.ok() && !empty) {
+      // 파일이 유효한지 검사 (테이블 검증)
       // Verify that the table is usable
       // We set for_compaction to false and don't OptimizeForCompactionTableRead
       // here because this is a special case after we finish the table building.

@@ -962,7 +962,9 @@ class FSWritableFile {
         strict_bytes_per_sync_(options.strict_bytes_per_sync) {}
 
   virtual ~FSWritableFile() {}
-
+  uint64_t fno_;
+  int level_ = 0;
+  std::vector<uint64_t> input_fno_;
   // Append data to the end of the file
   // Note: A WriteableFile object must support either Append or
   // PositionedAppend, so the users cannot mix the two.
@@ -1169,6 +1171,7 @@ class FSWritableFile {
 
   // If you're adding methods here, remember to add them to
   // WritableFileWrapper too.
+  virtual void SetMinMaxKeyAndLevel(const Slice&, const Slice&, const int) {}
 
  protected:
   size_t preallocation_block_size() { return preallocation_block_size_; }
@@ -1760,6 +1763,10 @@ class FSWritableFileWrapper : public FSWritableFile {
   IOStatus Allocate(uint64_t offset, uint64_t len, const IOOptions& options,
                     IODebugContext* dbg) override {
     return target_->Allocate(offset, len, options, dbg);
+  }
+  void SetMinMaxKeyAndLevel(const Slice& smallest, const Slice& largest,
+                            const int level) override {
+    target_->SetMinMaxKeyAndLevel(smallest, largest, level);
   }
 
  private:

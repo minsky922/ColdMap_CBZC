@@ -838,12 +838,63 @@ IOStatus ZoneFile::RemoveLinkName(const std::string& linkf) {
   return IOStatus::OK();
 }
 
-IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime) {
-  lifetime_ = lifetime;
+IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime,
+                                        int level) {
+  // lifetime_ = lifetime;
   printf("SetWriteLifeTimeHint : %s %d\n", linkfiles_[0].c_str(), lifetime);
+  (void)(lifetime);
+  // wal-log 파일은 수명이 SHORT
+  // sst 파일은 3부터시작
+  // L0,L1- SST MEDIUM, L2-LONG, L3-EXTREME
+  // SHORT는 SSTable이 아닌,
+  // Write-Ahead Log (WAL)과 LSM-TREE의 요약 정보를 포함하는 Manifest와 같은
+  // 데이터에 할당된다.
+  // lifetime에 .log는 SHORT라 정수변환수 2로 찍히는데
+  // level로 수명을 정수로 변환수에 -1씩해서 SHORT(1), MEDIUM(2), LONG(3),
+  // EXTREME(4)으로 변환
+  switch (level) {
+    case 0:
+      /* fall through */
+    case 1:
+      lifetime_ = Env::WLTH_SHORT;
+      break;
+    case 2:
+      lifetime_ = Env::WLTH_MEDIUM;
+      break;
+    case 3:
+      lifetime_ = Env::WLTH_LONG;
+      break;
+    default:
+      lifetime_ = Env::WLTH_EXTREME;
+      break;
+  }
+  printf("%d -> %d\n", level, lifetime_);
+
   return IOStatus::OK();
 }
+void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
+                                             const int output_level) {
+  if (output_level < 0) {
+    printf(
+        "@@@ ZonedWritableFile::SetMinMaxAndLEvel :: failed , level should be "
+        "> 0\n");
+    return;
+  }
+  printf("set min max : fno :%ld at %d\n", zoneFile_->fno_, output_level);
 
+  // if(zoneFile_->GetLinkFiles().size()){
+  //   printf("SetMinMaxKeyAndLevel :: %s output level
+  //   %d\n",zoneFile_->GetLinkFiles()[0].c_str(),output_level);
+  // }
+  zoneFile_->smallest_ = s;
+  zoneFile_->largest_ = l;
+  zoneFile_->level_ = output_level;
+  std::string smallest_str = s.ToString();
+  std::string largest_str = l.ToString();
+  printf("smallest key: %s, largest key: %s\n", smallest_str.c_str(),
+         largest_str.c_str());
+  return;
+}
 void ZoneFile::ReleaseActiveZone() {
   assert(active_zone_ != nullptr);
   bool ok = active_zone_->Release();
@@ -858,6 +909,10 @@ void ZoneFile::SetActiveZone(Zone* zone) {
   active_zone_ = zone;
 }
 
+// **sparse_buffer**는 데이터가 연속되지 않고 중간에 비어 있는(데이터가 없는)
+// 부분을 포함한 파일, 또한 파일의 데이터를 메모리에서 처리할 때, 중간에 비어
+// 있는 공간을 효율적으로 관리하고, 필요한 경우 패딩(block padding)을 추가하여
+// 데이터를 저장하거나 처리하는 역할
 ZonedWritableFile::ZonedWritableFile(ZonedBlockDevice* zbd, bool _buffered,
                                      std::shared_ptr<ZoneFile> zoneFile) {
   assert(zoneFile->IsOpenForWR());
@@ -876,6 +931,7 @@ ZonedWritableFile::ZonedWritableFile(ZonedBlockDevice* zbd, bool _buffered,
 
       sparse_buffer_sz =
           1024 * 1024 + block_sz; /* one extra block size for padding */
+      // 메모리를 페이지 크기에 맞춰 정렬하여 할당
       int ret = posix_memalign((void**)&sparse_buffer, sysconf(_SC_PAGESIZE),
                                sparse_buffer_sz);
 
@@ -921,7 +977,7 @@ IOStatus ZonedWritableFile::Truncate(uint64_t size,
   zoneFile_->SetFileSize(size);
   return IOStatus::OK();
 }
-
+// 데이터를 디스크에 동기화
 IOStatus ZonedWritableFile::DataSync() {
   if (buffered) {
     IOStatus s;
@@ -949,237 +1005,243 @@ IOStatus ZonedWritableFile::DataSync() {
 IOStatus ZonedWritableFile::Fsync(const IOOptions& /*options*/,
                                   IODebugContext* /*dbg*/) {
   IOStatus s;
+  // 동기화 시간 측정
   ZenFSMetricsLatencyGuard guard(zoneFile_->GetZBDMetrics(),
                                  zoneFile_->GetIOType() == IOType::kWAL
                                      ? ZENFS_WAL_SYNC_LATENCY
                                      : ZENFS_NON_WAL_SYNC_LATENCY,
                                  Env::Default());
+  // QPS(Queries Per Second) 성능 지표를 기록하는 함수 호출
   zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_SYNC_QPS, 1);
-
+  // 데이터를 먼저 동기화
   s = DataSync();
   if (!s.ok()) return s;
 
-  /* As we've already synced the metadata in DataSync, no need to do it again */
+  /* As we've already synced the metadata in DataSync, no need to do it again * /
   if (buffered && !zoneFile_->IsSparse()) return IOStatus::OK();
 
   return zoneFile_->PersistMetadata();
 }
-
+//  Fsync와 달리 파일 메타데이터까지 추가로 동기화하지는 않는다
 IOStatus ZonedWritableFile::Sync(const IOOptions& /*options*/,
                                  IODebugContext* /*dbg*/) {
-  return DataSync();
-}
+    return DataSync();
+  }
 
-IOStatus ZonedWritableFile::Flush(const IOOptions& /*options*/,
-                                  IODebugContext* /*dbg*/) {
-  return IOStatus::OK();
-}
-
-IOStatus ZonedWritableFile::RangeSync(uint64_t offset, uint64_t nbytes,
-                                      const IOOptions& /*options*/,
-                                      IODebugContext* /*dbg*/) {
-  if (wp < offset + nbytes) return DataSync();
-
-  return IOStatus::OK();
-}
-
-IOStatus ZonedWritableFile::Close(const IOOptions& /*options*/,
-                                  IODebugContext* /*dbg*/) {
-  return CloseInternal();
-}
-
-IOStatus ZonedWritableFile::CloseInternal() {
-  if (!open) {
+  IOStatus ZonedWritableFile::Flush(const IOOptions& /*options*/,
+                                    IODebugContext* /*dbg*/) {
     return IOStatus::OK();
   }
 
-  IOStatus s = DataSync();
-  if (!s.ok()) return s;
+  IOStatus ZonedWritableFile::RangeSync(uint64_t offset, uint64_t nbytes,
+                                        const IOOptions& /*options*/,
+                                        IODebugContext* /*dbg*/) {
+    if (wp < offset + nbytes) return DataSync();
 
-  s = zoneFile_->CloseWR();
-  if (!s.ok()) return s;
-
-  open = false;
-  return s;
-}
-
-IOStatus ZonedWritableFile::FlushBuffer() {
-  IOStatus s;
-
-  if (buffer_pos == 0) return IOStatus::OK();
-
-  if (zoneFile_->IsSparse()) {
-    s = zoneFile_->SparseAppend(sparse_buffer, buffer_pos);
-  } else {
-    s = zoneFile_->BufferedAppend(buffer, buffer_pos);
+    return IOStatus::OK();
   }
 
-  if (!s.ok()) {
+  IOStatus ZonedWritableFile::Close(const IOOptions& /*options*/,
+                                    IODebugContext* /*dbg*/) {
+    return CloseInternal();
+  }
+
+  IOStatus ZonedWritableFile::CloseInternal() {
+    if (!open) {
+      return IOStatus::OK();
+    }
+
+    IOStatus s = DataSync();
+    if (!s.ok()) return s;
+
+    s = zoneFile_->CloseWR();
+    if (!s.ok()) return s;
+
+    open = false;
     return s;
   }
 
-  wp += buffer_pos;
-  buffer_pos = 0;
+  IOStatus ZonedWritableFile::FlushBuffer() {
+    IOStatus s;
 
-  return IOStatus::OK();
-}
+    if (buffer_pos == 0) return IOStatus::OK();
 
-IOStatus ZonedWritableFile::BufferedWrite(const Slice& slice) {
-  uint32_t data_left = slice.size();
-  char* data = (char*)slice.data();
-  IOStatus s;
-
-  while (data_left) {
-    uint32_t buffer_left = buffer_sz - buffer_pos;
-    uint32_t to_buffer;
-
-    if (!buffer_left) {
-      s = FlushBuffer();
-      if (!s.ok()) return s;
-      buffer_left = buffer_sz;
+    if (zoneFile_->IsSparse()) {
+      s = zoneFile_->SparseAppend(sparse_buffer, buffer_pos);
+    } else {
+      s = zoneFile_->BufferedAppend(buffer, buffer_pos);
     }
 
-    to_buffer = data_left;
-    if (to_buffer > buffer_left) {
-      to_buffer = buffer_left;
+    if (!s.ok()) {
+      return s;
     }
 
-    memcpy(buffer + buffer_pos, data, to_buffer);
-    buffer_pos += to_buffer;
-    data_left -= to_buffer;
-    data += to_buffer;
+    wp += buffer_pos;
+    buffer_pos = 0;
+
+    return IOStatus::OK();
   }
 
-  return IOStatus::OK();
-}
+  IOStatus ZonedWritableFile::BufferedWrite(const Slice& slice) {
+    uint32_t data_left = slice.size();
+    char* data = (char*)slice.data();
+    IOStatus s;
 
-IOStatus ZonedWritableFile::Append(const Slice& data,
-                                   const IOOptions& /*options*/,
-                                   IODebugContext* /*dbg*/) {
-  IOStatus s;
-  ZenFSMetricsLatencyGuard guard(zoneFile_->GetZBDMetrics(),
-                                 zoneFile_->GetIOType() == IOType::kWAL
-                                     ? ZENFS_WAL_WRITE_LATENCY
-                                     : ZENFS_NON_WAL_WRITE_LATENCY,
-                                 Env::Default());
-  zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_WRITE_QPS, 1);
-  zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
-                                               data.size());
+    while (data_left) {
+      uint32_t buffer_left = buffer_sz - buffer_pos;
+      uint32_t to_buffer;
 
-  if (buffered) {
-    buffer_mtx_.lock();
-    s = BufferedWrite(data);
-    buffer_mtx_.unlock();
-  } else {
-    s = zoneFile_->Append((void*)data.data(), data.size());
-    if (s.ok()) wp += data.size();
+      if (!buffer_left) {
+        s = FlushBuffer();
+        if (!s.ok()) return s;
+        buffer_left = buffer_sz;
+      }
+
+      to_buffer = data_left;
+      if (to_buffer > buffer_left) {
+        to_buffer = buffer_left;
+      }
+
+      memcpy(buffer + buffer_pos, data, to_buffer);
+      buffer_pos += to_buffer;
+      data_left -= to_buffer;
+      data += to_buffer;
+    }
+
+    return IOStatus::OK();
   }
 
-  return s;
-}
-
-IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
-                                             const IOOptions& /*options*/,
-                                             IODebugContext* /*dbg*/) {
-  IOStatus s;
-  ZenFSMetricsLatencyGuard guard(zoneFile_->GetZBDMetrics(),
-                                 zoneFile_->GetIOType() == IOType::kWAL
-                                     ? ZENFS_WAL_WRITE_LATENCY
-                                     : ZENFS_NON_WAL_WRITE_LATENCY,
-                                 Env::Default());
-  zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_WRITE_QPS, 1);
-  zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
-                                               data.size());
-
-  if (offset != wp) {
-    assert(false);
-    return IOStatus::IOError("positioned append not at write pointer");
-  }
-
-  if (buffered) {
-    buffer_mtx_.lock();
-    s = BufferedWrite(data);
-    buffer_mtx_.unlock();
-  } else {
-    s = zoneFile_->Append((void*)data.data(), data.size());
-    if (s.ok()) wp += data.size();
-  }
-
-  return s;
-}
-
-void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
-  zoneFile_->SetWriteLifeTimeHint(hint);
-}
-
-IOStatus ZonedSequentialFile::Read(size_t n, const IOOptions& /*options*/,
-                                   Slice* result, char* scratch,
-                                   IODebugContext* /*dbg*/) {
-  IOStatus s;
-
-  s = zoneFile_->PositionedRead(rp, n, result, scratch, direct_);
-  if (s.ok()) rp += result->size();
-
-  return s;
-}
-
-IOStatus ZonedSequentialFile::Skip(uint64_t n) {
-  if (rp + n >= zoneFile_->GetFileSize())
-    return IOStatus::InvalidArgument("Skip beyond end of file");
-  rp += n;
-  return IOStatus::OK();
-}
-
-IOStatus ZonedSequentialFile::PositionedRead(uint64_t offset, size_t n,
-                                             const IOOptions& /*options*/,
-                                             Slice* result, char* scratch,
-                                             IODebugContext* /*dbg*/) {
-  return zoneFile_->PositionedRead(offset, n, result, scratch, direct_);
-}
-
-IOStatus ZonedRandomAccessFile::Read(uint64_t offset, size_t n,
+  IOStatus ZonedWritableFile::Append(const Slice& data,
                                      const IOOptions& /*options*/,
-                                     Slice* result, char* scratch,
-                                     IODebugContext* /*dbg*/) const {
-  return zoneFile_->PositionedRead(offset, n, result, scratch, direct_);
-}
+                                     IODebugContext* /*dbg*/) {
+    IOStatus s;
+    ZenFSMetricsLatencyGuard guard(zoneFile_->GetZBDMetrics(),
+                                   zoneFile_->GetIOType() == IOType::kWAL
+                                       ? ZENFS_WAL_WRITE_LATENCY
+                                       : ZENFS_NON_WAL_WRITE_LATENCY,
+                                   Env::Default());
+    zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_WRITE_QPS, 1);
+    zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
+                                                 data.size());
 
-IOStatus ZoneFile::MigrateData(uint64_t offset, uint32_t length,
-                               Zone* target_zone) {
-  uint32_t step = 128 << 10;
-  uint32_t read_sz = step;
-  int block_sz = zbd_->GetBlockSize();
-
-  assert(offset % block_sz == 0);
-  if (offset % block_sz != 0) {
-    return IOStatus::IOError("MigrateData offset is not aligned!\n");
-  }
-
-  char* buf;
-  int ret = posix_memalign((void**)&buf, block_sz, step);
-  if (ret) {
-    return IOStatus::IOError("failed allocating alignment write buffer\n");
-  }
-
-  int pad_sz = 0;
-  while (length > 0) {
-    read_sz = length > read_sz ? read_sz : length;
-    pad_sz = read_sz % block_sz == 0 ? 0 : (block_sz - (read_sz % block_sz));
-
-    int r = zbd_->Read(buf, offset, read_sz + pad_sz, true);
-    if (r < 0) {
-      free(buf);
-      return IOStatus::IOError(strerror(errno));
+    if (buffered) {
+      buffer_mtx_.lock();
+      s = BufferedWrite(data);
+      buffer_mtx_.unlock();
+    } else {
+      s = zoneFile_->Append((void*)data.data(), data.size());
+      if (s.ok()) wp += data.size();
     }
-    target_zone->Append(buf, r);
-    length -= read_sz;
-    offset += r;
+
+    return s;
   }
 
-  free(buf);
+  IOStatus ZonedWritableFile::PositionedAppend(
+      const Slice& data, uint64_t offset, const IOOptions& /*options*/,
+      IODebugContext* /*dbg*/) {
+    IOStatus s;
+    ZenFSMetricsLatencyGuard guard(zoneFile_->GetZBDMetrics(),
+                                   zoneFile_->GetIOType() == IOType::kWAL
+                                       ? ZENFS_WAL_WRITE_LATENCY
+                                       : ZENFS_NON_WAL_WRITE_LATENCY,
+                                   Env::Default());
+    zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_WRITE_QPS, 1);
+    zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
+                                                 data.size());
 
-  return IOStatus::OK();
-}
+    if (offset != wp) {
+      assert(false);
+      return IOStatus::IOError("positioned append not at write pointer");
+    }
+
+    if (buffered) {
+      buffer_mtx_.lock();
+      s = BufferedWrite(data);
+      buffer_mtx_.unlock();
+    } else {
+      s = zoneFile_->Append((void*)data.data(), data.size());
+      if (s.ok()) wp += data.size();
+    }
+
+    return s;
+  }
+
+  void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
+    if (zoneFile_->is_sst_) {
+      zoneFile_->fno_ = fno_;
+      zoneFile_->input_fno_ = input_fno_;
+      // zoneFile_->GetZbd()->SetSSTFileforZBDNoLock(fno_, zoneFile_.get());
+      zoneFile_->level_ = level_;
+    }
+    zoneFile_->SetWriteLifeTimeHint(hint, level_);
+  }
+
+  IOStatus ZonedSequentialFile::Read(size_t n, const IOOptions& /*options*/,
+                                     Slice* result, char* scratch,
+                                     IODebugContext* /*dbg*/) {
+    IOStatus s;
+
+    s = zoneFile_->PositionedRead(rp, n, result, scratch, direct_);
+    if (s.ok()) rp += result->size();
+
+    return s;
+  }
+
+  IOStatus ZonedSequentialFile::Skip(uint64_t n) {
+    if (rp + n >= zoneFile_->GetFileSize())
+      return IOStatus::InvalidArgument("Skip beyond end of file");
+    rp += n;
+    return IOStatus::OK();
+  }
+
+  IOStatus ZonedSequentialFile::PositionedRead(
+      uint64_t offset, size_t n, const IOOptions& /*options*/, Slice* result,
+      char* scratch, IODebugContext* /*dbg*/) {
+    return zoneFile_->PositionedRead(offset, n, result, scratch, direct_);
+  }
+
+  IOStatus ZonedRandomAccessFile::Read(
+      uint64_t offset, size_t n, const IOOptions& /*options*/, Slice* result,
+      char* scratch, IODebugContext* /*dbg*/) const {
+    return zoneFile_->PositionedRead(offset, n, result, scratch, direct_);
+  }
+
+  IOStatus ZoneFile::MigrateData(uint64_t offset, uint32_t length,
+                                 Zone * target_zone) {
+    uint32_t step = 128 << 10;
+    uint32_t read_sz = step;
+    int block_sz = zbd_->GetBlockSize();
+
+    assert(offset % block_sz == 0);
+    if (offset % block_sz != 0) {
+      return IOStatus::IOError("MigrateData offset is not aligned!\n");
+    }
+
+    char* buf;
+    int ret = posix_memalign((void**)&buf, block_sz, step);
+    if (ret) {
+      return IOStatus::IOError("failed allocating alignment write buffer\n");
+    }
+
+    int pad_sz = 0;
+    while (length > 0) {
+      read_sz = length > read_sz ? read_sz : length;
+      pad_sz = read_sz % block_sz == 0 ? 0 : (block_sz - (read_sz % block_sz));
+
+      int r = zbd_->Read(buf, offset, read_sz + pad_sz, true);
+      if (r < 0) {
+        free(buf);
+        return IOStatus::IOError(strerror(errno));
+      }
+      target_zone->Append(buf, r);
+      length -= read_sz;
+      offset += r;
+    }
+
+    free(buf);
+
+    return IOStatus::OK();
+  }
 
 }  // namespace ROCKSDB_NAMESPACE
 

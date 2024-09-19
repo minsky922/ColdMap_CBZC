@@ -164,7 +164,7 @@ void CompactionPicker::ReleaseCompactionFiles(Compaction* c, Status status) {
     c->ResetNextCompactionIndex();
   }
 }
-
+// 키범위 계산
 void CompactionPicker::GetRange(const CompactionInputFiles& inputs,
                                 InternalKey* smallest,
                                 InternalKey* largest) const {

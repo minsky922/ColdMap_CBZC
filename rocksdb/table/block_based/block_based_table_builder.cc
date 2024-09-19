@@ -59,7 +59,6 @@ namespace ROCKSDB_NAMESPACE {
 extern const std::string kHashIndexPrefixesBlock;
 extern const std::string kHashIndexPrefixesMetadataBlock;
 
-
 // Without anonymous namespace here, we fail the warning -Wmissing-prototypes
 namespace {
 
@@ -288,6 +287,9 @@ struct BlockBasedTableBuilder::Rep {
   size_t data_begin_offset = 0;
 
   TableProperties props;
+  Slice smallest;
+  Slice largest;
+  int level_at_creation;
 
   // States of the builder.
   //
@@ -914,23 +916,39 @@ BlockBasedTableBuilder::~BlockBasedTableBuilder() {
   delete rep_;
 }
 
+// 1. 최소 및 최대 키 설정: 테이블이 비어 있으면 첫 번째 키를 최소 키로
+// 설정하고, 현재 추가된 키를 최대 키로 갱신(새로 코드쓴거)
+// 2. 키 추가: 키의 유형을 확인하고, 압축 정책에 따라 블록을 플러시할지 결정
+// 3. 인덱스 및 필터 처리: 데이터 블록이 플러시될 때 인덱스 블록과 필터 블록에
+// 키를 추가하여, 검색 시 효율적으로 처리될 수 있도록 준비
+// 4. 테이블 속성 업데이트: 키와 값 크기, 삭제 및 병합 작업 개수를 기록하여 파일
+// 메타데이터를 갱신
 void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
   Rep* r = rep_;
   assert(rep_->state != Rep::State::kClosed);
   if (!ok()) return;
-  ValueType value_type = ExtractValueType(key);
-  if (IsValueType(value_type)) {
+
+  // 처음 추가하는 키라면 이를 최소 키로 설정
+  if (r->smallest.size() == 0) {
+    r->smallest = key;
+  }
+  r->largest = key;  // 현재 추가된 키를 최대 키로 갱신
+  ////
+  ValueType value_type = ExtractValueType(key);  // 키의 value 유형을 추출
+  if (IsValueType(value_type)) {                 // value 유형인지 확인
 #ifndef NDEBUG
+    // 내부 키 비교, 디버그 모드에서 키가 오름차순인지 확인
     if (r->props.num_entries > r->props.num_range_deletions) {
       assert(r->internal_comparator.Compare(key, Slice(r->last_key)) > 0);
     }
 #endif  // !NDEBUG
 
-    auto should_flush = r->flush_block_policy->Update(key, value);
+    auto should_flush =
+        r->flush_block_policy->Update(key, value);  // 플러시 여부 결정
     if (should_flush) {
       assert(!r->data_block.empty());
-      r->first_key_in_next_block = &key;
-      Flush();
+      r->first_key_in_next_block = &key;  // 다음 블록의 첫 번째 키 설정
+      Flush();                            // 블록을 플러시
       if (r->state == Rep::State::kBuffered) {
         bool exceeds_buffer_limit =
             (r->buffer_limit != 0 && r->data_begin_offset > r->buffer_limit);
@@ -946,7 +964,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
                   r->data_begin_offset);
           exceeds_global_block_cache_limit = s.IsIncomplete();
         }
-
+        // 버퍼가 한계에 도달했으면 비버퍼 모드로 전환
         if (exceeds_buffer_limit || exceeds_global_block_cache_limit) {
           EnterUnbuffered();
         }
@@ -973,7 +991,7 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
     // Note: PartitionedFilterBlockBuilder requires key being added to filter
     // builder after being added to index builder.
     if (r->state == Rep::State::kUnbuffered) {
-      if (r->IsParallelCompressionEnabled()) {
+      if (r->IsParallelCompressionEnabled()) {  // 병렬 압축일 경우 키 추가
         r->pc_rep->curr_block_keys->PushBack(key);
       } else {
         if (r->filter_builder != nullptr) {
@@ -984,11 +1002,13 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
       }
     }
 
-    r->data_block.AddWithLastKey(key, value, r->last_key);
-    r->last_key.assign(key.data(), key.size());
+    r->data_block.AddWithLastKey(key, value,
+                                 r->last_key);  // 데이터 블록에 키-값 쌍 추가
+    r->last_key.assign(key.data(), key.size());  // 마지막 키 업데이트
     if (r->state == Rep::State::kBuffered) {
       // Buffered keys will be replayed from data_block_buffers during
       // `Finish()` once compression dictionary has been finalized.
+      // Finish()에서 재생될 키 버퍼 처리
     } else {
       if (!r->IsParallelCompressionEnabled()) {
         r->index_builder->OnKeyAdded(key);
@@ -2011,6 +2031,10 @@ Status BlockBasedTableBuilder::Finish() {
   }
   if (ok()) {
     WriteFooter(metaindex_block_handle, index_block_handle);
+  }
+  if (r->file->file_name().substr(r->file->file_name().size() - 3) == "sst") {
+    r->file->writable_file()->SetMinMaxKeyAndLevel(r->smallest, r->largest,
+                                                   r->level_at_creation);
   }
   r->state = Rep::State::kClosed;
   r->SetStatus(r->CopyIOStatus());

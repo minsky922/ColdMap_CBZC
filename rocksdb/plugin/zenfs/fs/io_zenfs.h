@@ -81,6 +81,15 @@ class ZoneFile {
   FileSystemWrapper* zenfs_;
 
  public:
+  // bool is_sst_ = false;
+  // bool is_wal_ = false;
+  uint64_t fno_;
+  // uint64_t predicted_size_ = 0;
+  std::vector<uint64_t> input_fno_;
+  Slice smallest_;
+  Slice largest_;
+  int level_;
+
   static const int SPARSE_HEADER_SIZE = 8;
 
   explicit ZoneFile(ZonedBlockDevice* zbd, uint64_t file_id_,
@@ -100,7 +109,7 @@ class ZoneFile {
   IOStatus Append(void* buffer, int data_size);
   IOStatus BufferedAppend(char* data, uint32_t size);
   IOStatus SparseAppend(char* data, uint32_t size);
-  IOStatus SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime);
+  IOStatus SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime, int level = 0);
   void SetIOType(IOType io_type);
   std::string GetFilename();
   time_t GetFileModificationTime();
@@ -233,6 +242,8 @@ class ZonedWritableFile : public FSWritableFile {
     return zoneFile_->GetBlockSize();
   }
   void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
+  void SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
+                            const int output_level) override;
   virtual Env::WriteLifeTimeHint GetWriteLifeTimeHint() override {
     return zoneFile_->GetWriteLifeTimeHint();
   }

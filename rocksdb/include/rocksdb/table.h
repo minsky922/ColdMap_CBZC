@@ -888,6 +888,13 @@ class TableFactory : public Customizable {
   // It is the caller's responsibility to keep the file open and close the file
   // after closing the table builder. compression_type is the compression type
   // to use in this table.
+
+  // 테이블 유형에 맞게 파일에 데이터를 기록할 수 있는 TableBuilder를
+  // 반환하는 역할
+  // 플러시 작업: memtable을 레벨 0 파일로 저장할 때
+  // 컴팩션: 컴팩션 중에 출력 파일을 작성할 때
+  // 복구 작업: 트랜잭션 로그에서 복구할 때
+  // 수리 작업: 로그를 SST 파일로 변환할 때
   virtual TableBuilder* NewTableBuilder(
       const TableBuilderOptions& table_builder_options,
       WritableFileWriter* file) const = 0;
