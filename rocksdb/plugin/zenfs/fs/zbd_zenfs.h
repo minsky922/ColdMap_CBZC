@@ -460,6 +460,8 @@ class ZonedBlockDevice {
 
   bool SetSSTFileforZBDNoLock(uint64_t fno, ZoneFile *zoneFile);
 
+  ZoneFile *GetSSTZoneFileInZBDNoLock(uint64_t fno);
+
  private:
   IOStatus GetZoneDeferredStatus();
   bool GetActiveIOZoneTokenIfAvailable();

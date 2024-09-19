@@ -214,6 +214,9 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
     Info(logger_, "New zonefs backing: %s", zbd_be_->GetFilename().c_str());
   }
   zone_sz_ = zbd_be_->GetZoneSize();
+
+  sst_file_bitmap_ = new ZoneFile *[1 << 20];
+  memset(sst_file_bitmap_, 0, (1 << 20));
 }
 
 /* ZonedBlockDevice 객체를 초기화하고 열기 위한 작업을 수행합니다. 함수는 다음
@@ -1230,6 +1233,17 @@ bool ZonedBlockDevice::SetSSTFileforZBDNoLock(uint64_t fno,
   zoneFile->fno_ = fno;
   sst_file_bitmap_[fno] = zoneFile;
   return true;
+}
+
+ZoneFile *ZonedBlockDevice::GetSSTZoneFileInZBDNoLock(uint64_t fno) {
+  auto ret = sst_file_bitmap_[fno];
+  if (ret == nullptr) {
+    return nullptr;
+  }
+  if (ret != nullptr && ret->IsDeleted()) {
+    return nullptr;
+  }
+  return ret;
 }
 
 void ZonedBlockDevice::SameLevelFileList(int level,
