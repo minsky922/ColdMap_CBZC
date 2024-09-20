@@ -841,12 +841,13 @@ IOStatus ZoneFile::RemoveLinkName(const std::string& linkf) {
 IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime,
                                         int level) {
   // lifetime_ = lifetime;
-  printf("SetWriteLifeTimeHint : %s %d %d\n", linkfiles_[0].c_str(), lifetime,
-         level);
+  // printf("SetWriteLifeTimeHint : %s %d %d\n", linkfiles_[0].c_str(),
+  // lifetime,
+  //        level);
   (void)(lifetime);
-  // wal-log 파일은 수명이 SHORT
+  // wal-log 파일은 수명이 SHORT(2)
   // sst 파일은 3부터시작
-  // L0,L1- SST MEDIUM, L2-LONG, L3-EXTREME
+  // L0,L1- SST MEDIUM(3), L2-LONG(4), L3-EXTREME(5)
   // SHORT는 SSTable이 아닌,
   // Write-Ahead Log (WAL)과 LSM-TREE의 요약 정보를 포함하는 Manifest와 같은
   // 데이터에 할당된다.
@@ -873,7 +874,7 @@ IOStatus ZoneFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime,
       lifetime_ = Env::WLTH_EXTREME;
       break;
   }
-  printf("%d -> %d\n", level, lifetime_);
+  // printf("%d -> %d\n", level, lifetime_);
 
   return IOStatus::OK();
 }
@@ -891,6 +892,14 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
   //   printf("SetMinMaxKeyAndLevel :: %s output level
   //   %d\n",zoneFile_->GetLinkFiles()[0].c_str(),output_level);
   // }
+
+  // Convert Slice to string for printing
+  std::string smallest_str = s.ToString();
+  std::string largest_str = l.ToString();
+
+  // Print the smallest and largest keys
+  printf("smallest key: %s, largest key: %s\n", smallest_str.c_str(),
+         largest_str.c_str());
   zoneFile_->smallest_ = s;
   zoneFile_->largest_ = l;
   zoneFile_->level_ = output_level;

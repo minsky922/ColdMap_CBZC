@@ -388,86 +388,89 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
       // 현재 시간을 얻습니다. - CBZC1
       // auto current_time = std::chrono::system_clock::now();
-      uint64_t total_age = 0;
+      // uint64_t total_age = 0;
 
-      // IOOptions 객체를 생성합니다.
-      rocksdb::IOOptions io_options;
+      // // IOOptions 객체를 생성합니다.
+      // rocksdb::IOOptions io_options;
 
-      // zone_files_를 사용하여 해당 존에 속한 파일들에 접근합니다.
-      for (const auto& zone_file : snapshot.zone_files_) {
-        for (const auto& extent : zone_file.extents) {
-          if (extent.zone_start ==
-              zone.start) {  // 현재 존에 속하는 익스텐트만 처리
-            // 익스텐트 정보 출력
-            // std::cout << "  Zone File ID: " << zone_file.file_id
-            //           << " | Filename: " << zone_file.filename
-            //           << " | Extent Start: " << extent.start
-            //           << " | Extent Length: " << extent.length << std::endl;
-            // std::cout << "  extent.File: " << extent.filename
-            //           << " | Zone Start: " << zone.start << std::endl;
+      // // zone_files_를 사용하여 해당 존에 속한 파일들에 접근합니다.
+      // for (const auto& zone_file : snapshot.zone_files_) {
+      //   for (const auto& extent : zone_file.extents) {
+      //     if (extent.zone_start ==
+      //         zone.start) {  // 현재 존에 속하는 익스텐트만 처리
+      //       // 익스텐트 정보 출력
+      //       // std::cout << "  Zone File ID: " << zone_file.file_id
+      //       //           << " | Filename: " << zone_file.filename
+      //       //           << " | Extent Start: " << extent.start
+      //       //           << " | Extent Length: " << extent.length <<
+      //       std::endl;
+      //       // std::cout << "  extent.File: " << extent.filename
+      //       //           << " | Zone Start: " << zone.start << std::endl;
 
-            /* CBZC1*/
-            // uint64_t file_mod_time = 0;
+      //       /* CBZC1*/
+      //       // uint64_t file_mod_time = 0;
 
-            // // 파일의 수정 시간을 가져옵니다.
-            // IOStatus s = GetFileModificationTime(extent.filename, io_options,
-            //                                      &file_mod_time, nullptr);
-            // // 수정 시간을 제대로 가져왔다면 출력합니다.
-            // if (s.ok()) {
-            //   uint64_t file_age =
-            //       std::chrono::duration_cast<std::chrono::seconds>(
-            //           current_time.time_since_epoch())
-            //           .count() -
-            //       file_mod_time;
-            //   // std::cout << "File_age: " << file_age << std::endl;
-            //   total_age += file_age;
-            // }
+      //       // // 파일의 수정 시간을 가져옵니다.
+      //       // IOStatus s = GetFileModificationTime(extent.filename,
+      //       io_options,
+      //       //                                      &file_mod_time, nullptr);
+      //       // // 수정 시간을 제대로 가져왔다면 출력합니다.
+      //       // if (s.ok()) {
+      //       //   uint64_t file_age =
+      //       //       std::chrono::duration_cast<std::chrono::seconds>(
+      //       //           current_time.time_since_epoch())
+      //       //           .count() -
+      //       //       file_mod_time;
+      //       //   // std::cout << "File_age: " << file_age << std::endl;
+      //       //   total_age += file_age;
+      //       // }
 
-            /*CBZC2 - LIZC*/
-            // 수명 힌트를 기반으로 나이 추정
-            auto it = lifetime_hints.find(extent.filename);
-            if (it != lifetime_hints.end()) {
-              Env::WriteLifeTimeHint hint = it->second;
-              // // WriteLifeTimeHint 값 출력
-              // std::cout << "Filename: " << extent.filename
-              //           << ", WriteLifeTimeHint: " << static_cast<int>(hint)
-              //           << std::endl;
+      //       /*CBZC2 - LIZC*/
+      //       // 수명 힌트를 기반으로 나이 추정
+      //       auto it = lifetime_hints.find(extent.filename);
+      //       if (it != lifetime_hints.end()) {
+      //         Env::WriteLifeTimeHint hint = it->second;
+      //         // // WriteLifeTimeHint 값 출력
+      //         // std::cout << "Filename: " << extent.filename
+      //         //           << ", WriteLifeTimeHint: " <<
+      //         static_cast<int>(hint)
+      //         //           << std::endl;
 
-              uint64_t file_age = EstimateFileAge(hint);  // 추정된 나이 사용
-              // // 계산된 file_age 값 출력
-              // std::cout << "Estimated file age for " << extent.filename << ":
-              // "
-              //           << file_age << std::endl;
-              total_age += file_age;
-            }
-          }
-        }
-      }
-      std::cout << "Total_age: " << total_age << std::endl;
-      uint64_t denominator = (100 - garbage_percent_approx) * 2;
-      // std::cout << "  Denominator: " << denominator << std::endl;
+      //         uint64_t file_age = EstimateFileAge(hint);  // 추정된 나이 사용
+      //         // // 계산된 file_age 값 출력
+      //         // std::cout << "Estimated file age for " << extent.filename <<
+      //         ":
+      //         // "
+      //         //           << file_age << std::endl;
+      //         total_age += file_age;
+      //       }
+      //     }
+      //   }
+      // }
+      // std::cout << "Total_age: " << total_age << std::endl;
+      // uint64_t denominator = (100 - garbage_percent_approx) * 2;
+      // // std::cout << "  Denominator: " << denominator << std::endl;
       /* greedy */
-      // victim_candidate.push_back(
-      //     {garbage_percent_approx, zone.start});
+      victim_candidate.push_back({garbage_percent_approx, zone.start});
 
       /* cost-benefit */
-      if (denominator != 0) {
-        // u = valid
-        // garbage_percent_approx(free space+invalid)=1-valid= 1-u ex) 80 %
-        // cost = 2u = (100-gpa)*2
+      // if (denominator != 0) {
+      //   // u = valid
+      //   // garbage_percent_approx(free space+invalid)=1-valid= 1-u ex) 80 %
+      //   // cost = 2u = (100-gpa)*2
 
-        uint64_t cost_benefit_score =
-            garbage_percent_approx * total_age / denominator;
+      //   uint64_t cost_benefit_score =
+      //       garbage_percent_approx * total_age / denominator;
 
-        // std::cout << "  Calculated cost-benefit score: " <<
-        // cost_benefit_score
-        //           << std::endl;
+      //   // std::cout << "  Calculated cost-benefit score: " <<
+      //   // cost_benefit_score
+      //   //           << std::endl;
 
-        victim_candidate.push_back({cost_benefit_score, zone.start});
-        // std::cout << "  Added to victim_candidate: Zone Start: " <<
-        // zone.start
-        //           << std::endl;
-      }
+      //   victim_candidate.push_back({cost_benefit_score, zone.start});
+      //   // std::cout << "  Added to victim_candidate: Zone Start: " <<
+      //   // zone.start
+      //   //           << std::endl;
+      // }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
       std::cout << "all_inal_zone..." << std::endl;
