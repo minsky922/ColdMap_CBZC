@@ -898,22 +898,27 @@ IOStatus ZenFS::DeleteFileNoLock(std::string fname, const IOOptions& options,
   zoneFile = GetFileNoLock(fname);
   if (zoneFile != nullptr) {
     std::string record;
-
+    // 파일 맵에서 삭제
     files_.erase(fname);
+    // 파일의 링크 삭제
     s = zoneFile->RemoveLinkName(fname);
     if (!s.ok()) return s;
+    // 파일 삭제 정보를 기록하고 저장
     EncodeFileDeletionTo(zoneFile, &record, fname);
     s = PersistRecord(record);
+    // 삭제 기록 저장에 실패하면, 파일을 다시 맵에 복원
     if (!s.ok()) {
       /* Failed to persist the delete, return to a consistent state */
       files_.insert(std::make_pair(fname.c_str(), zoneFile));
       zoneFile->AddLinkName(fname);
+      // 성공하면, 다른 링크가 없을 때 파일을 삭제 처리
     } else {
       if (zoneFile->GetNrLinks() > 0) return s;
       /* Mark up the file as deleted so it won't be migrated by GC */
       zoneFile->SetDeleted();
       zoneFile.reset();
     }
+    // 파일이 맵에 없으면, 보조 경로에서 삭제
   } else {
     s = target()->DeleteFile(ToAuxPath(fname), options, dbg);
   }
@@ -1181,7 +1186,7 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
     zoneFile = std::make_shared<ZoneFile>(zbd_, next_file_id_++,
                                           &metadata_writer_, this);
     zoneFile->SetFileModificationTime(time(0));
-    zoneFile->AddLinkName(fname);
+    zoneFile->AddLinkName(fname);  // 파일 링크 추가
 
     /* RocksDB does not set the right io type(!)*/
     zoneFile->is_sst_ = ends_with(fname, ".sst");

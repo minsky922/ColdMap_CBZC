@@ -894,10 +894,7 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
   zoneFile_->smallest_ = s;
   zoneFile_->largest_ = l;
   zoneFile_->level_ = output_level;
-  std::string smallest_str = s.ToString();
-  std::string largest_str = l.ToString();
-  printf("smallest key: %s, largest key: %s\n", smallest_str.c_str(),
-         largest_str.c_str());
+
   return;
 }
 void ZoneFile::ReleaseActiveZone() {

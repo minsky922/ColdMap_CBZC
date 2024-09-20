@@ -1129,11 +1129,11 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
       }
 
       s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
-      // //
-      // if (s.ok() && allocated_zone == nullptr) {
-      //   s = GetAnyLargestRemainingZone(&allocated_zone);
-      // }
-      // //
+      //
+      if (s.ok() && allocated_zone == nullptr) {
+        s = GetAnyLargestRemainingZone(&allocated_zone);
+      }
+      //
       if (!s.ok()) {
         PutActiveIOZoneToken();
         PutOpenIOZoneToken();
