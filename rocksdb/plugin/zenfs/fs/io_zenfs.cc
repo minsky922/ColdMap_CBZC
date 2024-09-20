@@ -895,6 +895,9 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
 
   if (s.size() == 0 || l.size() == 0) {
     printf("Error: smallest or largest key is empty!\n");
+  } else {
+    printf("Smallest key size: %zu, Largest key size: %zu\n", s.size(),
+           l.size());
   }
 
   // Convert Slice to string for printing
