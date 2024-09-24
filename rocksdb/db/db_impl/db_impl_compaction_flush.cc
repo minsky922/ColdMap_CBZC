@@ -2430,8 +2430,9 @@ void DBImpl::EnableManualCompaction() {
 
 void DBImpl::MaybeScheduleFlushOrCompaction() {
   uint64_t zns_free_space;
-  //uint64_t zns_free_percent;
+  // uint64_t zns_free_percent;
   mutex_.AssertHeld();
+  // DB가 성공적으로 열리지 않은 경우, 컴팩션을 진행할 수 없음
   if (!opened_successfully_) {
     // Compaction may introduce data race to DB open
     return;
@@ -2449,21 +2450,25 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     // DB is being deleted; no more background compactions
     return;
   }
+  // 백그라운드 작업의 최대 제한을 가져옴
   auto bg_job_limits = GetBGJobLimits();
+  // 고우선순위 플러시 스레드가 있는지 확인
   bool is_flush_pool_empty =
       env_->GetBackgroundThreads(Env::Priority::HIGH) == 0;
-
-  GetFileSystem()->GetFreeSpace(std::string(), IOOptions(), &zns_free_space, nullptr);
-
+  // 파일 시스템에서 사용할 수 있는 여유 공간을 가져옴
+  GetFileSystem()->GetFreeSpace(std::string(), IOOptions(), &zns_free_space,
+                                nullptr);
+  // 백그라운드 플러시 작업을 예약하는 루프
   while (!is_flush_pool_empty && unscheduled_flushes_ > 0 &&
          bg_flush_scheduled_ < bg_job_limits.max_flushes) {
-    bg_flush_scheduled_++;
+    bg_flush_scheduled_++;  // 예약된 플러시 작업의 수를 증가
     FlushThreadArg* fta = new FlushThreadArg;
-    fta->db_ = this;
-    fta->thread_pri_ = Env::Priority::HIGH;
+    fta->db_ = this;  // 현재 DBImpl 인스턴스 지정
+    fta->thread_pri_ = Env::Priority::HIGH;  // 우선순위를 높음으로 설정
+    // BGWorkFlush를 실행하도록 스케줄링
     env_->Schedule(&DBImpl::BGWorkFlush, fta, Env::Priority::HIGH, this,
                    &DBImpl::UnscheduleFlushCallback);
-    --unscheduled_flushes_;
+    --unscheduled_flushes_;  // 예약되지 않은 플러시 작업의 수를 감소
     TEST_SYNC_POINT_CALLBACK(
         "DBImpl::MaybeScheduleFlushOrCompaction:AfterSchedule:0",
         &unscheduled_flushes_);
@@ -2475,16 +2480,17 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     while (unscheduled_flushes_ > 0 &&
            bg_flush_scheduled_ + bg_compaction_scheduled_ <
                bg_job_limits.max_flushes) {
-      bg_flush_scheduled_++;
+      bg_flush_scheduled_++;  // 예약된 플러시 작업의 수 증가
       FlushThreadArg* fta = new FlushThreadArg;
       fta->db_ = this;
-      fta->thread_pri_ = Env::Priority::LOW;
+      fta->thread_pri_ = Env::Priority::LOW;  // 우선순위를 낮음으로 설정
+      // 낮은 우선순위로 BGWorkFlush를 실행하도록 스케줄링
       env_->Schedule(&DBImpl::BGWorkFlush, fta, Env::Priority::LOW, this,
                      &DBImpl::UnscheduleFlushCallback);
       --unscheduled_flushes_;
     }
   }
-
+  // 백그라운드 컴팩션 작업이 일시 중지된 경우 함수 종료
   if (bg_compaction_paused_ > 0) {
     // we paused the background compaction
     return;
@@ -2495,16 +2501,17 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     // out here and let the higher level recovery handle compactions
     return;
   }
-
+  // 수동 컴팩션이 독점적으로 실행 중인 경우 자동 컴팩션 예약 불가
   if (HasExclusiveManualCompaction()) {
     // only manual compactions are allowed to run. don't schedule automatic
     // compactions
     TEST_SYNC_POINT("DBImpl::MaybeScheduleFlushOrCompaction:Conflict");
     return;
   }
-  
-  GetFileSystem()->GetFreeSpace(std::string(), IOOptions(), &zns_free_space, nullptr);
-
+  // 파일 시스템에서 사용할 수 있는 여유 공간을 다시 확인
+  GetFileSystem()->GetFreeSpace(std::string(), IOOptions(), &zns_free_space,
+                                nullptr);
+  // 백그라운드 컴팩션 작업을 예약하는 루프
   while (bg_compaction_scheduled_ + bg_bottom_compaction_scheduled_ <
              bg_job_limits.max_compactions &&
          unscheduled_compactions_ > 0) {

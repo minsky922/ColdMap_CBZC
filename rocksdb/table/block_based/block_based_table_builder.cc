@@ -1255,11 +1255,12 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
   Rep* r = rep_;
   bool is_data_block = block_type == BlockType::kData;
   StopWatch sw(r->ioptions.clock, r->ioptions.stats, WRITE_RAW_BLOCK_MICROS);
+  // 설정한 오프셋과 크기를 BlockHandle에 기록
   handle->set_offset(r->get_offset());
   handle->set_size(block_contents.size());
   assert(status().ok());
   assert(io_status().ok());
-
+  // 블록 데이터를 파일에 추가
   {
     IOStatus io_s = r->file->Append(block_contents);
     if (!io_s.ok()) {
@@ -1267,13 +1268,13 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
       return;
     }
   }
-
+  // 블록 트레일러 생성
   std::array<char, kBlockTrailerSize> trailer;
-  trailer[0] = type;
+  trailer[0] = type;  // 첫 번째 바이트는 압축 유형을 저장
   uint32_t checksum = ComputeBuiltinChecksumWithLastByte(
       r->table_options.checksum, block_contents.data(), block_contents.size(),
       /*last_byte*/ type);
-
+  // 필터 블록의 경우 추가 검증 단계
   if (block_type == BlockType::kFilter) {
     Status s = r->filter_builder->MaybePostVerifyFilter(block_contents);
     if (!s.ok()) {
@@ -1281,12 +1282,12 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
       return;
     }
   }
-
+  // 계산된 체크섬을 트레일러에 추가
   EncodeFixed32(trailer.data() + 1, checksum);
   TEST_SYNC_POINT_CALLBACK(
       "BlockBasedTableBuilder::WriteRawBlock:TamperWithChecksum",
       trailer.data());
-  {
+  {  // 트레일러를 파일에 추가
     IOStatus io_s = r->file->Append(Slice(trailer.data(), trailer.size()));
     if (!io_s.ok()) {
       r->SetIOStatus(io_s);
@@ -1294,7 +1295,7 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
     }
   }
 
-  {
+  {  // 블록을 캐시로 프리로딩하는 로직
     Status s = Status::OK();
     bool warm_cache;
     switch (r->table_options.prepopulate_block_cache) {
@@ -1310,6 +1311,7 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
         warm_cache = false;
     }
     if (warm_cache) {
+      // 압축이 안된 경우 또는 raw_block_contents가 있는 경우 캐시에 추가
       if (type == kNoCompression) {
         s = InsertBlockInCacheHelper(block_contents, handle, block_type);
       } else if (raw_block_contents != nullptr) {
@@ -1320,14 +1322,16 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
         return;
       }
     }
+    // 압축된 블록을 캐시에 추가
     s = InsertBlockInCompressedCache(block_contents, type, handle);
     if (!s.ok()) {
       r->SetStatus(s);
       return;
     }
   }
-
+  // 파일 오프셋을 업데이트
   r->set_offset(r->get_offset() + block_contents.size() + kBlockTrailerSize);
+  // 데이터 블록 정렬 패딩을 수행 (필요할 경우)
   if (r->table_options.block_align && is_data_block) {
     size_t pad_bytes =
         (r->alignment -
@@ -1341,7 +1345,7 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
       return;
     }
   }
-
+  // 병렬 압축 모드에서 파일 크기 추정 업데이트
   if (r->IsParallelCompressionEnabled()) {
     if (is_data_block) {
       r->pc_rep->file_size_estimator.ReapBlock(block_contents.size(),
