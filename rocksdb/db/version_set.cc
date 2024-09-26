@@ -92,23 +92,19 @@ namespace {
 // Find File in LevelFilesBrief data structure
 // Within an index range defined by left and right
 int FindFileInRange(const InternalKeyComparator& icmp,
-    const LevelFilesBrief& file_level,
-    const Slice& key,
-    uint32_t left,
-    uint32_t right) {
+                    const LevelFilesBrief& file_level, const Slice& key,
+                    uint32_t left, uint32_t right) {
   auto cmp = [&](const FdWithKeyRange& f, const Slice& k) -> bool {
     return icmp.InternalKeyComparator::Compare(f.largest_key, k) < 0;
   };
-  const auto &b = file_level.files;
-  return static_cast<int>(std::lower_bound(b + left,
-                                           b + right, key, cmp) - b);
+  const auto& b = file_level.files;
+  return static_cast<int>(std::lower_bound(b + left, b + right, key, cmp) - b);
 }
 
 Status OverlapWithIterator(const Comparator* ucmp,
-    const Slice& smallest_user_key,
-    const Slice& largest_user_key,
-    InternalIterator* iter,
-    bool* overlap) {
+                           const Slice& smallest_user_key,
+                           const Slice& largest_user_key,
+                           InternalIterator* iter, bool* overlap) {
   InternalKey range_start(smallest_user_key, kMaxSequenceNumber,
                           kValueTypeForSeek);
   iter->Seek(range_start.Encode());
@@ -186,9 +182,9 @@ class FilePicker {
         // Do key range filtering of files or/and fractional cascading if:
         // (1) not all the files are in level 0, or
         // (2) there are more than 3 current level files
-        // If there are only 3 or less current level files in the system, we skip
-        // the key range filtering. In this case, more likely, the system is
-        // highly tuned to minimize number of tables queried by each query,
+        // If there are only 3 or less current level files in the system, we
+        // skip the key range filtering. In this case, more likely, the system
+        // is highly tuned to minimize number of tables queried by each query,
         // so it is unlikely that key range filtering is more efficient than
         // querying the files.
         if (num_levels_ > 1 || curr_file_level_->num_files > 3) {
@@ -210,11 +206,9 @@ class FilePicker {
           // Setup file search bound for the next level based on the
           // comparison results
           if (curr_level_ > 0) {
-            file_indexer_->GetNextLevelIndex(curr_level_,
-                                            curr_index_in_curr_level_,
-                                            cmp_smallest, cmp_largest,
-                                            &search_left_bound_,
-                                            &search_right_bound_);
+            file_indexer_->GetNextLevelIndex(
+                curr_level_, curr_index_in_curr_level_, cmp_smallest,
+                cmp_largest, &search_left_bound_, &search_right_bound_);
           }
           // Key falls out of current file's range
           if (cmp_smallest < 0 || cmp_largest > 0) {
@@ -613,8 +607,10 @@ class FilePickerMultiGet {
     unsigned int start_index_in_curr_level;
 
     FilePickerContext(int32_t left, int32_t right)
-        : search_left_bound(left), search_right_bound(right),
-          curr_index_in_curr_level(0), start_index_in_curr_level(0) {}
+        : search_left_bound(left),
+          search_right_bound(right),
+          curr_index_in_curr_level(0),
+          start_index_in_curr_level(0) {}
 
     FilePickerContext() = default;
   };
@@ -783,22 +779,21 @@ Version::~Version() {
 }
 
 int FindFile(const InternalKeyComparator& icmp,
-             const LevelFilesBrief& file_level,
-             const Slice& key) {
+             const LevelFilesBrief& file_level, const Slice& key) {
   return FindFileInRange(icmp, file_level, key, 0,
                          static_cast<uint32_t>(file_level.num_files));
 }
 
 void DoGenerateLevelFilesBrief(LevelFilesBrief* file_level,
-        const std::vector<FileMetaData*>& files,
-        Arena* arena) {
+                               const std::vector<FileMetaData*>& files,
+                               Arena* arena) {
   assert(file_level);
   assert(arena);
 
   size_t num = files.size();
   file_level->num_files = num;
   char* mem = arena->AllocateAligned(num * sizeof(FdWithKeyRange));
-  file_level->files = new (mem)FdWithKeyRange[num];
+  file_level->files = new (mem) FdWithKeyRange[num];
 
   for (size_t i = 0; i < num; i++) {
     Slice smallest_key = files[i]->smallest.Encode();
@@ -819,28 +814,27 @@ void DoGenerateLevelFilesBrief(LevelFilesBrief* file_level,
   }
 }
 
-static bool AfterFile(const Comparator* ucmp,
-                      const Slice* user_key, const FdWithKeyRange* f) {
+static bool AfterFile(const Comparator* ucmp, const Slice* user_key,
+                      const FdWithKeyRange* f) {
   // nullptr user_key occurs before all keys and is therefore never after *f
   return (user_key != nullptr &&
           ucmp->CompareWithoutTimestamp(*user_key,
                                         ExtractUserKey(f->largest_key)) > 0);
 }
 
-static bool BeforeFile(const Comparator* ucmp,
-                       const Slice* user_key, const FdWithKeyRange* f) {
+static bool BeforeFile(const Comparator* ucmp, const Slice* user_key,
+                       const FdWithKeyRange* f) {
   // nullptr user_key occurs after all keys and is therefore never before *f
   return (user_key != nullptr &&
           ucmp->CompareWithoutTimestamp(*user_key,
                                         ExtractUserKey(f->smallest_key)) < 0);
 }
 
-bool SomeFileOverlapsRange(
-    const InternalKeyComparator& icmp,
-    bool disjoint_sorted_files,
-    const LevelFilesBrief& file_level,
-    const Slice* smallest_user_key,
-    const Slice* largest_user_key) {
+bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
+                           bool disjoint_sorted_files,
+                           const LevelFilesBrief& file_level,
+                           const Slice* smallest_user_key,
+                           const Slice* largest_user_key) {
   const Comparator* ucmp = icmp.user_comparator();
   if (!disjoint_sorted_files) {
     // Need to check against all files
@@ -936,9 +930,7 @@ class LevelIterator final : public InternalIterator {
     return file_iter_.iter() ? file_iter_.status() : Status::OK();
   }
 
-  bool PrepareValue() override {
-    return file_iter_.PrepareValue();
-  }
+  bool PrepareValue() override { return file_iter_.PrepareValue(); }
 
   inline bool MayBeOutOfLowerBound() override {
     assert(Valid());
@@ -1294,9 +1286,8 @@ Status Version::GetTableProperties(std::shared_ptr<const TableProperties>* tp,
   if (fname != nullptr) {
     file_name = *fname;
   } else {
-    file_name =
-      TableFileName(ioptions->cf_paths, file_meta->fd.GetNumber(),
-                    file_meta->fd.GetPathId());
+    file_name = TableFileName(ioptions->cf_paths, file_meta->fd.GetNumber(),
+                              file_meta->fd.GetPathId());
   }
   s = ioptions->fs->NewRandomAccessFile(file_name, file_options_, &file,
                                         nullptr);
@@ -1422,8 +1413,8 @@ Status Version::GetPropertiesOfTablesInRange(
                                          false);
       for (const auto& file_meta : files) {
         auto fname =
-            TableFileName(cfd_->ioptions()->cf_paths,
-                          file_meta->fd.GetNumber(), file_meta->fd.GetPathId());
+            TableFileName(cfd_->ioptions()->cf_paths, file_meta->fd.GetNumber(),
+                          file_meta->fd.GetPathId());
         if (props->count(fname) == 0) {
           // 1. If the table is already present in table cache, load table
           // properties from there.
@@ -1519,8 +1510,7 @@ void Version::GetColumnFamilyMetaData(ColumnFamilyMetaData* cf_meta) {
       files.back().num_deletions = file->num_deletions;
       level_size += file->fd.GetFileSize();
     }
-    cf_meta->levels.emplace_back(
-        level, level_size, std::move(files));
+    cf_meta->levels.emplace_back(level, level_size, std::move(files));
     cf_meta->size += level_size;
   }
   for (const auto& meta : vstorage->GetBlobFiles()) {
@@ -1622,10 +1612,8 @@ uint64_t VersionStorageInfo::GetEstimatedActiveKeys() const {
 
   if (current_num_samples_ < file_count) {
     // casting to avoid overflowing
-    return
-      static_cast<uint64_t>(
-        (est * static_cast<double>(file_count) / current_num_samples_)
-      );
+    return static_cast<uint64_t>(
+        (est * static_cast<double>(file_count) / current_num_samples_));
   } else {
     return est;
   }
@@ -1662,8 +1650,7 @@ void Version::AddIterators(const ReadOptions& read_options,
 void Version::AddIteratorsForLevel(const ReadOptions& read_options,
                                    const FileOptions& soptions,
                                    MergeIteratorBuilder* merge_iter_builder,
-                                   int level,
-                                   RangeDelAggregator* range_del_agg,
+                                   int level, RangeDelAggregator* range_del_agg,
                                    bool allow_unprepared_value) {
   assert(storage_info_.finalized_);
   if (level >= storage_info_.num_non_empty_levels()) {
@@ -1750,8 +1737,8 @@ Status Version::OverlapWithLevelIterator(const ReadOptions& read_options,
           /*smallest_compaction_key=*/nullptr,
           /*largest_compaction_key=*/nullptr,
           /*allow_unprepared_value=*/false));
-      status = OverlapWithIterator(
-          ucmp, smallest_user_key, largest_user_key, iter.get(), overlap);
+      status = OverlapWithIterator(ucmp, smallest_user_key, largest_user_key,
+                                   iter.get(), overlap);
       if (!status.ok() || *overlap) {
         break;
       }
@@ -1765,8 +1752,8 @@ Status Version::OverlapWithLevelIterator(const ReadOptions& read_options,
         cfd_->internal_stats()->GetFileReadHist(level),
         TableReaderCaller::kUserIterator, IsFilterSkipped(level), level,
         &range_del_agg));
-    status = OverlapWithIterator(
-        ucmp, smallest_user_key, largest_user_key, iter.get(), overlap);
+    status = OverlapWithIterator(ucmp, smallest_user_key, largest_user_key,
+                                 iter.get(), overlap);
   }
 
   if (status.ok() && *overlap == false &&
@@ -2181,7 +2168,7 @@ void Version::Get(const ReadOptions& read_options, const LookupKey& k,
       return;
     }
     if (!merge_operator_) {
-      *status =  Status::InvalidArgument(
+      *status = Status::InvalidArgument(
           "merge_operator is not properly initialized.");
       return;
     }
@@ -2199,7 +2186,7 @@ void Version::Get(const ReadOptions& read_options, const LookupKey& k,
     if (key_exists != nullptr) {
       *key_exists = false;
     }
-    *status = Status::NotFound(); // Use an empty error message for speed
+    *status = Status::NotFound();  // Use an empty error message for speed
   }
 }
 
@@ -2244,10 +2231,10 @@ void Version::MultiGet(const ReadOptions& read_options, MultiGetRange* range,
   }
 
   MultiGetRange file_picker_range(*range, range->begin(), range->end());
-  FilePickerMultiGet fp(
-      &file_picker_range,
-      &storage_info_.level_files_brief_, storage_info_.num_non_empty_levels_,
-      &storage_info_.file_indexer_, user_comparator(), internal_comparator());
+  FilePickerMultiGet fp(&file_picker_range, &storage_info_.level_files_brief_,
+                        storage_info_.num_non_empty_levels_,
+                        &storage_info_.file_indexer_, user_comparator(),
+                        internal_comparator());
   FdWithKeyRange* f = fp.GetNextFileInLevel();
   Status s;
   uint64_t num_index_read = 0;
@@ -2422,8 +2409,8 @@ bool Version::IsFilterSkipped(int level, bool is_file_last_in_level) {
 void VersionStorageInfo::GenerateLevelFilesBrief() {
   level_files_brief_.resize(num_non_empty_levels_);
   for (int level = 0; level < num_non_empty_levels_; level++) {
-    DoGenerateLevelFilesBrief(
-        &level_files_brief_[level], files_[level], &arena_);
+    DoGenerateLevelFilesBrief(&level_files_brief_[level], files_[level],
+                              &arena_);
   }
 }
 
@@ -2455,8 +2442,7 @@ void Version::PrepareAppend(const MutableCFOptions& mutable_cf_options,
 }
 
 bool Version::MaybeInitializeFileMetaData(FileMetaData* file_meta) {
-  if (file_meta->init_stats_from_file ||
-      file_meta->compensated_file_size > 0) {
+  if (file_meta->init_stats_from_file || file_meta->compensated_file_size > 0) {
     return false;
   }
   std::shared_ptr<const TableProperties> tp;
@@ -3069,9 +3055,9 @@ struct Fsize {
 // In normal mode: descending size
 bool CompareCompensatedSizeDescending(const Fsize& first, const Fsize& second) {
   return (first.file->compensated_file_size >
-      second.file->compensated_file_size);
+          second.file->compensated_file_size);
 }
-} // anonymous namespace
+}  // anonymous namespace
 
 void VersionStorageInfo::AddFile(int level, FileMetaData* f) {
   auto& level_files = files_[level];
@@ -3371,9 +3357,7 @@ void VersionStorageInfo::ComputeBottommostFilesMarkedForCompaction() {
   }
 }
 
-void Version::Ref() {
-  ++refs_;
-}
+void Version::Ref() { ++refs_; }
 
 bool Version::Unref() {
   assert(refs_ >= 1);
@@ -3401,6 +3385,11 @@ bool VersionStorageInfo::OverlapInLevel(int level,
 // If hint_index is specified, then it points to a file in the
 // overlapping range.
 // The file_index returns a pointer to any file in an overlapping range.
+
+// "level"에서 [begin, end]와 겹치는 모든 파일을 "*inputs"에 저장합니다.
+// hint_index가 지정된 경우, 이는 겹치는 범위의 파일을 가리킵니다
+// file_index는 겹치는 범위의 파일 중 하나에 대한 인덱스를 반환합니다
+
 void VersionStorageInfo::GetOverlappingInputs(
     int level, const InternalKey* begin, const InternalKey* end,
     std::vector<FileMetaData*>* inputs, int hint_index, int* file_index,
@@ -3409,24 +3398,27 @@ void VersionStorageInfo::GetOverlappingInputs(
     // this level is empty, no overlapping inputs
     return;
   }
-
+  // 입력 벡터를 초기화하고 file_index를 -1로 설정 (겹치는 파일이 없을 수 있음)
   inputs->clear();
   if (file_index) {
     *file_index = -1;
   }
+  // 사용자 정의 키 비교자 가져오기
   const Comparator* user_cmp = user_comparator_;
-  if (level > 0) {
+  if (level > 0) {  // 1 level 이상
+    // 이진 검색을 사용하여 겹치는 파일을 찾음
     GetOverlappingInputsRangeBinarySearch(level, begin, end, inputs, hint_index,
                                           file_index, false, next_smallest);
     return;
   }
-
+  // next_smallest는 0 레벨에는 적용되지 않음 (0 레벨은 겹칠 수 있음)
   if (next_smallest) {
     // next_smallest key only makes sense for non-level 0, where files are
     // non-overlapping
     *next_smallest = nullptr;
   }
-
+  //---------------------------0level 일때------------------------//
+  // 사용자 키 범위 추출
   Slice user_begin, user_end;
   if (begin != nullptr) {
     user_begin = begin->user_key();
@@ -3434,51 +3426,59 @@ void VersionStorageInfo::GetOverlappingInputs(
   if (end != nullptr) {
     user_end = end->user_key();
   }
-
+  // index는 체크해야 할 파일의 인덱스를 저장하는 리스트
   // index stores the file index need to check.
   std::list<size_t> index;
   for (size_t i = 0; i < level_files_brief_[level].num_files; i++) {
     index.emplace_back(i);
   }
-
+  // 인덱스가 비어 있지 않을 동안 계속 루프 실행
   while (!index.empty()) {
-    bool found_overlapping_file = false;
+    bool found_overlapping_file = false;  // 겹치는 파일을 찾았는지 여부
     auto iter = index.begin();
+    // 리스트의 모든 인덱스에 대해 순회
     while (iter != index.end()) {
       FdWithKeyRange* f = &(level_files_brief_[level].files[*iter]);
       const Slice file_start = ExtractUserKey(f->smallest_key);
       const Slice file_limit = ExtractUserKey(f->largest_key);
+      // 현재 파일이 지정된 범위 이전에 있으면 다음 파일로 이동
       if (begin != nullptr &&
           user_cmp->CompareWithoutTimestamp(file_limit, user_begin) < 0) {
         // "f" is completely before specified range; skip it
         iter++;
+        // 현재 파일이 지정된 범위 이후에 있으면 다음 파일로 이동
       } else if (end != nullptr &&
                  user_cmp->CompareWithoutTimestamp(file_start, user_end) > 0) {
         // "f" is completely after specified range; skip it
         iter++;
       } else {
+        // 현재 파일이 범위와 겹치는 경우, inputs에 추가
         // if overlap
         inputs->emplace_back(files_[level][*iter]);
         found_overlapping_file = true;
         // record the first file index.
+        // file_index가 지정되어 있고, 아직 설정되지 않았다면 현재 인덱스를 설정
         if (file_index && *file_index == -1) {
           *file_index = static_cast<int>(*iter);
         }
         // the related file is overlap, erase to avoid checking again.
+        // 이미 겹치는 파일이므로 리스트에서 제거하여 다시 확인하지 않도록 함
         iter = index.erase(iter);
+        // expand_range가 true인 경우 범위를 확장
         if (expand_range) {
           if (begin != nullptr &&
               user_cmp->CompareWithoutTimestamp(file_start, user_begin) < 0) {
-            user_begin = file_start;
+            user_begin = file_start;  // 시작 범위 확장
           }
           if (end != nullptr &&
               user_cmp->CompareWithoutTimestamp(file_limit, user_end) > 0) {
-            user_end = file_limit;
+            user_end = file_limit;  // 종료 범위 확장
           }
         }
       }
     }
     // if all the files left are not overlap, break
+    // 남은 파일이 겹치지 않는 경우 반복 종료
     if (!found_overlapping_file) {
       break;
     }
@@ -3505,9 +3505,8 @@ void VersionStorageInfo::GetCleanInputsWithinInterval(
     return;
   }
 
-  GetOverlappingInputsRangeBinarySearch(level, begin, end, inputs,
-                                        hint_index, file_index,
-                                        true /* within_interval */);
+  GetOverlappingInputsRangeBinarySearch(level, begin, end, inputs, hint_index,
+                                        file_index, true /* within_interval */);
 }
 
 // Store in "*inputs" all files in "level" that overlap [begin,end]
@@ -3517,70 +3516,87 @@ void VersionStorageInfo::GetCleanInputsWithinInterval(
 // if within_range is set, then only store the maximum clean inputs
 // within range [begin, end]. "clean" means there is a boundary
 // between the files in "*inputs" and the surrounding files
+
+// "level"에서 [begin, end]와 겹치는 모든 파일을 "*inputs"에 저장합니다.
+// 이진 검색을 사용하여 겹치는 범위를 찾고, 그 파일에서 앞뒤로 이동하여
+// 모든 겹치는 파일을 찾습니다.
+// within_interval이 설정된 경우, 겹치지 않는 최대의 깨끗한 입력만을 [begin,
+// end] 내에 저장합니다. "clean"은 "*inputs"의 파일과 주변 파일 사이에 경계가
+// 있음을 의미합니다.
 void VersionStorageInfo::GetOverlappingInputsRangeBinarySearch(
     int level, const InternalKey* begin, const InternalKey* end,
     std::vector<FileMetaData*>* inputs, int hint_index, int* file_index,
     bool within_interval, InternalKey** next_smallest) const {
-  assert(level > 0);
-
+  assert(level > 0);  // 이 함수는 레벨 1 이상에서만 사용됩니다.
+  // 사용자 키 비교자를 가져옵니다.
   auto user_cmp = user_comparator_;
   const FdWithKeyRange* files = level_files_brief_[level].files;
   const int num_files = static_cast<int>(level_files_brief_[level].num_files);
 
   // begin to use binary search to find lower bound
   // and upper bound.
+  // 이진 검색을 사용하여 하한과 상한을 찾기 위한 시작과 종료 인덱스를
+  // 설정합니다.
   int start_index = 0;
   int end_index = num_files;
-
+  // begin이 nullptr이 아닌 경우 시작 인덱스 찾기
   if (begin != nullptr) {
     // if within_interval is true, with file_key would find
     // not overlapping ranges in std::lower_bound.
+    // within_interval이 true인 경우 겹치지 않는 범위를 찾기 위한 비교자 설정
     auto cmp = [&user_cmp, &within_interval](const FdWithKeyRange& f,
                                              const InternalKey* k) {
+      // 겹치지 않는 범위를 찾을 때, 가장 작은 키 또는 가장 큰 키를 사용
       auto& file_key = within_interval ? f.file_metadata->smallest
                                        : f.file_metadata->largest;
       return sstableKeyCompare(user_cmp, file_key, *k) < 0;
     };
-
+    // begin을 사용하여 겹치는 시작 파일의 인덱스를 찾습니다.
     start_index = static_cast<int>(
         std::lower_bound(files,
                          files + (hint_index == -1 ? num_files : hint_index),
                          begin, cmp) -
         files);
-
+    // within_interval이 true인 경우 인덱스 조정
     if (start_index > 0 && within_interval) {
       bool is_overlapping = true;
       while (is_overlapping && start_index < num_files) {
+        // 이전 파일의 가장 큰 키와 현재 파일의 가장 작은 키를 비교하여 겹치는지
+        // 확인
         auto& pre_limit = files[start_index - 1].file_metadata->largest;
         auto& cur_start = files[start_index].file_metadata->smallest;
         is_overlapping = sstableKeyCompare(user_cmp, pre_limit, cur_start) == 0;
-        start_index += is_overlapping;
+        start_index += is_overlapping;  // 겹치는 경우 인덱스를 증가시킵니다.
       }
     }
   }
-
+  // end가 nullptr이 아닌 경우 종료 인덱스 찾기
   if (end != nullptr) {
     // if within_interval is true, with file_key would find
     // not overlapping ranges in std::upper_bound.
+    // within_interval이 true인 경우 겹치지 않는 범위를 찾기 위한 비교자 설정
     auto cmp = [&user_cmp, &within_interval](const InternalKey* k,
                                              const FdWithKeyRange& f) {
+      // 겹치지 않는 범위를 찾을 때, 가장 작은 키 또는 가장 큰 키를 사용
       auto& file_key = within_interval ? f.file_metadata->largest
                                        : f.file_metadata->smallest;
       return sstableKeyCompare(user_cmp, *k, file_key) < 0;
     };
-
+    // end를 사용하여 겹치는 종료 파일의 인덱스를 찾습니다.
     end_index = static_cast<int>(
         std::upper_bound(files + start_index, files + num_files, end, cmp) -
         files);
-
+    // within_interval이 true인 경우 인덱스 조정
     if (end_index < num_files && within_interval) {
       bool is_overlapping = true;
       while (is_overlapping && end_index > start_index) {
         auto& next_start = files[end_index].file_metadata->smallest;
         auto& cur_limit = files[end_index - 1].file_metadata->largest;
+        // 다음 파일의 가장 작은 키와 현재 파일의 가장 큰 키를 비교하여 겹치는지
+        // 확인
         is_overlapping =
             sstableKeyCompare(user_cmp, cur_limit, next_start) == 0;
-        end_index -= is_overlapping;
+        end_index -= is_overlapping;  // 겹치는 경우 인덱스를 감소시킵니다.
       }
     }
   }
@@ -3588,6 +3604,7 @@ void VersionStorageInfo::GetOverlappingInputsRangeBinarySearch(
   assert(start_index <= end_index);
 
   // If there were no overlapping files, return immediately.
+  // 겹치는 파일이 없으면 바로 반환
   if (start_index == end_index) {
     if (next_smallest) {
       *next_smallest = nullptr;
@@ -3598,15 +3615,17 @@ void VersionStorageInfo::GetOverlappingInputsRangeBinarySearch(
   assert(start_index < end_index);
 
   // returns the index where an overlap is found
+  // 겹치는 파일의 인덱스를 반환
   if (file_index) {
     *file_index = start_index;
   }
 
   // insert overlapping files into vector
+  // 겹치는 파일들을 inputs 벡터에 추가
   for (int i = start_index; i < end_index; i++) {
     inputs->push_back(files_[level][i]);
   }
-
+  // next_smallest가 nullptr이 아닌 경우, 입력 범위 외부의 다음 키를 제공합니다.
   if (next_smallest != nullptr) {
     // Provide the next key outside the range covered by inputs
     if (end_index < static_cast<int>(files_[level].size())) {
@@ -3670,8 +3689,7 @@ const char* VersionStorageInfo::LevelFileSummary(FileSummaryStorage* scratch,
                        "#%" PRIu64 "(seq=%" PRIu64 ",sz=%s,%d) ",
                        f->fd.GetNumber(), f->fd.smallest_seqno, sztxt,
                        static_cast<int>(f->being_compacted));
-    if (ret < 0 || ret >= sz)
-      break;
+    if (ret < 0 || ret >= sz) break;
     len += ret;
   }
   // overwrite the last space (only if files_[level].size() is non-zero)
@@ -3875,13 +3893,13 @@ uint64_t VersionStorageInfo::EstimateLiveDataSize() const {
       // no potential overlap, we can safely insert the rest of this level
       // (if the level is not 0) into the map without checking again because
       // the elements in the level are sorted and non-overlapping.
-      auto lb = (found_end && l != 0) ?
-        ranges.end() : ranges.lower_bound(&file->smallest);
+      auto lb = (found_end && l != 0) ? ranges.end()
+                                      : ranges.lower_bound(&file->smallest);
       found_end = (lb == ranges.end());
       if (found_end || internal_comparator_->Compare(
-            file->largest, (*lb).second->smallest) < 0) {
-          ranges.emplace_hint(lb, &file->largest, file);
-          size += file->fd.file_size;
+                           file->largest, (*lb).second->smallest) < 0) {
+        ranges.emplace_hint(lb, &file->largest, file);
+        size += file->fd.file_size;
       }
     }
   }
@@ -5287,7 +5305,7 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
     }
   }
 
-  delete[] vstorage -> files_;
+  delete[] vstorage->files_;
   vstorage->files_ = new_files_list;
   vstorage->num_levels_ = new_levels;
 
@@ -5295,9 +5313,9 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
   VersionEdit ve;
   InstrumentedMutex dummy_mutex;
   InstrumentedMutexLock l(&dummy_mutex);
-  return versions.LogAndApply(
-      versions.GetColumnFamilySet()->GetDefault(),
-      mutable_cf_options, &ve, &dummy_mutex, nullptr, true);
+  return versions.LogAndApply(versions.GetColumnFamilySet()->GetDefault(),
+                              mutable_cf_options, &ve, &dummy_mutex, nullptr,
+                              true);
 }
 
 // Get the checksum information including the checksum and checksum function
@@ -5383,9 +5401,7 @@ Status VersionSet::DumpManifest(Options& options, std::string& dscname,
     std::unique_ptr<FSSequentialFile> file;
     const std::shared_ptr<FileSystem>& fs = options.env->GetFileSystem();
     s = fs->NewSequentialFile(
-        dscname,
-        fs->OptimizeForManifestRead(file_options_), &file,
-        nullptr);
+        dscname, fs->OptimizeForManifestRead(file_options_), &file, nullptr);
     if (!s.ok()) {
       return s;
     }
@@ -5488,8 +5504,8 @@ Status VersionSet::WriteCurrentStateToManifest(
           cfd->internal_comparator().user_comparator()->Name());
       std::string record;
       if (!edit.EncodeTo(&record)) {
-        return Status::Corruption(
-            "Unable to Encode VersionEdit:" + edit.DebugString(true));
+        return Status::Corruption("Unable to Encode VersionEdit:" +
+                                  edit.DebugString(true));
       }
       io_s = log->AddRecord(record);
       if (!io_s.ok()) {
@@ -5546,9 +5562,10 @@ Status VersionSet::WriteCurrentStateToManifest(
       edit.SetLogNumber(log_number);
 
       if (cfd->GetID() == 0) {
-        // min_log_number_to_keep is for the whole db, not for specific column family.
-        // So it does not need to be set for every column family, just need to be set once.
-        // Since default CF can never be dropped, we set the min_log to the default CF here.
+        // min_log_number_to_keep is for the whole db, not for specific column
+        // family. So it does not need to be set for every column family, just
+        // need to be set once. Since default CF can never be dropped, we set
+        // the min_log to the default CF here.
         uint64_t min_log = min_log_number_to_keep();
         if (min_log != 0) {
           edit.SetMinLogNumberToKeep(min_log);
@@ -5564,8 +5581,8 @@ Status VersionSet::WriteCurrentStateToManifest(
 
       std::string record;
       if (!edit.EncodeTo(&record)) {
-        return Status::Corruption(
-            "Unable to Encode VersionEdit:" + edit.DebugString(true));
+        return Status::Corruption("Unable to Encode VersionEdit:" +
+                                  edit.DebugString(true));
       }
       io_s = log->AddRecord(record);
       if (!io_s.ok()) {
@@ -5888,7 +5905,7 @@ InternalIterator* VersionSet::MakeInputIterator(
   const size_t space = (c->level() == 0 ? c->input_levels(0)->num_files +
                                               c->num_input_levels() - 1
                                         : c->num_input_levels());
-  InternalIterator** list = new InternalIterator* [space];
+  InternalIterator** list = new InternalIterator*[space];
   size_t num = 0;
   for (size_t which = 0; which < c->num_input_levels(); which++) {
     if (c->input_levels(which)->num_files != 0) {
@@ -5997,8 +6014,8 @@ void VersionSet::GetLiveFilesMetaData(std::vector<LiveFileMetaData>* metadata) {
         filemetadata.largestkey = file->largest.user_key().ToString();
         filemetadata.smallest_seqno = file->fd.smallest_seqno;
         filemetadata.largest_seqno = file->fd.largest_seqno;
-        filemetadata.num_reads_sampled = file->stats.num_reads_sampled.load(
-            std::memory_order_relaxed);
+        filemetadata.num_reads_sampled =
+            file->stats.num_reads_sampled.load(std::memory_order_relaxed);
         filemetadata.being_compacted = file->being_compacted;
         filemetadata.num_entries = file->num_entries;
         filemetadata.num_deletions = file->num_deletions;
