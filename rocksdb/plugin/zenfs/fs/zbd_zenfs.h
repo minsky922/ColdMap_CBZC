@@ -392,6 +392,48 @@ class ZonedBlockDevice {
     bool zc_until_set_ = false;
     uint64_t zc_ = 20;
     uint64_t until_ = 20;
+
+    uint64_t GetLevelSizeLimit(int level) {
+      uint64_t max_bytes_for_level = max_bytes_for_level_base_;
+      for (int l = 1; l < level; l++) {
+        max_bytes_for_level *= 10;
+      }
+      return max_bytes_for_level;
+    }
+
+    double PredictCompactionScore(int level) {
+      if (cur_free_percent_ > 97) {
+        return 0.0;
+      }
+      if (level == 0) {
+        if (db_ptr_ == nullptr) {
+          return 0.0;
+        }
+        return db_ptr_->ReCalculateCompactionScore(0);
+      }
+
+      if (level == 1) {
+        return (double)((double)(lsm_tree_[level].load()) /
+                        (double)(max_bytes_for_level_base_));
+      }
+
+      return (double)((double)(lsm_tree_[level].load()) /
+                      (double)GetLevelSizeLimit(level));
+    }
+    inline uint64_t GetAllocationScheme() { return allocation_scheme_; }
+
+    uint64_t GetZoneCleaningKickingPoint() {
+      if (zc_until_set_) {
+        return zc_;
+      }
+      if (io_zones[0]->max_capacity_ > (1 << 30)) {
+        return 30;
+      }
+      if (io_zones[0]->max_capacity_ == (1 << 30)) {
+        return 30;
+      }
+      return 10;
+    }
     //
     explicit ZonedBlockDevice(std::string path, ZbdBackendType backend,
                               std::shared_ptr<Logger> logger,

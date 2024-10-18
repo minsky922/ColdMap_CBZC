@@ -720,7 +720,7 @@ inline uint64_t ZonedBlockDevice::LazyExponential(uint64_t sz, uint64_t fr,
   return sz - (b * sz / 100);
 }
 
-void ZonedBlockDevice::CalculateResetThreshold() {
+void ZonedBlockDevice::CalculateResetThreshold(uint64_t free_percent) {
   uint64_t rt = 0;
   uint64_t max_capacity = io_zones[0]->max_capacity_;
   uint64_t free_percent = cur_free_percent_;
