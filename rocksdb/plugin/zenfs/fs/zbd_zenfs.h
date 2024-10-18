@@ -630,10 +630,10 @@ class ZonedBlockDevice {
 
   ZoneFile *GetSSTZoneFileInZBDNoLock(uint64_t fno);
 
-  void GiveZenFStoLSMTreeHint(
-      std::vector<uint64_t> &compaction_inputs_input_level_fno,
-      std::vector<uint64_t> &compaction_inputs_output_level_fno,
-      int output_level, bool trivial_move);
+  // void GiveZenFStoLSMTreeHint(
+  //     std::vector<uint64_t> &compaction_inputs_input_level_fno,
+  //     std::vector<uint64_t> &compaction_inputs_output_level_fno,
+  //     int output_level, bool trivial_move);
   //
   IOStatus RuntimeReset(void);
   double GetMaxInvalidateCompactionScore(std::vector<uint64_t> &file_candidates,

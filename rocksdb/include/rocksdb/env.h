@@ -386,8 +386,8 @@ class Env : public Customizable {
   virtual void SetResetScheme(uint32_t, uint32_t, uint64_t, uint64_t, uint64_t,
                               uint64_t, uint64_t, std::vector<uint64_t>&) {}
 
-  virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
-                                      std::vector<uint64_t>&, int, bool) {}
+  // virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
+  //                                     std::vector<uint64_t>&, int, bool) {}
 
   // Store the last modification time of fname in *file_mtime.
   virtual Status GetFileModificationTime(const std::string& fname,
@@ -1493,14 +1493,14 @@ class EnvWrapper : public Env {
                                 allocation_scheme, zc_scheme, other_options);
   }
 
-  void GiveZenFStoLSMTreeHint(
-      std::vector<uint64_t>& compaction_inputs_input_level_fno,
-      std::vector<uint64_t>& compaction_inputs_output_level_fno,
-      int output_level, bool trivial_move) override {
-    target_.env->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
-                                        compaction_inputs_output_level_fno,
-                                        output_level, trivial_move);
-  }
+  // void GiveZenFStoLSMTreeHint(
+  //     std::vector<uint64_t>& compaction_inputs_input_level_fno,
+  //     std::vector<uint64_t>& compaction_inputs_output_level_fno,
+  //     int output_level, bool trivial_move) override {
+  //   target_.env->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
+  //                                       compaction_inputs_output_level_fno,
+  //                                       output_level, trivial_move);
+  // }
 
   Status GetFileModificationTime(const std::string& fname,
                                  uint64_t* file_mtime) override {

@@ -524,8 +524,8 @@ class FileSystem : public Customizable {
   //
   virtual void SetResetScheme(uint32_t, uint32_t, uint64_t, uint64_t, uint64_t,
                               uint64_t, uint64_t, std::vector<uint64_t>&) {}
-  virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
-                                      std::vector<uint64_t>&, int, bool) {}
+  // virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
+  //                                     std::vector<uint64_t>&, int, bool) {}
 
   // Store the last modification time of fname in *file_mtime.
   virtual IOStatus GetFileModificationTime(const std::string& fname,
@@ -1453,14 +1453,14 @@ class FileSystemWrapper : public FileSystem {
     target_->SetResetScheme(r, partial_reset_scheme, T, zc, until,
                             allocation_scheme, zc_scheme, other_options);
   }
-  void GiveZenFStoLSMTreeHint(
-      std::vector<uint64_t>& compaction_inputs_input_level_fno,
-      std::vector<uint64_t>& compaction_inputs_output_level_fno,
-      int output_level, bool trivial_move) override {
-    target_->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
-                                    compaction_inputs_output_level_fno,
-                                    output_level, trivial_move);
-  }
+  // void GiveZenFStoLSMTreeHint(
+  //     std::vector<uint64_t>& compaction_inputs_input_level_fno,
+  //     std::vector<uint64_t>& compaction_inputs_output_level_fno,
+  //     int output_level, bool trivial_move) override {
+  //   target_->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
+  //                                   compaction_inputs_output_level_fno,
+  //                                   output_level, trivial_move);
+  // }
 
   IOStatus GetFileModificationTime(const std::string& fname,
                                    const IOOptions& options,
