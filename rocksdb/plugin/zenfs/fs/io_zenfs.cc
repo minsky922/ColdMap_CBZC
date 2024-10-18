@@ -971,7 +971,7 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
         "> 0\n");
     return;
   }
-  printf("set min max : fno :%ld at %d\n", zoneFile_->fno_, output_level);
+  // printf("set min max : fno :%ld at %d\n", zoneFile_->fno_, output_level);
 
   // if(zoneFile_->GetLinkFiles().size()){
   //   printf("SetMinMaxKeyAndLevel :: %s output level
@@ -1313,6 +1313,7 @@ void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
     zoneFile_->level_ = level_;
   }
   zoneFile_->SetWriteLifeTimeHint(hint, level_);
+  printf("level_: %d, hint: %d -> lifetime_ : %d\n", level_, hint, lifetime_);
 }
 
 IOStatus ZonedSequentialFile::Read(size_t n, const IOOptions& /*options*/,
