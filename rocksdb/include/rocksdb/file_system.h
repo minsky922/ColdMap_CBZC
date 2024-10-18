@@ -522,7 +522,10 @@ class FileSystem : public Customizable {
                                const IOOptions& options, uint64_t* file_size,
                                IODebugContext* dbg) = 0;
   //
-  virtual void SetResetScheme(uint32_t, bool, uint64_t) {}
+  virtual void SetResetScheme(uint32_t, uint32_t, uint64_t, uint64_t, uint64_t,
+                              uint64_t, uint64_t, std::vector<uint64_t>&) {}
+  virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
+                                      std::vector<uint64_t>&, int, bool) {}
 
   // Store the last modification time of fname in *file_mtime.
   virtual IOStatus GetFileModificationTime(const std::string& fname,
@@ -1172,6 +1175,7 @@ class FSWritableFile {
   // If you're adding methods here, remember to add them to
   // WritableFileWrapper too.
   virtual void SetMinMaxKeyAndLevel(const Slice&, const Slice&, const int) {}
+  virtual IOStatus CAZAFlushSST(void) { return IOStatus::OK(); }
 
  protected:
   size_t preallocation_block_size() { return preallocation_block_size_; }
@@ -1442,8 +1446,20 @@ class FileSystemWrapper : public FileSystem {
     return target_->GetFileSize(f, options, s, dbg);
   }
   //
-  void SetResetScheme(uint32_t r, bool f, uint64_t T) {
-    target_->SetResetScheme(r, f, T);
+  void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
+                      uint64_t zc, uint64_t until, uint64_t allocation_scheme,
+                      uint64_t zc_scheme,
+                      std::vector<uint64_t>& other_options) {
+    target_->SetResetScheme(r, partial_reset_scheme, T, zc, until,
+                            allocation_scheme, zc_scheme, other_options);
+  }
+  void GiveZenFStoLSMTreeHint(
+      std::vector<uint64_t>& compaction_inputs_input_level_fno,
+      std::vector<uint64_t>& compaction_inputs_output_level_fno,
+      int output_level, bool trivial_move) override {
+    target_->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
+                                    compaction_inputs_output_level_fno,
+                                    output_level, trivial_move);
   }
 
   IOStatus GetFileModificationTime(const std::string& fname,
@@ -1768,6 +1784,7 @@ class FSWritableFileWrapper : public FSWritableFile {
                             const int level) override {
     target_->SetMinMaxKeyAndLevel(smallest, largest, level);
   }
+  IOStatus CAZAFlushSST(void) { return target_->CAZAFlushSST(); }
 
  private:
   FSWritableFile* target_;

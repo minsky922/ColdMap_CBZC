@@ -108,6 +108,31 @@ struct ImmutableDBOptions {
   std::shared_ptr<CompactionService> compaction_service;
   bool enforce_single_del_contracts;
 
+  ///////////////////////////////
+
+  uint64_t reset_scheme;
+  uint64_t partial_reset_scheme;
+  uint64_t tuning_point;
+
+  uint64_t compaction_scheme;
+  uint64_t allocation_scheme;
+
+  uint64_t input_aware_scheme;
+  uint64_t zc_scheme;
+  uint64_t cbzc_enabled;
+  uint64_t default_extent_size;
+  uint64_t max_compaction_kick;
+
+  uint64_t zc_kicks;
+  uint64_t until;
+
+  bool enable_intraL0_compaction;
+
+  int max_compaction_start_level;
+
+  bool is_db_bench;
+  /////////////////////
+
   bool IsWalDirSameAsDBPath() const;
   bool IsWalDirSameAsDBPath(const std::string& path) const;
   const std::string& GetWalDir() const;

@@ -325,9 +325,32 @@ class DBImpl : public DB {
   virtual Status DropColumnFamily(ColumnFamilyHandle* column_family) override;
   virtual Status DropColumnFamilies(
       const std::vector<ColumnFamilyHandle*>& column_families) override;
-  //
+  // CAZA
+  virtual uint64_t MostLargeUpperAdjacentFile(Slice& s, Slice& l,
+                                              int level) override;
+  virtual uint64_t MostSmallDownwardAdjacentFile(Slice& s, Slice& l,
+                                                 int level) override;
+  virtual void AdjacentFileList(Slice& s, Slice& l, int level,
+                                std::vector<uint64_t>& fno_list) override;
+  virtual void DownwardAdjacentFileList(
+      Slice& s, Slice& l, int level, std::vector<uint64_t>& fno_list) override;
+
+  // using DB::SameLevelFileList;
+  virtual std::set<uint64_t> GetAlreadyBeingCompactedSSTFileNo(void) override;
+  virtual std::set<uint64_t> GetSoonCompactionInvalidatedSSTFileNo(
+      int level, int depth, uint64_t* pivot_sst_fno) override;
+  virtual void ZenFSInstallSuperVersionAndScheduleWork(void) override;
   virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
                                  bool exclude_being_compacted = true) override;
+  virtual uint64_t NowMicros(void) override;
+
+  virtual std::vector<int> NumLevelsFiles(void) override;
+  virtual std::vector<double> LevelsCompactionScore(void) override;
+  virtual double ReCalculateCompactionScore(int level) override;
+  virtual std::vector<uint64_t> LevelsSize(void) override;
+
+  virtual const Comparator* GetDefaultICMP(void) override;
+  /////////////////
   //
   // Returns false if key doesn't exist in the database and true if it may.
   // If value_found is not passed in as null, then return the value if found in

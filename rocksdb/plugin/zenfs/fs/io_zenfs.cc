@@ -658,6 +658,91 @@ IOStatus ZoneFile::SparseAppend(char* sparse_buffer, uint32_t data_size) {
 
   return IOStatus::OK();
 }
+
+IOStatus ZoneFile::CAZAAppend(const char* data, uint32_t size, bool positioned,
+                              uint64_t offset) {
+  IOStatus s = IOStatus::OK();
+  // printf("@@@ CAZASstBufferedAppend called : %ld %u\n",fno_,size);
+  char* buf;
+  if (!IsSST()) {
+    return IOStatus::IOError("CAZASstBufferedAppend only apply to sst file");
+  }
+  if (is_sparse_) {
+    return IOStatus::IOError("sst file should not be sparse");
+  }
+
+  // if(is_sst_ended_){
+  //   return IOStatus::IOError("SST file could not Append after file ended");
+  // }
+  // buf=new char[size];
+  int r = posix_memalign((void**)&buf, sysconf(_SC_PAGE_SIZE), size);
+  if (r < 0) {
+    printf("posix memalign error here@@@@@@@@@@@2\n");
+    return IOStatus::IOError("CAZASstBufferedAppend fail to allocate memory");
+  }
+
+  memcpy(buf, data, size);
+  SSTBuffer* sst_buffer = new SSTBuffer(buf, size, positioned, offset);
+
+  if (sst_buffer == nullptr) {
+    return IOStatus::IOError("CAZASstBufferedAppend fail to allocate memory");
+  }
+  sst_buffers_.push_back(sst_buffer);
+
+  return s;
+}
+
+IOStatus ZonedWritableFile::CAZAFlushSST() {
+  IOStatus s;
+
+  if (!zoneFile_->IsSST()) {
+    return IOStatus::OK();
+  }
+
+  zoneFile_->fno_ = fno_;
+  zoneFile_->GetZbd()->SetSSTFileforZBDNoLock(fno_, zoneFile_.get());
+
+  if (zoneFile_->GetZbd()->GetAllocationScheme() == LIZA) {
+    return IOStatus::OK();
+  }
+  printf("CAZAFlushSST - CAZA!!\n");
+  std::vector<SSTBuffer*>* sst_buffers = zoneFile_->GetSSTBuffers();
+  zoneFile_->predicted_size_ = 0;
+  for (auto it : *sst_buffers) {
+    zoneFile_->predicted_size_ += it->size_;
+  }
+
+  // printf("predcited size :\t%lu\n", (zoneFile_->predicted_size_ >> 20));
+
+  for (auto it : *sst_buffers) {
+    if (buffered) {
+      buffer_mtx_.lock();
+      s = BufferedWrite(it->content_, it->size_);
+      buffer_mtx_.unlock();
+      if (!s.ok()) {
+        return s;
+      }
+    } else {
+      s = zoneFile_->Append(it->content_, it->size_);
+      if (!s.ok()) {
+        return s;
+      }
+      wp += it->size_;
+    }
+    delete it;
+  }
+  // printf("%lu
+  // %d\n",zoneFile_->predicted_size_,IS_BIG_SSTABLE(zoneFile_->predicted_size_));
+  // if(zoneFile_->level_ ==0){
+  //   zoneFile_->GetZbd()->lsm_tree_[0].fetch_add(1);
+  // }else{
+  zoneFile_->GetZbd()->lsm_tree_[zoneFile_->level_].fetch_add(
+      zoneFile_->predicted_size_);
+  // }
+  input_fno_.clear();
+  return s;
+}
+
 /* 주어진 데이터를 블록 정렬된 방식으로 파일 끝에 추가하는 역할을 합니다. 이
  * 함수는 특정 크기의 데이터를 받아 여러 영역(Zone)에 걸쳐 데이터를 추가하며,
  * 필요한 경우 새로운 영역을 할당합니다. 주석에 따르면, 입력 데이터와 데이터
@@ -1137,7 +1222,12 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
   zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_WRITE_QPS, 1);
   zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
                                                data.size());
-
+  //
+  if (zoneFile_->IsSST() && zoneFile_->GetAllocationScheme() != LIZA) {
+    printf("append->CAZAAppend!!\n");
+    return zoneFile_->CAZAAppend(data.data(), data.size(), true, 0);
+  }
+  //
   if (buffered) {
     buffer_mtx_.lock();
     s = BufferedWrite(data);
@@ -1162,7 +1252,13 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
   zoneFile_->GetZBDMetrics()->ReportQPS(ZENFS_WRITE_QPS, 1);
   zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
                                                data.size());
-
+  //
+  if (zoneFile_->IsSST() && zoneFile_->GetAllocationScheme() != LIZA) {
+    printf("append->CAZAAppend!!\n");
+    s = zoneFile_->CAZAAppend(data.data(), data.size(), true, offset);
+    return s;
+  }
+  //
   if (offset != wp) {
     assert(false);
     return IOStatus::IOError("positioned append not at write pointer");

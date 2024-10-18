@@ -1272,16 +1272,59 @@ IOStatus ZenFS::GetFileSize(const std::string& filename,
   return s;
 }
 
-void ZenFS::SetResetScheme(uint32_t r, bool f, uint64_t T) {
-  std::cout << "ZenFS::SetResetScheme: r = " << r << ", f = " << f
-            << ", T = " << T << std::endl;
-  zbd_->SetResetScheme(r, f, T);
-  run_bg_reset_worker_ = true;
-  if (gc_worker_ != nullptr) {
-    if (bg_reset_worker_ == nullptr) {
-      bg_reset_worker_.reset(
-          new std::thread(&ZenFS::BackgroundStatTimeLapse, this));
+// void ZenFS::SetResetScheme(uint32_t r, bool f, uint64_t T) {
+//   std::cout << "ZenFS::SetResetScheme: r = " << r << ", f = " << f
+//             << ", T = " << T << std::endl;
+//   zbd_->SetResetScheme(r, f, T);
+//   run_bg_reset_worker_ = true;
+//   if (gc_worker_ != nullptr) {
+//     if (bg_reset_worker_ == nullptr) {
+//       bg_reset_worker_.reset(
+//           new std::thread(&ZenFS::BackgroundStatTimeLapse, this));
+//     }
+//   }
+// }
+
+void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
+                           uint64_t T, uint64_t zc, uint64_t until,
+                           uint64_t allocation_scheme, uint64_t zc_scheme,
+                           std::vector<uint64_t>& other_options) {
+  std::cout << "ZenFS::SetResetScheme: r = " << r << ", T = " << T
+            << ", allocation_schme = " << allocation_schme
+            << ", zc_scheme = " << zc_scheme << std::endl;
+  zbd_->SetResetScheme(r, partial_reset_scheme, T, zc, until, allocation_scheme,
+                       zc_scheme, other_options);
+
+  if (partial_reset_scheme == PARTIAL_RESET_AT_BACKGROUND ||
+      partial_reset_scheme == PARTIAL_RESET_BACKGROUND_T_WITH_ZONE_RESET) {
+    printf("PARTIAL RESET AT BG\n");
+    if (bg_partial_reset_worker_ == nullptr) {
+      run_bg_partial_reset_worker_ = true;
+      bg_partial_reset_worker_.reset(
+          new std::thread(&ZenFS::PartialResetWorker, this, T));
     }
+    return;
+  }
+  switch (partial_reset_scheme) {
+    case RUNTIME_ZONE_RESET_DISABLED:
+      printf("RUNTIME_ZONE_RESET_DISABLED\n");
+      return;
+    case RUNTIME_ZONE_RESET_ONLY:
+      printf("RUNTIME_ZONE_RESET_ONLY\n");
+      return;
+    case PARTIAL_RESET_WITH_ZONE_RESET:
+      printf("PARTIAL_RESET_WITH_ZONE_RESET\n");
+      return;
+    case PARTIAL_RESET_ONLY:
+      printf("PARTIAL_RESET_ONLY\n");
+      return;
+    case PROACTIVE_ZONECLEANING:
+      printf("PROACTIVE_ZONECLEANING\n");
+      return;
+    default:
+      printf("UNKNOWN SCHEME!\n");
+      // exit(-1);
+      break;
   }
 }
 

@@ -3307,6 +3307,12 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     int32_t moved_files = 0;
     int64_t moved_bytes = 0;
     for (unsigned int l = 0; l < c->num_input_levels(); l++) {
+      //
+      std::vector<uint64_t> trivial_move_inputs;
+      std::vector<uint64_t> none;
+      trivial_move_inputs.clear();
+      none.clear();
+      //
       if (c->level(l) == c->output_level()) {
         continue;
       }
@@ -3328,7 +3334,12 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
             c->output_level(), f->fd.GetFileSize());
         ++moved_files;
         moved_bytes += f->fd.GetFileSize();
+        //
+        trivial_move_inputs.push_back(f->fd.GetNumber());
+        //
       }
+      c->immutable_options()->fs->GiveZenFStoLSMTreeHint(
+          trivial_move_inputs, none, c->output_level(), true);
     }
 
     status = versions_->LogAndApply(c->column_family_data(),

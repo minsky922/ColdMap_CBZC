@@ -2696,6 +2696,68 @@ uint32_t GetExpiredTtlFilesCount(const ImmutableOptions& ioptions,
 }
 }  // anonymous namespace
 
+double VersionStorageInfo::ReCalculateCompactionScore(
+    ImmutableOptions immutable_options, MutableCFOptions mutable_cf_options,
+    int level) {
+  double score;
+  if (level == 0) {
+    // We treat level-0 specially by bounding the number of files
+    // instead of number of bytes for two reasons:
+    //
+    // (1) With larger write-buffer sizes, it is nice not to do too
+    // many level-0 compactions.
+    //
+    // (2) The files in level-0 are merged on every read and
+    // therefore we wish to avoid too many files when the individual
+    // file size is small (perhaps because of a small write-buffer
+    // setting, or very high compression ratios, or lots of
+    // overwrites/deletions).
+    int num_sorted_runs = 0;
+    uint64_t total_size = 0;
+    for (auto* f : files_[level]) {
+      if (!f->being_compacted) {
+        total_size += f->compensated_file_size;
+        num_sorted_runs++;
+      }
+    }
+
+    score = static_cast<double>(num_sorted_runs) /
+            mutable_cf_options.level0_file_num_compaction_trigger;
+    if (compaction_style_ == kCompactionStyleLevel && num_levels() > 1) {
+      // Level-based involves L0->L0 compactions that can lead to oversized
+      // L0 files. Take into account size as well to avoid later giant
+      // compactions to the base level.
+      uint64_t l0_target_size = mutable_cf_options.max_bytes_for_level_base;
+      if (immutable_options.level_compaction_dynamic_level_bytes &&
+          level_multiplier_ != 0.0) {
+        // Prevent L0 to Lbase fanout from growing larger than
+        // `level_multiplier_`. This prevents us from getting stuck picking
+        // L0 forever even when it is hurting write-amp. That could happen
+        // in dynamic level compaction's write-burst mode where the base
+        // level's target size can grow to be enormous.
+        l0_target_size =
+            std::max(l0_target_size,
+                     static_cast<uint64_t>(level_max_bytes_[base_level_] /
+                                           level_multiplier_));
+      }
+      score = std::max(score, static_cast<double>(total_size) / l0_target_size);
+    }
+
+  } else {
+    // Compute the ratio of current size to size limit.
+    uint64_t level_bytes_no_compacting = 0;
+    for (auto f : files_[level]) {
+      if (!f->being_compacted) {
+        level_bytes_no_compacting += f->compensated_file_size;
+      }
+    }
+    score = static_cast<double>(level_bytes_no_compacting) /
+            MaxBytesForLevel(level);
+  }
+
+  return score;
+}
+
 void VersionStorageInfo::ComputeCompactionScore(
     const ImmutableOptions& immutable_options,
     const MutableCFOptions& mutable_cf_options) {

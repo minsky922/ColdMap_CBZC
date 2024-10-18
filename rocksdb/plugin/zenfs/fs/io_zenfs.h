@@ -27,8 +27,24 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+struct SSTBuffer {
+  SSTBuffer(char* data, uint32_t size, bool positioned, uint64_t offset)
+      : content_(data), size_(size), positioned_(positioned), offset_(offset) {}
+  SSTBuffer() {}
+  ~SSTBuffer() { free(content_); }
+  char* content_ = nullptr;
+  uint32_t size_ = -1;
+  bool positioned_;
+  uint64_t offset_;
+};
+
 class ZoneExtent {
  public:
+  /*
+  |
+  |header    start                       pad
+  |------------|---------------------------|---------|
+  */
   uint64_t start_;
   uint64_t length_;
   Zone* zone_;
@@ -75,7 +91,9 @@ class ZoneFile {
   bool is_deleted_ = false;
 
   MetadataWriter* metadata_writer_ = NULL;
-
+  //
+  std::vector<SSTBuffer*> sst_buffers_;
+  //
   std::mutex writer_mtx_;
   std::atomic<int> readers_{0};
   FileSystemWrapper* zenfs_;
@@ -91,6 +109,8 @@ class ZoneFile {
   int level_;
 
   static const int SPARSE_HEADER_SIZE = 8;
+  bool selected_as_input_ = false;
+  uint64_t buffer_size_;
 
   explicit ZoneFile(ZonedBlockDevice* zbd, uint64_t file_id_,
                     MetadataWriter* metadata_writer, FileSystemWrapper* zenfs);
@@ -109,6 +129,13 @@ class ZoneFile {
   IOStatus Append(void* buffer, int data_size);
   IOStatus BufferedAppend(char* data, uint32_t size);
   IOStatus SparseAppend(char* data, uint32_t size);
+  //
+  inline bool IsSST() { return is_sst_; }
+  inline uint64_t GetAllocationScheme() { return zbd_->GetAllocationScheme(); }
+  IOStatus CAZAAppend(const char* data, uint32_t size, bool positioned,
+                      uint64_t offset);
+  std::vector<SSTBuffer*>* GetSSTBuffers(void) { return &sst_buffers_; }
+  //
   IOStatus SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime, int level = 0);
   void SetIOType(IOType io_type);
   std::string GetFilename();
@@ -242,6 +269,9 @@ class ZonedWritableFile : public FSWritableFile {
     return zoneFile_->GetBlockSize();
   }
   void SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) override;
+
+  IOStatus CAZAFlushSST() override;
+
   void SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
                             const int output_level) override;
   virtual Env::WriteLifeTimeHint GetWriteLifeTimeHint() override {

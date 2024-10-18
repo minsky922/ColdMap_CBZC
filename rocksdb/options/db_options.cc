@@ -559,6 +559,63 @@ static std::unordered_map<std::string, OptionTypeInfo>
          {offsetof(struct ImmutableDBOptions, enforce_single_del_contracts),
           OptionType::kBoolean, OptionVerificationType::kNormal,
           OptionTypeFlags::kNone}},
+        {"max_compaction_kick",
+         {offsetof(struct ImmutableDBOptions, max_compaction_kick),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+
+        {"max_compaction_start_level",
+         {offsetof(struct ImmutableDBOptions, max_compaction_start_level),
+          OptionType::kUInt32T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"input_aware_scheme",
+         {offsetof(struct ImmutableDBOptions, input_aware_scheme),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+
+        {"cbzc_enabled",
+         {offsetof(struct ImmutableDBOptions, cbzc_enabled),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+
+        {"default_extent_size",
+         {offsetof(struct ImmutableDBOptions, default_extent_size),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"compaction_scheme",
+         {offsetof(struct ImmutableDBOptions, compaction_scheme),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"enable_intraL0_compaction",
+         {offsetof(struct ImmutableDBOptions, enable_intraL0_compaction),
+          OptionType::kBoolean, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"until",
+         {offsetof(struct ImmutableDBOptions, until), OptionType::kUInt64T,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone}},
+        {"zc",
+         {offsetof(struct ImmutableDBOptions, zc_kicks), OptionType::kUInt64T,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone}},
+
+        {"partial_reset_scheme",
+         {offsetof(struct ImmutableDBOptions, partial_reset_scheme),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"tuning_point",
+         {offsetof(struct ImmutableDBOptions, tuning_point),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"reset_scheme",
+         {offsetof(struct ImmutableDBOptions, reset_scheme),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"allocation_scheme",
+         {offsetof(struct ImmutableDBOptions, allocation_scheme),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"zc_scheme",
+         {offsetof(struct ImmutableDBOptions, zc_scheme), OptionType::kUInt64T,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone}},
 };
 
 const std::string OptionsHelper::kDBOptionsName = "DBOptions";
@@ -760,11 +817,33 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       checksum_handoff_file_types(options.checksum_handoff_file_types),
       lowest_used_cache_tier(options.lowest_used_cache_tier),
       compaction_service(options.compaction_service),
-      enforce_single_del_contracts(options.enforce_single_del_contracts) {
+      enforce_single_del_contracts(options.enforce_single_del_contracts),
+      reset_scheme(options.reset_scheme),
+      partial_reset_scheme(options.partial_reset_scheme),
+      tuning_point(options.tuning_point),
+      compaction_scheme(options.compaction_scheme),
+      allocation_scheme(options.allocation_scheme),
+      zc_scheme(options.zc_scheme),
+      input_aware_scheme(options.input_aware_scheme),
+      cbzc_enabled(options.cbzc_enabled),
+      default_extent_size(options.default_extent_size),
+      max_compaction_kick(options.max_compaction_kick),
+      zc_kicks(options.zc),
+      until(options.until),
+      enable_intraL0_compaction(options.enable_intraL0_compaction),
+      max_compaction_start_level(options.max_compaction_start_level),
+      is_db_bench(options.is_db_bench) {
+
   fs = env->GetFileSystem();
   clock = env->GetSystemClock().get();
   logger = info_log.get();
   stats = statistics.get();
+  if (row_cache == nullptr && row_cache_size) {
+    // printf("New Row cache size %lu\n",row_cache_size);
+    row_cache = NewLRUCache(row_cache_size);
+  } else {
+    // printf("row cache %p , %lu\n",row_cache.get(),row_cache_size);
+  }
 }
 
 void ImmutableDBOptions::Dump(Logger* log) const {
@@ -909,8 +988,7 @@ void ImmutableDBOptions::Dump(Logger* log) const {
   ROCKS_LOG_HEADER(log, "            Options.wal_compression: %d",
                    wal_compression);
   ROCKS_LOG_HEADER(log, "            Options.atomic_flush: %d", atomic_flush);
-  ROCKS_LOG_HEADER(log,
-                   "            Options.avoid_unnecessary_blocking_io: %d",
+  ROCKS_LOG_HEADER(log, "            Options.avoid_unnecessary_blocking_io: %d",
                    avoid_unnecessary_blocking_io);
   ROCKS_LOG_HEADER(log, "                Options.persist_stats_to_disk: %u",
                    persist_stats_to_disk);
@@ -1046,14 +1124,13 @@ void MutableDBOptions::Dump(Logger* log) const {
   ROCKS_LOG_HEADER(log,
                    "                     Options.wal_bytes_per_sync: %" PRIu64,
                    wal_bytes_per_sync);
-  ROCKS_LOG_HEADER(log,
-                   "                  Options.strict_bytes_per_sync: %d",
+  ROCKS_LOG_HEADER(log, "                  Options.strict_bytes_per_sync: %d",
                    strict_bytes_per_sync);
   ROCKS_LOG_HEADER(log,
                    "      Options.compaction_readahead_size: %" ROCKSDB_PRIszt,
                    compaction_readahead_size);
   ROCKS_LOG_HEADER(log, "                 Options.max_background_flushes: %d",
-                          max_background_flushes);
+                   max_background_flushes);
 }
 
 #ifndef ROCKSDB_LITE

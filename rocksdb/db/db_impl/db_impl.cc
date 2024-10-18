@@ -280,25 +280,45 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
     wbm_stall_.reset(new WBMStallInterface());
   }
 
-  // printf("open :: reset scheme :: %d %d\n", options.reset_scheme,
-  //        initial_db_options_.reset_scheme);
-  // printf("reclaim until %lu~%lu\n", options.zc, options.until);
-  // fs_->reset_scheme_= initial_db_options_.reset_scheme;
-  printf(
-      "open :: reset scheme ::\noptions.reset_scheme: "
-      "%d\ninitial_db_options_.reset_scheme: "
-      "%d\ninitial_db_options_.reset_at_foreground: "
-      "%d\ninitial_db_options_.tuning_point: %lu\n",
-      options.reset_scheme, initial_db_options_.reset_scheme,
-      initial_db_options_.reset_at_foreground,
-      initial_db_options_.tuning_point);
-  fs_->SetResetScheme(initial_db_options_.reset_scheme,
-                      initial_db_options_.reset_at_foreground,
-                      initial_db_options_.tuning_point);
+  // printf(
+  //     "open :: reset scheme ::\noptions.reset_scheme: "
+  //     "%d\ninitial_db_options_.reset_scheme: "
+  //     "%d\ninitial_db_options_.reset_at_foreground: "
+  //     "%d\ninitial_db_options_.tuning_point: %lu\n",
+  //     options.reset_scheme, initial_db_options_.reset_scheme,
+  //     initial_db_options_.reset_at_foreground,
+  //     initial_db_options_.tuning_point);
   // fs_->SetResetScheme(initial_db_options_.reset_scheme,
-  //                     initial_db_options_.partial_reset_scheme,
-  //                     initial_db_options_.tuning_point,
-  //                     initial_db_options_.zc, initial_db_options_.until);
+  //                     initial_db_options_.reset_at_foreground,
+  //                     initial_db_options_.tuning_point);
+
+  printf("reclaim until %lu~%lu\n", immutable_db_options_.zc_kicks,
+         immutable_db_options_.until);
+  printf(
+      "reset_scheme %lu partial_reset_scheme %lu tuning_point %lu "
+      "allocation_scheme %lu compaction_scheme %lu input_aware_scheme %lu "
+      "zc_scheme %lu\n",
+      immutable_db_options_.reset_scheme,
+      immutable_db_options_.partial_reset_scheme,
+      immutable_db_options_.tuning_point,
+      immutable_db_options_.allocation_scheme,
+      immutable_db_options_.compaction_scheme,
+      immutable_db_options_.input_aware_scheme,
+      immutable_db_options_.zc_scheme);
+  // fs_->reset_scheme_= immutable_db_options_.reset_scheme;
+  std::vector<uint64_t> other_options;
+  other_options.clear();
+  other_options.push_back(immutable_db_options_.input_aware_scheme);
+  other_options.push_back(immutable_db_options_.cbzc_enabled);
+  other_options.push_back(immutable_db_options_.default_extent_size);
+  fs_->SetResetScheme(
+      immutable_db_options_.reset_scheme,
+      immutable_db_options_.partial_reset_scheme,
+      immutable_db_options_.tuning_point, immutable_db_options_.zc_kicks,
+      immutable_db_options_.until, immutable_db_options_.allocation_scheme,
+      immutable_db_options_.zc_scheme, other_options);
+}
+
 }
 
 Status DBImpl::Resume() {
@@ -2900,6 +2920,147 @@ Status DBImpl::DropColumnFamilies(
   }
   return s;
 }
+// 아래 레벨에 있는 SST 파일들 중에서 가장 작은 파일을 찾는 함수
+uint64_t DBImpl::MostSmallDownwardAdjacentFile(Slice& s, Slice& l, int level) {
+  InternalKey largest;
+  InternalKey smallest;
+  uint64_t min_size = UINT64_MAX;
+  uint64_t ret_fno = 0;
+  largest.DecodeFrom(l);
+  smallest.DecodeFrom(s);
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  CompactionInputFiles downward_level_sstable;
+  if (level == 0) {
+    printf("MostSmallDownwardAdjacentFile ? %d\n", level);
+    return 0;
+  }
+  vstorage->GetOverlappingInputs(level + 1, &smallest, &largest,
+                                 &downward_level_sstable.files);
+  for (const auto& f : downward_level_sstable.files) {
+    if (f->being_compacted) {
+      continue;
+    }
+    if (f->compensated_file_size < min_size) {
+      min_size = f->compensated_file_size;
+      ret_fno = f->fd.GetNumber();
+    }
+  }
+
+  return ret_fno;
+}
+
+// "상위 레벨"에 있는 SST 파일들 중에서 가장 큰 파일을 찾는 함수
+uint64_t DBImpl::MostLargeUpperAdjacentFile(Slice& s, Slice& l, int level) {
+  InternalKey largest;
+  InternalKey smallest;
+  uint64_t max_size = 0;
+  uint64_t ret_fno = 0;
+  largest.DecodeFrom(l);
+  smallest.DecodeFrom(s);
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  CompactionInputFiles upper_level_sstable;
+  if (level == 0) {
+    printf("MostLargeUpperAdjacentFile ? %d\n", level);
+    return 0;
+  }
+  vstorage->GetOverlappingInputs(level - 1, &smallest, &largest,
+                                 &upper_level_sstable.files);
+  for (const auto& f : upper_level_sstable.files) {
+    if (f->being_compacted) {
+      continue;
+    }
+    if (f->compensated_file_size > max_size) {
+      max_size = f->compensated_file_size;
+      ret_fno = f->fd.GetNumber();
+    }
+  }
+
+  return ret_fno;
+}
+// 하위 레벨에 있는 겹치는 파일들을 찾아 그 파일들의 번호(fno_list)를 반환
+void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
+                                      std::vector<uint64_t>& fno_list) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  CompactionInputFiles downward_level_inputs;
+  InternalKey largest;
+  InternalKey smallest;
+  largest.DecodeFrom(l);
+  smallest.DecodeFrom(s);
+  // printf("ajacent 1\n");
+  if (level == 0) {
+    printf("no!!\n");
+  }
+  vstorage->GetOverlappingInputs(level + 1, &smallest, &largest,
+                                 &downward_level_inputs.files);
+  // printf("ajacent 2\n");
+  for (const auto& f : downward_level_inputs.files) {
+    if (!f->being_compacted) {
+      fno_list.push_back(f->fd.GetNumber());
+    }
+  }
+
+  return;
+}
+// 상위 레벨과 하위 레벨에서 겹치는 파일들을 찾아 fno_list에 추가
+void DBImpl::AdjacentFileList(Slice& s, Slice& l, int level,
+                              std::vector<uint64_t>& fno_list) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  CompactionInputFiles higher_output_level_inputs;
+  CompactionInputFiles lower_output_level_inputs;
+  InternalKey largest;
+  InternalKey smallest;
+  largest.DecodeFrom(l);
+  smallest.DecodeFrom(s);
+  // printf("ajacent 1\n");
+  if (level == 0) {
+    printf("no!!\n");
+  }
+  vstorage->GetOverlappingInputs(level + 1, &smallest, &largest,
+                                 &higher_output_level_inputs.files);
+  // printf("ajacent 2\n");
+  for (const auto& f : higher_output_level_inputs.files) {
+    if (!f->being_compacted) {
+      fno_list.push_back(f->fd.GetNumber());
+    }
+  }
+  // if(level>2){ // if level 1, all level 0 is overlapped. to much overlapped
+  vstorage->GetOverlappingInputs(level - 1, &smallest, &largest,
+                                 &lower_output_level_inputs.files);
+  for (const auto& f : lower_output_level_inputs.files) {
+    if (!f->being_compacted) {
+      fno_list.push_back(f->fd.GetNumber());
+    }
+  }
+  // }
+
+  return;
+}
+
+void DBImpl::ZenFSInstallSuperVersionAndScheduleWork(void) {
+  if (!versions_) {
+    return;
+  }
+  auto cfd = versions_->GetColumnFamilySet()->GetDefault();
+  if (!cfd) {
+    return;
+  }
+
+  JobContext job_context(next_job_id_.fetch_add(1), true);
+  InstallSuperVersionAndScheduleWork(cfd, &job_context.superversion_contexts[0],
+                                     *cfd->GetLatestMutableCFOptions());
+}
+
+// 현재 시간을 마이크로초 단위로 반환하는 함수
+uint64_t DBImpl::NowMicros(void) {
+  if (!immutable_db_options_.clock) {
+    return 0;
+  }
+  return immutable_db_options_.clock->NowMicros();
+}
 
 void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
                                bool exclude_being_compacted) {
@@ -2919,6 +3080,118 @@ void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
   }
 }
 
+std::vector<int> DBImpl::NumLevelsFiles(void) {
+  std::vector<int> ret;
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  for (int i = 0; i < 6; i++) {
+    ret.push_back(vstorage->NumLevelFiles(i));
+  }
+  return ret;
+}
+std::vector<double> DBImpl::LevelsCompactionScore(void) {
+  return versions_->GetColumnFamilySet()
+      ->GetDefault()
+      ->current()
+      ->storage_info()
+      ->GetCompactionScores();
+}
+
+std::set<uint64_t> DBImpl::GetAlreadyBeingCompactedSSTFileNo(void) {
+  std::set<uint64_t> ret;
+  ret.clear();
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  for (int l = 0; l < vstorage->num_levels(); l++) {
+    auto files = vstorage->LevelFiles(l);
+    for (auto f : files) {
+      if (f->being_compacted) {
+        ret.emplace(f->fd.GetNumber());
+      }
+    }
+  }
+  return ret;
+}
+
+std::set<uint64_t> DBImpl::GetSoonCompactionInvalidatedSSTFileNo(
+    int level, int depth, uint64_t* pivot_sst_fno) {
+  std::set<uint64_t> ret;
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+
+  if (level == 0) {
+    // return all l0 l1 files
+    auto l0files = vstorage->LevelFiles(0);
+    auto l1files = vstorage->LevelFiles(1);
+    for (auto file : l0files) {
+      *pivot_sst_fno = file->fd.GetNumber();
+      ret.emplace(file->fd.GetNumber());
+    }
+    for (auto file : l1files) {
+      ret.emplace(file->fd.GetNumber());
+    }
+    return ret;
+  }
+  const std::vector<int>& file_size = vstorage->FilesByCompactionPri(level);
+  const std::vector<FileMetaData*>& level_files = vstorage->LevelFiles(level);
+
+  if ((int)file_size.size() >= depth + 1) {
+    CompactionInputFiles output_i;
+    int index = file_size[depth];
+    FileMetaData* file = level_files[index];
+    *pivot_sst_fno = file->fd.GetNumber();
+    ret.emplace(*pivot_sst_fno);
+    vstorage->GetOverlappingInputs(level + 1, &file->smallest, &file->largest,
+                                   &output_i.files);
+
+    for (auto o_file : output_i.files) {
+      ret.emplace(o_file->fd.GetNumber());
+    }
+  }
+
+  return ret;
+}
+
+double DBImpl::ReCalculateCompactionScore(int level) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+
+  auto ioptions = versions_->GetColumnFamilySet()->GetDefault()->ioptions();
+  auto moptions = versions_->GetColumnFamilySet()
+                      ->GetDefault()
+                      ->GetCurrentMutableCFOptions();
+  return vstorage->ReCalculateCompactionScore((*ioptions), (*moptions), level);
+}
+
+std::vector<uint64_t> DBImpl::LevelsSize(void) {
+  std::vector<uint64_t> ret;
+  ret.clear();
+  if (versions_.get() == nullptr) {
+    return ret;
+  }
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+
+  for (int level = 0; level < 6; level++) {
+    const std::vector<FileMetaData*>& level_files = vstorage->LevelFiles(level);
+    uint64_t sum = 0;
+    for (auto f : level_files) {
+      sum += f->compensated_file_size;
+    }
+    ret.push_back(sum);
+  }
+
+  return ret;
+}
+
+const Comparator* DBImpl::GetDefaultICMP(void) {
+  return versions_->GetColumnFamilySet()
+      ->GetDefault()
+      ->current()
+      ->storage_info()
+      ->InternalComparator();
+}
+///////////////////////////////////////////////////
 Status DBImpl::DropColumnFamilyImpl(ColumnFamilyHandle* column_family) {
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(column_family);
   auto cfd = cfh->cfd();
@@ -4309,10 +4582,36 @@ Status DB::DropColumnFamilies(
   return Status::NotSupported("");
 }
 
-//
+// CAZA
+uint64_t DB::MostLargeUpperAdjacentFile(Slice&, Slice&, int) { return 0; }
+uint64_t DB::MostSmallDownwardAdjacentFile(Slice&, Slice&, int) { return 0; }
 void DB::SameLevelFileList(int, std::vector<uint64_t>&, bool) {
   std::cout << "DB::SameLevelFileList not Supported\n";
 }
+void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
+  std::cout << "DB::AdjcanetFileLIst not Supported\n";
+}
+void DB::DownwardAdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
+  std::cout << "DB::DownwardAdjacentFileList not Supported\n";
+}
+void DB::ZenFSInstallSuperVersionAndScheduleWork(void) { return; }
+uint64_t DB::NowMicros(void) { return 0; }
+double DB::ReCalculateCompactionScore(int) { return 0.0; }
+std::set<uint64_t> DB::GetAlreadyBeingCompactedSSTFileNo(void) {
+  return std::set<uint64_t>();
+}
+std::set<uint64_t> DB::GetSoonCompactionInvalidatedSSTFileNo(int, int,
+                                                             uint64_t*) {
+  return std::set<uint64_t>();
+}
+std::vector<int> DB::NumLevelsFiles(void) { return std::vector<int>(0); }
+std::vector<double> DB::LevelsCompactionScore(void) {
+  return std::vector<double>(0);
+}
+
+std::vector<uint64_t> DB::LevelsSize(void) { return std::vector<uint64_t>(0); }
+
+const Comparator* DB::GetDefaultICMP(void) { return nullptr; }
 //
 
 Status DB::DestroyColumnFamilyHandle(ColumnFamilyHandle* column_family) {

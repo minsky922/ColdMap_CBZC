@@ -664,9 +664,16 @@ struct DBOptions {
   // When destroying the db,
   //   all log files in wal_dir and the dir itself is deleted
   std::string wal_dir = "";
-
+  /////////////////////////////////////
   uint32_t reset_scheme;
+  uint64_t allocation_scheme;
+  uint64_t zc_scheme;
+  uint64_t compaction_scheme;
+  uint64_t input_aware_scheme;
+  uint64_t max_compaction_kick;
 
+  uint64_t cbzc_enabled;
+  uint64_t default_extent_size;
   uint32_t partial_reset_scheme;
 
   bool reset_at_foreground;
@@ -676,6 +683,10 @@ struct DBOptions {
   uint64_t zc;
 
   uint64_t until;
+  bool enable_intraL0_compaction;
+  int max_compaction_start_level;
+  bool is_db_bench = false;
+  //////////
 
   // The periodicity when obsolete files get deleted. The default
   // value is 6 hours. The files that get out of scope by compaction

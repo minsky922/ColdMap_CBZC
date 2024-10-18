@@ -383,7 +383,11 @@ class Env : public Customizable {
   virtual Status GetFileSize(const std::string& fname, uint64_t* file_size) = 0;
 
   //
-  virtual void SetResetScheme(uint32_t, bool, uint64_t) {}
+  virtual void SetResetScheme(uint32_t, uint32_t, uint64_t, uint64_t, uint64_t,
+                              uint64_t, uint64_t, std::vector<uint64_t>&) {}
+
+  virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
+                                      std::vector<uint64_t>&, int, bool) {}
 
   // Store the last modification time of fname in *file_mtime.
   virtual Status GetFileModificationTime(const std::string& fname,
@@ -1481,8 +1485,21 @@ class EnvWrapper : public Env {
   Status GetFileSize(const std::string& f, uint64_t* s) override {
     return target_.env->GetFileSize(f, s);
   }
-  void SetResetScheme(uint32_t r, bool f, uint64_t T) override {
-    target_.env->SetResetScheme(r, f, T);
+  void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
+                      uint64_t zc, uint64_t until, uint64_t allocation_scheme,
+                      uint64_t zc_scheme,
+                      std::vector<uint64_t>& other_options) override {
+    target_.env->SetResetScheme(r, partial_reset_scheme, T, zc, until,
+                                allocation_scheme, zc_scheme, other_options);
+  }
+
+  void GiveZenFStoLSMTreeHint(
+      std::vector<uint64_t>& compaction_inputs_input_level_fno,
+      std::vector<uint64_t>& compaction_inputs_output_level_fno,
+      int output_level, bool trivial_move) override {
+    target_.env->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
+                                        compaction_inputs_output_level_fno,
+                                        output_level, trivial_move);
   }
 
   Status GetFileModificationTime(const std::string& fname,

@@ -409,11 +409,18 @@ const char* WritableFileWriter::GetFileChecksumFuncName() const {
 }
 
 IOStatus WritableFileWriter::Sync(bool use_fsync) {
+  // Flush 함수를 호출하여 버퍼에 있는 데이터를 파일로 씁니다.
   IOStatus s = Flush();
   if (!s.ok()) {
     return s;
   }
   TEST_KILL_RANDOM("WritableFileWriter::Sync:0");
+  //
+  s = writable_file()->CAZAFlushSST();
+  if (!s.ok()) {
+    return s;
+  }
+  //
   if (!use_direct_io() && pending_sync_) {
     s = SyncInternal(use_fsync);
     if (!s.ok()) {

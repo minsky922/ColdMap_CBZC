@@ -379,9 +379,27 @@ class DB {
   virtual Status DropColumnFamilies(
       const std::vector<ColumnFamilyHandle*>& column_families);
 
-  //
+  // CAZA
+  virtual std::set<uint64_t> GetAlreadyBeingCompactedSSTFileNo(void);
+  virtual std::set<uint64_t> GetSoonCompactionInvalidatedSSTFileNo(
+      int level, int depth, uint64_t* pivot_sst_fno);
+  virtual uint64_t MostLargeUpperAdjacentFile(Slice& s, Slice& l, int level);
+  virtual uint64_t MostSmallDownwardAdjacentFile(Slice& s, Slice& l, int level);
+  virtual void AdjacentFileList(Slice& s, Slice& l, int level,
+                                std::vector<uint64_t>& fno_list);
+  virtual void DownwardAdjacentFileList(Slice& s, Slice& l, int level,
+                                        std::vector<uint64_t>& fno_list);
+  virtual void ZenFSInstallSuperVersionAndScheduleWork(void);
+  virtual uint64_t NowMicros(void);
   virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
                                  bool exclude_being_compacted = true);
+
+  virtual double ReCalculateCompactionScore(int level);
+  virtual std::vector<int> NumLevelsFiles(void);
+  virtual std::vector<double> LevelsCompactionScore(void);
+  // virtual double GetL0CompactionScore(void);
+  virtual std::vector<uint64_t> LevelsSize(void);
+  virtual const Comparator* GetDefaultICMP(void);
   //
   // Release and deallocate a column family handle. A column family is only
   // removed once it is dropped (DropColumnFamily) and all handles have been

@@ -539,6 +539,35 @@ void CompactionJob::Prepare() {
   assert(c->column_family_data()->current()->storage_info()->NumLevelFiles(
              compact_->compaction->level()) > 0);
 
+  //
+  std::vector<uint64_t> compaction_inputs_fno;
+  std::vector<uint64_t> compaction_inputs_input_level_fno;
+
+  std::vector<uint64_t> compaction_inputs_output_level_fno;
+
+  compaction_inputs_input_level_fno.clear();
+  compaction_inputs_output_level_fno.clear();
+
+  auto c_inputs = c->inputs();
+  if ((*c_inputs).size() > 2) {
+    printf("???? (*c->inputs()->size()) %lu\n", ((*c->inputs()).size()));
+  }
+
+  for (auto c_input_input_level : (*c_inputs)[0].files) {
+    compaction_inputs_input_level_fno.push_back(
+        c_input_input_level->fd.GetNumber());
+  }
+  if ((*c_inputs).size() == 2) {
+    for (auto c_input_output_level : (*c_inputs)[1].files) {
+      compaction_inputs_output_level_fno.push_back(
+          c_input_output_level->fd.GetNumber());
+    }
+  }
+
+  c->immutable_options()->fs->GiveZenFStoLSMTreeHint(
+      compaction_inputs_input_level_fno, compaction_inputs_output_level_fno,
+      compact_->compaction->output_level(), false);
+  //
   write_hint_ =
       c->column_family_data()->CalculateSSTWriteHint(c->output_level());
   bottommost_level_ = c->bottommost_level();
@@ -1503,6 +1532,36 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
           : sub_compact->compaction->CreateSstPartitioner();
   std::string last_key_for_partitioner;
 
+  // bool should_form_left_short_lived_sst = false;
+  // bool should_form_right_short_lived_sst = false;
+  // auto vstorage = cfd->current()->storage_info();
+  // InternalKey upper_level_largest;
+  // if (sub_compact->compaction->output_level() >= 2) {
+  //   InternalKey tmp_key;
+  //   if (start != nullptr) {
+  //     tmp_key.DecodeFrom((*start));
+  //     should_form_left_short_lived_sst =
+  //         vstorage->OverlappingInputsAtUppperLevel(
+  //             sub_compact->compaction->output_level(), &tmp_key);
+  //     upper_level_largest = tmp_key;
+  //   }
+
+  //   if (end != nullptr) {
+  //     tmp_key.DecodeFrom((*end));
+  //     should_form_right_short_lived_sst =
+  //         vstorage->OverlappingInputsAtUppperLevel(
+  //             sub_compact->compaction->output_level(), &tmp_key);
+  //   }
+
+  //   if (should_form_left_short_lived_sst) {
+  //     printf("should_form_left_short_lived_sst\n");
+  //   }
+  //   if (should_form_right_short_lived_sst) {
+  //     printf("should_form_right_short_lived_sst\n");
+  //   }
+  // }
+  // uint64_t compaction_file_opened = 0;
+
   while (status.ok() && !cfd->IsDropped() && c_iter->Valid()) {
     // Invariant: c_iter.status() is guaranteed to be OK if c_iter->Valid()
     // returns true.
@@ -1589,6 +1648,48 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
         // FinishCompactionOutputFile().
         output_file_ended = true;
       }
+      // /*
+      // both : my smallest always smaller than largest, my largest is always
+      // larger than smallest
+
+      // left side shortest : my smallest is larger than smallest
+
+      // right side : my largest is smaller than largest
+      // */
+
+      // if (sub_compact->compaction->output_level() >= 2 &&
+      //     sub_compact->compaction->immutable_options()->allocation_scheme ==
+      //         1) {
+      //   auto files = sub_compact->compaction->inputs(0);
+      //   InternalKey cur_key;
+      //   cur_key.DecodeFrom(c_iter->key());
+      //   InternalKey input_level_smallest = (*files)[0]->smallest;
+      //   const InternalKeyComparator* icmp = vstorage->InternalComparator();
+      //   // icmp.Compare()
+      //   InternalKey input_level_largest = (*files)[files->size() -
+      //   1]->largest; if (should_form_left_short_lived_sst &&
+      //       // cur_key>overlapping_level_largest
+      //       icmp->Compare(cur_key, upper_level_largest) > 0) {
+      //     should_form_left_short_lived_sst = false;
+      //     output_file_ended = true;
+      //     printf("left side (%d) : fs  %lu\n",
+      //            sub_compact->compaction->output_level(),
+      //            sub_compact->builder->FileSize());
+      //   }
+
+      //   if (should_form_right_short_lived_sst &&
+      //       should_form_left_short_lived_sst == false &&
+      //       icmp->Compare(cur_key, input_level_largest) > 0
+      //       //  cur_key>input_level_largest
+
+      //   ) {
+      //     should_form_right_short_lived_sst = false;
+      //     output_file_ended = true;
+      //     printf("right side (%d) : fs  %lu\n",
+      //            sub_compact->compaction->output_level(),
+      //            sub_compact->builder->FileSize());
+      //   }
+      // }
     }
     if (output_file_ended) {
       const Slice* next_key = nullptr;
@@ -2302,15 +2403,15 @@ Status CompactionJob::OpenCompactionOutputFile(
   writable_file->fno_ = sub_compact->current_output()->meta.fd.GetNumber();
   writable_file->level_ = sub_compact->compaction->output_level();
   writable_file->input_fno_.clear();
-  // if (compact_->compaction->immutable_options()->input_aware_scheme == 1) {
-  //   const std::vector<CompactionInputFiles>* inputs =
-  //       compact_->compaction->inputs();
-  //   for (auto ci : (*inputs)) {
-  //     for (auto f : ci.files) {
-  //       writable_file->input_fno_.push_back(f->fd.GetNumber());
-  //     }
-  //   }
-  // }
+  if (compact_->compaction->immutable_options()->input_aware_scheme == 1) {
+    const std::vector<CompactionInputFiles>* inputs =
+        compact_->compaction->inputs();
+    for (auto ci : (*inputs)) {
+      for (auto f : ci.files) {
+        writable_file->input_fno_.push_back(f->fd.GetNumber());
+      }
+    }
+  }
 
   writable_file->SetIOPriority(GetRateLimiterPriority());
   writable_file->SetWriteLifeTimeHint(write_hint_);

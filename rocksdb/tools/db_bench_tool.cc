@@ -1681,12 +1681,41 @@ DEFINE_uint32(write_batch_protection_bytes_per_key, 0,
 
 DEFINE_bool(track_and_verify_wals_in_manifest, false,
             "If true, enable WAL tracking in the MANIFEST");
+//////////////////
 DEFINE_uint32(reset_scheme, 0, "Eager=0, Lazy=1, FAR=2");
 
 DEFINE_uint64(tuning_point, 100, "0<Tuninig point<100");
-
+//
 DEFINE_bool(reset_at_foreground, false,
             "If true , reset at foreground only, else reset at background");
+//
+DEFINE_uint64(zc, 0, "0<Tuninig point<100");
+
+DEFINE_uint64(until, 0, "0<Tuninig point<100");
+
+DEFINE_uint32(partial_reset_scheme, 0, "PARTIAL RESET SCHEME");
+
+DEFINE_uint32(repeat, 1, "REPEAT");
+
+DEFINE_uint64(allocation_scheme, 0, "0<Tuninig point<100");
+
+DEFINE_uint64(zc_scheme, 0, "0<Tuninig point<100");
+
+DEFINE_uint64(compaction_scheme, 0, "0<Tuninig point<100");
+
+DEFINE_uint64(max_compaction_kick, 25, "0<Tuninig point<100");
+
+DEFINE_bool(wait_for_compactions, false, "true or false");
+
+DEFINE_bool(enable_intraL0_compaction, true, "true or false");
+
+DEFINE_int32(max_compaction_start_level, 2, "start level");
+
+DEFINE_uint64(input_aware_scheme, 0, "input_aware_scheme");
+
+DEFINE_uint64(cbzc_enabled, 0, "cbzc_enabled");
+
+DEFINE_uint64(default_extent_size, 1048576, "default_extent_size");
 
 namespace ROCKSDB_NAMESPACE {
 namespace {
@@ -4035,8 +4064,22 @@ class Benchmark {
     options.wal_dir = FLAGS_wal_dir;
 
     options.reset_scheme = FLAGS_reset_scheme;
-    options.reset_at_foreground = FLAGS_reset_at_foreground;
+    options.allocation_scheme = FLAGS_allocation_scheme;
+    options.zc_scheme = FLAGS_zc_scheme;
+    options.compaction_scheme = FLAGS_compaction_scheme;
+    options.max_compaction_kick = FLAGS_max_compaction_kick;
+    options.partial_reset_scheme = FLAGS_partial_reset_scheme;
+    options.enable_intraL0_compaction = FLAGS_enable_intraL0_compaction;
+    options.max_compaction_start_level = FLAGS_max_compaction_start_level;
+    options.input_aware_scheme = FLAGS_input_aware_scheme;
+    options.async_zc_enabled = FLAGS_async_zc_enabled;
+    options.default_extent_size = FLAGS_default_extent_size;
+    options.page_cache_size = FLAGS_page_cache_size;
+    options.pca_selection = FLAGS_pca_selection;
+    options.zc = FLAGS_zc;
+    options.until = FLAGS_until;
     options.tuning_point = FLAGS_tuning_point;
+    options.is_db_bench = true;
 
     options.dump_malloc_stats = FLAGS_dump_malloc_stats;
     options.stats_dump_period_sec =

@@ -570,6 +570,102 @@ IOStatus ZonedBlockDevice::AllocateMetaZone(Zone **out_meta_zone) {
   return IOStatus::NoSpace("Out of metadata zones");
 }
 
+void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
+    std::vector<uint64_t> &compaction_inputs_input_level_fno,
+    std::vector<uint64_t> &compaction_inputs_output_level_fno, int output_level,
+    bool trivial_move) {
+  ZoneFile *zfile = nullptr;
+
+  if (allocation_scheme_ == LIZA) {
+    return;
+  }
+  printf("GiveZenFStoLSMTreeHint\n");
+  // if (trivial_move) {
+  //   // if(! ( compaction_inputs_input_level_fno.size()!=1 &&
+  //   // compaction_inputs_output_level_fno.size()!=0 ) ){
+  //   //   printf("????? %lu
+  //   //
+  //   %lu\n",compaction_inputs_input_level_fno.size(),compaction_inputs_output_level_fno.size());
+  //   //   return;
+  //   // }
+
+  //   if (output_level == 1) {
+  //     printf("0->1 trivial move??\n");
+  //   }
+
+  //   for (uint64_t fno : compaction_inputs_input_level_fno) {
+  //     zfile = GetSSTZoneFileInZBDNoLock(fno);
+
+  //     if (zfile == nullptr) {
+  //       printf("why nullptr? %lu\n", fno);
+  //       continue;
+  //     }
+  //     uint64_t file_size = zfile->predicted_size_;
+  //     lsm_tree_[output_level - 1].fetch_sub(file_size);
+  //     lsm_tree_[output_level].fetch_add(file_size);
+  //   }
+  //   return;
+  // }
+
+  // //////////////// invaldation compaction
+
+  // for (uint64_t fno : compaction_inputs_input_level_fno) {
+  //   zfile = GetSSTZoneFileInZBDNoLock(fno);
+
+  //   if (zfile == nullptr) {
+  //     printf("why nullptr? %lu\n", fno);
+  //     continue;
+  //   }
+  //   uint64_t file_size = zfile->predicted_size_;
+  //   lsm_tree_[output_level - 1].fetch_sub(file_size);
+  // }
+  // for (uint64_t fno : compaction_inputs_output_level_fno) {
+  //   zfile = GetSSTZoneFileInZBDNoLock(fno);
+
+  //   if (zfile == nullptr) {
+  //     printf("why nullptr? %lu\n", fno);
+  //     continue;
+  //   }
+  //   uint64_t file_size = zfile->predicted_size_;
+  //   lsm_tree_[output_level].fetch_sub(file_size);
+  // }
+
+  // std::vector<uint64_t> input_fno = compaction_inputs_input_level_fno;
+  // input_fno.insert(input_fno.end(),
+  // compaction_inputs_output_level_fno.begin(),
+  //                  compaction_inputs_output_level_fno.end());
+  // if (input_aware_scheme_ == 1) {
+  //   for (auto fno : input_fno) {
+  //     auto zFile = GetSSTZoneFileInZBDNoLock(fno);
+  //     if (!zFile) {
+  //       zFile->selected_as_input_ = true;
+  //       // level = zFile->level_ > level ? zFile->level_ : level;
+  //     }
+  //   }
+  // }
+  // double score = GetMaxSameZoneScore(input_fno);
+  // uint64_t none;
+  // double inval_score = GetMaxInvalidateCompactionScore(input_fno, &none,
+  // true);
+  // {
+  //   std::lock_guard<std::mutex> lg(same_zone_score_mutex_);
+  //   same_zone_score_[output_level].push_back(score);
+  //   invalidate_score_[output_level].push_back(inval_score);
+
+  //   same_zone_score_for_timelapse_[output_level].clear();
+  //   same_zone_score_for_timelapse_[output_level] =
+  //       same_zone_score_[output_level];
+
+  //   // uint64_t same_zone_score_uint64t=score*10000;
+  //   // uint64_t inval_score_uint64t=inval_score*100;
+  //   //
+  //   same_zone_score_atomic_[output_level].fetch_add(same_zone_score_uint64t);
+  //   // invalidate_score_atomic_[output_level].fetch_add(inval_score_uint64t);
+  //   // compaction_triggered_[output_level].fetch_add(1);
+  //   // printf("%lu %lu\n",same_zone_score_uint64t,inval_score_uint64t);
+  // }
+}
+
 void ZonedBlockDevice::AddTimeLapse(int T) {
   far_stats_.emplace_back(cur_free_percent_, reset_count_.load(),
                           wasted_wp_.load() / (1 << 20), T, reset_threshold_);
@@ -658,6 +754,7 @@ void ZonedBlockDevice::CalculateResetThreshold() {
       break;
   }
   reset_threshold_ = rt;
+  reset_threshold_arr_[free_percent] = rt;
 }
 /* io_zones 벡터의 각 존을 순회하며, 사용되지 않는 IO 존을 재설정합니다.
 재설정이 완료되면, 필요에 따라 토큰을 반환합니다.*/
@@ -696,8 +793,8 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
           PutActiveIOZoneToken();  // 현재 존이 가득 차지 않았다면,
                                    // PutActiveIOZoneToken 함수를 호출하여
                                    // 토큰을 반환
-      } else {  // 현재 존이 비어있거나 사용 중인 경우, CheckRelease 함수로 해제
-                // 상태를 확인하고, 오류가 발생하면 해당 상태를 반환
+      } else {  // 현재 존이 비어있거나 사용 중인 경우, CheckRelease 함수로
+                // 해제 상태를 확인하고, 오류가 발생하면 해당 상태를 반환
         IOStatus release_status = z->CheckRelease();
         if (!release_status.ok()) return release_status;
       }
@@ -1253,6 +1350,479 @@ void ZonedBlockDevice::SameLevelFileList(int level,
   fno_list.clear();
   printf("zbd::samelevelfilelist->level: %d", level);
   db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
+}
+
+IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
+    Slice &smallest, Slice &largest, int level,
+    Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
+    uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity) {
+  ////////CAZA/////////
+  if (allocation_scheme_ == LIZA) {
+    return IOStatus::OK();
+  }
+  printf("AllocateCompactionAwaredZone!!\n");
+  (void)(file_lifetime);
+  IOStatus s;
+  uint64_t cur_score;
+  uint64_t cur_invalid_data;
+  bool no_near_level_files = true;
+  Zone *allocated_zone = nullptr;
+  Zone *target_zone;
+  std::vector<uint64_t> fno_list;
+  uint64_t max_score = 0;
+  uint64_t max_invalid_data = 0;
+  std::vector<bool> is_input_in_zone(io_zones.size(), false);
+  (void)(input_fno);
+  (void)(predicted_size);
+  (void)(cur_invalid_data);
+  (void)(max_invalid_data);
+
+  // zone valid overlapping capacity
+  // 1. find UPPER/LOWER OVERLAPP RANGE zone
+  std::vector<uint64_t> zone_score(io_zones.size(), 0);
+  std::vector<std::pair<uint64_t, uint64_t>> sorted;
+  if (level == 0) {
+    goto l0;
+  }
+  {
+    fno_list.clear();
+    zone_score.clear();
+    zone_score.assign(io_zones.size(), 0);
+    AdjacentFileList(smallest, largest, level, fno_list);
+
+    for (auto fno : fno_list) {
+      ZoneFile *zFile = GetSSTZoneFileInZBDNoLock(fno);
+      if (zFile == nullptr) {
+        continue;
+      }
+      if (zFile->selected_as_input_) {
+        continue;
+      }
+      auto extents = zFile->GetExtents();
+      for (auto extent : extents) {
+        if (!extent->zone_->IsFull()) {
+          // zone_->index do not skip meta,spare zone
+          // 존 스코어는 각 존이 얼마나 많은 데이터를 보유하고 있는지에 대한
+          // 지표로, 이를 통해 특정 존이 얼마나 가득 찼는지 알 수 있다.
+          zone_score[extent->zone_->zidx_ - ZENFS_META_ZONES -
+                     ZENFS_SPARE_ZONES] += extent->length_;
+          no_near_level_files = false;  // 상위 또는 하위 레벨에 겹치는 Key
+                                        // 범위를 가진 파일이 존재
+        }
+      }
+    }
+  }
+
+  sorted = SortedByZoneScore(zone_score);
+
+  if (!no_near_level_files) {
+    for (auto zidx : sorted) {
+      cur_score = zidx.first;
+      target_zone = io_zones[zidx.second];
+
+      if (cur_score == 0 || target_zone->IsFull()) {
+        continue;
+      }
+
+      if (cur_score < max_score) {
+        continue;
+      }
+
+      if (!target_zone->Acquire()) {
+        continue;
+      }
+
+      if (target_zone->capacity_ <= min_capacity) {
+        target_zone->Release();
+        continue;
+      }
+      allocated_zone = target_zone;
+      break;
+    }
+  }
+
+  if (allocated_zone != nullptr) {
+    printf("CAZA l1 <= \n");
+    *zone_out = allocated_zone;
+    return IOStatus::OK();
+  }
+
+l0:
+  if (level == 0 || level == 1 || level == 100) {
+    fno_list.clear();
+    // zone_score.assign(0,zone_score.size());
+    zone_score.clear();
+    zone_score.assign(io_zones.size(), 0);
+    SameLevelFileList(0, fno_list);
+    SameLevelFileList(1, fno_list);
+    s = AllocateMostL0FilesZone(zone_score, fno_list, is_input_in_zone,
+                                &allocated_zone, min_capacity);
+    if (allocated_zone != nullptr) {
+      printf("CAZA 2.1\n");
+    }
+  } else {  // if other level, same level but near key-sstfile zone
+    fno_list.clear();
+    // zone_score.assign(0,zone_score.size());
+    zone_score.clear();
+    zone_score.assign(io_zones.size() - ZENFS_META_ZONES - ZENFS_SPARE_ZONES,
+                      0);
+    SameLevelFileList(level, fno_list);
+    s = AllocateSameLevelFilesZone(smallest, largest, fno_list,
+                                   is_input_in_zone, &allocated_zone,
+                                   min_capacity);
+    if (allocated_zone != nullptr) {
+      printf("CAZA 2.2\n");
+    }
+  }
+
+  if (!s.ok()) {
+    return s;
+  }
+  if (allocated_zone != nullptr) {
+    printf("CAZA 3\n");
+    *zone_out = allocated_zone;
+    return s;
+  }
+
+  if (allocated_zone != nullptr) {
+    *zone_out = allocated_zone;
+    allocated_zone->lifetime_ = file_lifetime;
+  }
+
+  return s;
+}
+
+IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
+    std::vector<uint64_t> &zone_score, std::vector<uint64_t> &fno_list,
+    std::vector<bool> &is_input_in_zone, Zone **zone_out,
+    uint64_t min_capacity) {
+  Zone *allocated_zone = nullptr;
+  Zone *target_zone = nullptr;
+  IOStatus s;
+  uint64_t max_score = 0;
+  uint64_t cur_score;
+  bool no_same_level_files = true;
+  (void)(is_input_in_zone);
+
+  {
+    // std::lock_guard<std::mutex> lg(sst_file_map_lock_);
+    for (auto fno : fno_list) {
+      ZoneFile *zFile = GetSSTZoneFileInZBDNoLock(fno);
+      if (zFile == nullptr) {
+        continue;
+      }
+      if (zFile->selected_as_input_) {
+        continue;
+      }
+      auto extents = zFile->GetExtents();
+      for (auto e : extents) {
+        if (!e->zone_->IsFull()) {
+          zone_score[e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES] +=
+              e->length_;
+          no_same_level_files = false;
+        }
+      }
+    }
+  }
+  if (no_same_level_files) {
+    return IOStatus::OK();
+  }
+
+  //////////////////////////////
+  auto sorted = SortedByZoneScore(zone_score);
+
+  for (auto zidx : sorted) {
+    cur_score = zidx.first;
+    target_zone = io_zones[zidx.second];
+
+    if (cur_score == 0) {
+      continue;
+    }
+    if (cur_score < max_score) {
+      continue;
+    }
+    if (!target_zone->Acquire()) {
+      continue;
+    }
+    if (target_zone->capacity_ <= min_capacity || target_zone->IsFull() ||
+        target_zone->IsEmpty()) {
+      target_zone->Release();
+      continue;
+    }
+    allocated_zone = target_zone;
+    break;
+  }
+
+  *zone_out = allocated_zone;
+  return IOStatus::OK();
+}
+
+IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
+    Slice &smallest, Slice &largest, const std::vector<uint64_t> &fno_list,
+    std::vector<bool> &is_input_in_zone, Zone **zone_out,
+    uint64_t min_capacity) {
+  Zone *allocated_zone = nullptr;
+  IOStatus s;
+  const Comparator *icmp = db_ptr_->GetDefaultICMP();
+  ZoneFile *zFile;
+  size_t idx;
+  size_t l_idx;
+  size_t r_idx;
+  size_t fno_list_sz = fno_list.size();
+  if (fno_list.empty()) {
+    return IOStatus::OK();
+  }
+
+  {
+    // std::lock_guard<std::mutex> lg(sst_file_map_lock_);
+    if (fno_list_sz == 1) {
+      zFile = GetSSTZoneFileInZBDNoLock(fno_list[0]);
+      if (zFile != nullptr) {
+        if (!zFile->selected_as_input_) {
+          s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone,
+                                         &allocated_zone, min_capacity);
+          if (!s.ok()) {
+            return s;
+          }
+          *zone_out = allocated_zone;
+          return s;
+        }
+      }
+    }
+    // fno_list is increasing order : db/version_set.h line 580
+    for (idx = 0; idx < fno_list_sz; idx++) {
+      zFile = GetSSTZoneFileInZBDNoLock(fno_list[idx]);
+      if (zFile == nullptr) {
+        continue;
+      }
+      if (zFile->selected_as_input_) {
+        continue;
+      }
+      int res = icmp->Compare(largest, zFile->smallest_);
+      if (res <= 0) {
+        res = icmp->Compare(smallest, zFile->largest_);
+        assert(res <= 0);
+        break;
+      }
+    }
+
+    l_idx = idx - 1;
+    r_idx = idx;
+
+    // it is most smallest key file
+    if (idx == 0) {
+      for (auto it = fno_list.begin(); it != fno_list.end(); it++) {
+        zFile = GetSSTZoneFileInZBDNoLock(*it);
+        if (zFile == nullptr) {
+          continue;
+        }
+        if (zFile->selected_as_input_) {
+          continue;
+        }
+        s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone, &allocated_zone,
+                                       min_capacity);
+        if (!s.ok()) {
+          return s;
+        }
+        if (allocated_zone != nullptr) {
+          break;
+        }
+      }
+    }
+    // it is most largest key file
+    else if (idx == fno_list_sz) {
+      for (auto it = fno_list.rbegin(); it != fno_list.rend(); it++) {
+        zFile = GetSSTZoneFileInZBDNoLock(*it);
+        if (zFile == nullptr) {
+          continue;
+        }
+        if (zFile->selected_as_input_) {
+          continue;
+        }
+        s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone, &allocated_zone,
+                                       min_capacity);
+        if (!s.ok()) {
+          return s;
+        }
+        if (allocated_zone != nullptr) {
+          break;
+        }
+      }
+    }
+    // it is middle key file
+    else {
+      for (bool flip = true; ((l_idx < r_idx) || (r_idx < fno_list_sz));
+           flip = !flip) {
+        if (flip) {
+          if (l_idx < r_idx) {
+            zFile = GetSSTZoneFileInZBDNoLock(fno_list[l_idx]);
+            if (zFile == nullptr) {
+              l_idx--;
+              continue;
+            }
+            if (zFile->selected_as_input_) {
+              l_idx--;
+              continue;
+            }
+            s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone,
+                                           &allocated_zone, min_capacity);
+            if (!s.ok()) {
+              return s;
+            }
+            if (allocated_zone != nullptr) {
+              break;
+            }
+            l_idx--;
+          }
+        } else {
+          if (r_idx < fno_list_sz) {
+            zFile = GetSSTZoneFileInZBDNoLock(fno_list[r_idx]);
+            if (zFile == nullptr) {
+              r_idx++;
+              continue;
+            }
+            if (zFile->selected_as_input_) {
+              r_idx--;
+              continue;
+            }
+            s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone,
+                                           &allocated_zone, min_capacity);
+            if (!s.ok()) {
+              return s;
+            }
+            if (allocated_zone != nullptr) {
+              break;
+            }
+            r_idx++;
+          }
+        }
+      }
+    }
+  }
+
+  *zone_out = allocated_zone;
+  return s;
+}
+
+void ZonedBlockDevice::AdjacentFileList(Slice &smallest, Slice &largest,
+                                        int level,
+                                        std::vector<uint64_t> &fno_list) {
+  assert(db_ptr_ != nullptr);
+  fno_list.clear();
+  if (db_ptr_ == nullptr) {
+    return;
+  }
+  db_ptr_->AdjacentFileList(smallest, largest, level, fno_list);
+}
+
+uint64_t ZonedBlockDevice::MostSmallDownwardAdjacentFile(Slice &s, Slice &l,
+                                                         int level) {
+  if (db_ptr_ == nullptr) {
+    return 0;
+  }
+  return db_ptr_->MostSmallDownwardAdjacentFile(s, l, level);
+}
+uint64_t ZonedBlockDevice::MostLargeUpperAdjacentFile(Slice &s, Slice &l,
+                                                      int level) {
+  if (db_ptr_ == nullptr) {
+    return 0;
+  }
+  return db_ptr_->MostLargeUpperAdjacentFile(s, l, level);
+}
+void ZonedBlockDevice::DownwardAdjacentFileList(
+    Slice &s, Slice &l, int level, std::vector<uint64_t> &fno_list) {
+  if (db_ptr_ == nullptr) {
+    return;
+  }
+  db_ptr_->DownwardAdjacentFileList(s, l, level, fno_list);
+}
+
+// return most large one
+// uint64_t ZonedBlockDevice::MostLargeUpperAdjacentFile(Slice& smallest ,Slice&
+// largest, int level){
+//   assert(db_ptr_!=nullptr);
+
+//   return db_ptr_->MostLargeUpperAdjacentFile(smallest,largest,level);
+// }
+
+void ZonedBlockDevice::SameLevelFileList(int level,
+                                         std::vector<uint64_t> &fno_list,
+                                         bool exclude_being_compacted) {
+  assert(db_ptr_ != nullptr);
+  fno_list.clear();
+  // printf("level %d",level);
+  db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
+}
+
+IOStatus ZonedBlockDevice::GetNearestZoneFromZoneFile(
+    ZoneFile *zFile, std::vector<bool> &is_input_in_zone, Zone **zone_out,
+    uint64_t min_capacity) {
+  // IOStatus s;
+
+  // Zone* allocated_zone=nullptr;
+  std::vector<std::pair<uint64_t, uint64_t>> zone_score(io_zones.size(),
+                                                        {0, 0});
+  auto extents = zFile->GetExtents();
+  (void)(is_input_in_zone);
+
+  for (auto e : extents) {
+    uint64_t zidx = e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES;
+    zone_score[zidx].second = zidx;
+    zone_score[zidx].first += e->length_;
+  }
+
+  std::sort(zone_score.rbegin(), zone_score.rend());
+
+  for (auto zscore : zone_score) {
+    uint64_t score = zscore.first;
+    uint64_t zidx = zscore.second;
+    // printf("zscore : %lu zidx %lu\n",score>>20,zidx);
+
+    if (score == 0) {
+      break;
+    }
+    Zone *z = io_zones[zidx];
+
+    // if(z->IsEmpty()){
+    //   continue;
+    // }
+    if (!z->Acquire()) {
+      continue;
+    }
+    if (z->capacity_ <= min_capacity || z->IsFull() || z->IsEmpty()) {
+      z->Release();
+      continue;
+    }
+    // printf("return %lu\n",zidx);
+    *zone_out = io_zones[zidx];
+    return IOStatus::OK();
+  }
+
+  return IOStatus::OK();
+}
+
+IOStatus ZonedBlockDevice::AllocateAllInvalidZone(Zone **zone_out) {
+  IOStatus s;
+  Zone *allocated_zone = nullptr;
+
+  for (const auto z : io_zones) {
+    if (!z->Acquire()) {
+      continue;
+    }
+    if (z->IsEmpty()) {
+      z->Release();
+      continue;
+    }
+    if (z->IsUsed()) {
+      z->Release();
+      continue;
+    }
+    allocated_zone = z;
+    break;
+  }
+
+  *zone_out = allocated_zone;
+  return IOStatus::OK();
 }
 
 }  // namespace ROCKSDB_NAMESPACE
