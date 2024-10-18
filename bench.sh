@@ -16,6 +16,11 @@ MED=67108864 #64GB
 
 ##Tuning Point
 T=80
+T_COMPACTION=4
+T_FLUSH=4
+T_SUBCOMPACTION=8
+ZC_KICKS=20
+UNTIL=20
 
 
 sudo rm -rf ${RESULT_DIR_PATH}
@@ -28,7 +33,10 @@ then
 fi
 
 sudo ${ROCKSDB_PATH}/db_bench -num=$MED -benchmarks="fillrandom,stats" --fs_uri=zenfs://dev:nvme0n1 -statistics -value_size=1024 \
--file_opening_threads=4 -max_background_flushes=4 -max_background_compactions=4 -histogram -reset_scheme=$ALGORITHM -reset_at_foreground=true -tuning_point=$T > ${RESULT_DIR_PATH}/tmp
+ -file_opening_threads=4 -max_background_compactions=${T_COMPACTION}   -max_background_flushes=${T_FLUSH} -subcompactions=${T_SUBCOMPACTION} -histogram -reset_scheme=$ALGORITHM -tuning_point=$T \
+ -reset_scheme=0 -partial_reset_scheme=1 -zc=${ZC_KICKS} -until=${UNTIL} \
+  -allocation_scheme=0  -zc_scheme=0 -compaction_scheme=0 \
+   -input_aware_scheme=0 -max_compaction_kick=0> ${RESULT_DIR_PATH}/tmp
 
 # gdb 명령어를 작성할 임시 스크립트 생성
 #echo "run -num=$MED -benchmarks=\"fillrandom,stats\" --fs_uri=zenfs://dev:nvme0n1 -statistics -value_size=1024 \
