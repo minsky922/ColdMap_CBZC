@@ -1301,6 +1301,7 @@ void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
     zoneFile_->level_ = level_;
   }
   zoneFile_->SetWriteLifeTimeHint(hint, level_);
+  auto lifetime_ = zonFile_->GetWriteLifeTimeHint();
   printf("level_: %d, hint: %d -> lifetime_ : %d\n", level_, hint, lifetime_);
 }
 
