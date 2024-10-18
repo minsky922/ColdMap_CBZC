@@ -141,6 +141,7 @@ class Zone {
   //
   uint64_t zidx_;  // not changed
   uint64_t zone_sz_;
+  unsigned int log2_erase_unit_size_ = 0;
   uint64_t erase_unit_size_ = 0;
   uint64_t block_sz_;
   //
