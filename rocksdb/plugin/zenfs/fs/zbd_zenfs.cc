@@ -1748,76 +1748,76 @@ void ZonedBlockDevice::DownwardAdjacentFileList(
 //   return db_ptr_->MostLargeUpperAdjacentFile(smallest,largest,level);
 // }
 
-IOStatus ZonedBlockDevice::GetNearestZoneFromZoneFile(
-    ZoneFile *zFile, std::vector<bool> &is_input_in_zone, Zone **zone_out,
-    uint64_t min_capacity) {
-  // IOStatus s;
+// IOStatus ZonedBlockDevice::GetNearestZoneFromZoneFile(
+//     ZoneFile *zFile, std::vector<bool> &is_input_in_zone, Zone **zone_out,
+//     uint64_t min_capacity) {
+//   // IOStatus s;
 
-  // Zone* allocated_zone=nullptr;
-  std::vector<std::pair<uint64_t, uint64_t>> zone_score(io_zones.size(),
-                                                        {0, 0});
-  auto extents = zFile->GetExtents();
-  (void)(is_input_in_zone);
+//   // Zone* allocated_zone=nullptr;
+//   std::vector<std::pair<uint64_t, uint64_t>> zone_score(io_zones.size(),
+//                                                         {0, 0});
+//   auto extents = zFile->GetExtents();
+//   (void)(is_input_in_zone);
 
-  for (auto e : extents) {
-    uint64_t zidx = e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES;
-    zone_score[zidx].second = zidx;
-    zone_score[zidx].first += e->length_;
-  }
+//   for (auto e : extents) {
+//     uint64_t zidx = e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES;
+//     zone_score[zidx].second = zidx;
+//     zone_score[zidx].first += e->length_;
+//   }
 
-  std::sort(zone_score.rbegin(), zone_score.rend());
+//   std::sort(zone_score.rbegin(), zone_score.rend());
 
-  for (auto zscore : zone_score) {
-    uint64_t score = zscore.first;
-    uint64_t zidx = zscore.second;
-    // printf("zscore : %lu zidx %lu\n",score>>20,zidx);
+//   for (auto zscore : zone_score) {
+//     uint64_t score = zscore.first;
+//     uint64_t zidx = zscore.second;
+//     // printf("zscore : %lu zidx %lu\n",score>>20,zidx);
 
-    if (score == 0) {
-      break;
-    }
-    Zone *z = io_zones[zidx];
+//     if (score == 0) {
+//       break;
+//     }
+//     Zone *z = io_zones[zidx];
 
-    // if(z->IsEmpty()){
-    //   continue;
-    // }
-    if (!z->Acquire()) {
-      continue;
-    }
-    if (z->capacity_ <= min_capacity || z->IsFull() || z->IsEmpty()) {
-      z->Release();
-      continue;
-    }
-    // printf("return %lu\n",zidx);
-    *zone_out = io_zones[zidx];
-    return IOStatus::OK();
-  }
+//     // if(z->IsEmpty()){
+//     //   continue;
+//     // }
+//     if (!z->Acquire()) {
+//       continue;
+//     }
+//     if (z->capacity_ <= min_capacity || z->IsFull() || z->IsEmpty()) {
+//       z->Release();
+//       continue;
+//     }
+//     // printf("return %lu\n",zidx);
+//     *zone_out = io_zones[zidx];
+//     return IOStatus::OK();
+//   }
 
-  return IOStatus::OK();
-}
+//   return IOStatus::OK();
+// }
 
-IOStatus ZonedBlockDevice::AllocateAllInvalidZone(Zone **zone_out) {
-  IOStatus s;
-  Zone *allocated_zone = nullptr;
+// IOStatus ZonedBlockDevice::AllocateAllInvalidZone(Zone **zone_out) {
+//   IOStatus s;
+//   Zone *allocated_zone = nullptr;
 
-  for (const auto z : io_zones) {
-    if (!z->Acquire()) {
-      continue;
-    }
-    if (z->IsEmpty()) {
-      z->Release();
-      continue;
-    }
-    if (z->IsUsed()) {
-      z->Release();
-      continue;
-    }
-    allocated_zone = z;
-    break;
-  }
+//   for (const auto z : io_zones) {
+//     if (!z->Acquire()) {
+//       continue;
+//     }
+//     if (z->IsEmpty()) {
+//       z->Release();
+//       continue;
+//     }
+//     if (z->IsUsed()) {
+//       z->Release();
+//       continue;
+//     }
+//     allocated_zone = z;
+//     break;
+//   }
 
-  *zone_out = allocated_zone;
-  return IOStatus::OK();
-}
+//   *zone_out = allocated_zone;
+//   return IOStatus::OK();
+// }
 
 }  // namespace ROCKSDB_NAMESPACE
 
