@@ -376,14 +376,13 @@ class ZonedBlockDevice {
       } else
         R_wp_ = (ZONE_SIZE * 100 - wwp * 100 / RC_) / ZONE_SIZE;
     }
-  }
+  };
   //   void PrintStat(void) {
   //     printf("[%3d] | %3ld  | %3ld |  %3ld | [%3ld] |", T_, free_percent_,
   //     RC_,
   //            R_wp_, (RT_ >> 20));
   //   }
-  std::vector<FARStat>
-      far_stats_;
+  std::vector<FARStat> far_stats_;
 
  public:
   //
