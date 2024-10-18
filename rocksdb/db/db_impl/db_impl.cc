@@ -319,8 +319,6 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       immutable_db_options_.zc_scheme, other_options);
 }
 
-}
-
 Status DBImpl::Resume() {
   ROCKS_LOG_INFO(immutable_db_options_.info_log, "Resuming DB");
 
