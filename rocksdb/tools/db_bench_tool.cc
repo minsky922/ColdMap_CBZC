@@ -4072,10 +4072,8 @@ class Benchmark {
     options.enable_intraL0_compaction = FLAGS_enable_intraL0_compaction;
     options.max_compaction_start_level = FLAGS_max_compaction_start_level;
     options.input_aware_scheme = FLAGS_input_aware_scheme;
-    options.async_zc_enabled = FLAGS_async_zc_enabled;
+    options.cbzc_enabled = FLAGS_cbzc_enabled;
     options.default_extent_size = FLAGS_default_extent_size;
-    options.page_cache_size = FLAGS_page_cache_size;
-    options.pca_selection = FLAGS_pca_selection;
     options.zc = FLAGS_zc;
     options.until = FLAGS_until;
     options.tuning_point = FLAGS_tuning_point;
