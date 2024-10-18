@@ -649,7 +649,7 @@ class ZonedBlockDevice {
     return (partial_reset_scheme_ == PARTIAL_RESET_WITH_ZONE_RESET);
   }
   inline bool PartialResetOnly() {
-    return partial_reset_scheme_ == PARTIAL_RESET_ONLY
+    return partial_reset_scheme_ == PARTIAL_RESET_ONLY;
     //  &&         log2_erase_unit_size_ > 0;
   }
   inline bool PartialResetAtBackground() {

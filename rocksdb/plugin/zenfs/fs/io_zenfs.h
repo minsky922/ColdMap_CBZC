@@ -279,6 +279,7 @@ class ZonedWritableFile : public FSWritableFile {
   }
 
  private:
+  IOStatus BufferedWrite(char* data, uint32_t data_left);
   IOStatus BufferedWrite(const Slice& data);
   IOStatus FlushBuffer();
   IOStatus DataSync();
