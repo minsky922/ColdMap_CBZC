@@ -1290,7 +1290,7 @@ void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
                            uint64_t allocation_scheme, uint64_t zc_scheme,
                            std::vector<uint64_t>& other_options) {
   std::cout << "ZenFS::SetResetScheme: r = " << r << ", T = " << T
-            << ", allocation_schme = " << allocation_schme
+            << ", allocation_schme = " << allocation_scheme
             << ", zc_scheme = " << zc_scheme << std::endl;
   zbd_->SetResetScheme(r, partial_reset_scheme, T, zc, until, allocation_scheme,
                        zc_scheme, other_options);
