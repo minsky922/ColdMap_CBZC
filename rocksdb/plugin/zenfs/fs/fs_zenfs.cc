@@ -445,8 +445,9 @@ void ZenFS::ZoneCleaning(bool forced) {
           uint64_t cost_benefit_score = benefit / cost;
           victim_candidate.push_back({cost_benefit_score, zone.start});
         }
-      } else {
+      } else if (zc_scheme == CBZC3) {
         for (const auto& zone_file : snapshot.zone_files_) {
+          printf("CBZC3!!");
           int fileLevel = zone_file.GetLevel();
           printf("File Level: %d\n", fileLevel);
           victim_candidate.push_back({garbage_percent_approx, zone.start});
