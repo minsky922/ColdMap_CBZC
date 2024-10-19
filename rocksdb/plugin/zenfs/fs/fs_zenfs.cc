@@ -398,7 +398,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           for (const auto& extent : zone_file.extents) {
             if (extent.zone_start == zone.start) {
               if (zc_scheme == CBZC1) {
-                printf("CBZC1!!!\n");
+                // printf("CBZC1!!!\n");
                 // CBZC1 - file creation time based
                 uint64_t file_mod_time = 0;
                 IOStatus s = GetFileModificationTime(
@@ -415,7 +415,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                 // std::cout << "Total_age: " << total_age << std::endl;
               } else {
                 // CBZC2 - LIZC
-                printf("CBZC2!!!\n");
+                // printf("CBZC2!!!\n");
                 auto it = lifetime_hints.find(extent.filename);
                 if (it != lifetime_hints.end()) {
                   Env::WriteLifeTimeHint hint = it->second;
@@ -446,6 +446,10 @@ void ZenFS::ZoneCleaning(bool forced) {
           victim_candidate.push_back({cost_benefit_score, zone.start});
         }
       }
+      // else {
+      //   for (const auto& zone_file : snapshot.zone_files_)
+      //   zoneFile_->
+      // }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
       std::cout << "all_inal_zone..." << std::endl;

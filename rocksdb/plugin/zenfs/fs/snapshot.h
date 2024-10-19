@@ -96,14 +96,18 @@ class ZoneFileSnapshot {
   uint64_t file_id;
   std::string filename;
   std::vector<ZoneExtentSnapshot> extents;
+  int level_;
 
  public:
   ZoneFileSnapshot(ZoneFile& file)
       : file_id(file.GetID()),
-        filename(file.GetFilename()) {  // 파일id 초기화, 파일이름 초기화
+        filename(file.GetFilename()),
+        level_(file.level_) {  // 파일id 초기화, 파일이름 초기화
     for (const auto* extent : file.GetExtents()) {  // 익스텐트 목록 초기화
       extents.emplace_back(*extent, filename);
     }
+    printf("ZoneFileSnapshot: File ID: %lu, Level: %d, Filename: %s\n", file_id,
+           level_, filename.c_str());
   }
 };
 
