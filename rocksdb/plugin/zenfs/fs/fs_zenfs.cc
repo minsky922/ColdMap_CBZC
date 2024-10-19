@@ -351,8 +351,8 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 }
 
 void ZenFS::ZoneCleaning(bool forced) {
-  uint64_t zc_scheme = zbd_->zc_scheme_;
-  printf("zonecleaning->zc_scheme : %d", zc_scheme);
+  uint64_t zc_scheme = zbd_->GetZCScheme();
+  printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
   auto start_chrono =

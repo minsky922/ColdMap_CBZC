@@ -390,6 +390,8 @@ class ZonedBlockDevice {
   std::vector<FARStat> far_stats_;
 
  public:
+  uint64_t GetZCScheme() const { return zc_scheme_; }
+
   //
   std::atomic<uint64_t> lsm_tree_[10];
   uint64_t max_bytes_for_level_base_ = 256 << 20;
