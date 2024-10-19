@@ -2039,6 +2039,7 @@ Status BlockBasedTableBuilder::Finish() {
   if (r->file->file_name().substr(r->file->file_name().size() - 3) == "sst") {
     r->file->writable_file()->SetMinMaxKeyAndLevel(r->smallest, r->largest,
                                                    r->level_at_creation);
+    printf("level_at_creation: %d\n", r->level_at_creation);
   }
   r->state = Rep::State::kClosed;
   r->SetStatus(r->CopyIOStatus());
