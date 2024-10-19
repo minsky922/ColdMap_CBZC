@@ -433,6 +433,7 @@ struct BlockBasedTableBuilder::Rep {
         compression_ctxs(tbo.compression_opts.parallel_threads),
         verify_ctxs(tbo.compression_opts.parallel_threads),
         verify_dict(),
+        level_at_creation(tbo.level_at_creation),
         state((tbo.compression_opts.max_dict_bytes > 0) ? State::kBuffered
                                                         : State::kUnbuffered),
         use_delta_encoding_for_index_values(table_opt.format_version >= 4 &&
