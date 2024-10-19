@@ -390,7 +390,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       if (zc_scheme == GREEDY) {
         // printf("GREEDY!!!!\n");
         victim_candidate.push_back({garbage_percent_approx, zone.start});
-      } else if (zc_scheme == CBZC1 || CBZC2) {
+      } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         auto current_time = std::chrono::system_clock::now();
         uint64_t total_age = 0;
         rocksdb::IOOptions io_options;
@@ -398,7 +398,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           for (const auto& extent : zone_file.extents) {
             if (extent.zone_start == zone.start) {
               if (zc_scheme == CBZC1) {
-                // printf("CBZC1!!!\n");
+                printf("CBZC1!!!\n");
                 // CBZC1 - file creation time based
                 uint64_t file_mod_time = 0;
                 IOStatus s = GetFileModificationTime(
@@ -415,7 +415,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                 // std::cout << "Total_age: " << total_age << std::endl;
               } else {
                 // CBZC2 - LIZC
-                // printf("CBZC2!!!\n");
+                printf("CBZC2!!!\n");
                 auto it = lifetime_hints.find(extent.filename);
                 if (it != lifetime_hints.end()) {
                   Env::WriteLifeTimeHint hint = it->second;
