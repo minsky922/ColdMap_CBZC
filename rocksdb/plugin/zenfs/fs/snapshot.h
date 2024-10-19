@@ -106,9 +106,8 @@ class ZoneFileSnapshot {
     for (const auto* extent : file.GetExtents()) {  // 익스텐트 목록 초기화
       extents.emplace_back(*extent, filename);
     }
-    printf("ZoneFileSnapshot: File ID: %lu, Level: %d, Filename: %s\n", file_id,
-           level_, filename.c_str());
   }
+  int GetLevel() const { return level_; }
 };
 
 /* ZenFS 파일 시스템의 스냅샷 */

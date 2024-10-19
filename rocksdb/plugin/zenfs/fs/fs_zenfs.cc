@@ -445,11 +445,13 @@ void ZenFS::ZoneCleaning(bool forced) {
           uint64_t cost_benefit_score = benefit / cost;
           victim_candidate.push_back({cost_benefit_score, zone.start});
         }
+      } else {
+        for (const auto& zone_file : snapshot.zone_files_) {
+          int fileLevel = zone_file.GetLevel();
+          printf("File Level: %d\n", fileLevel);
+          victim_candidate.push_back({garbage_percent_approx, zone.start});
+        }
       }
-      // else {
-      //   for (const auto& zone_file : snapshot.zone_files_)
-      //   zoneFile_->
-      // }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
       std::cout << "all_inal_zone..." << std::endl;
