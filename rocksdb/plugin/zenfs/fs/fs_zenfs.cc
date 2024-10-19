@@ -346,7 +346,7 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
     case Env::WLTH_EXTREME:
       return 4;
     default:
-      return 1;  // 기본적으로 짧은 수명으로 간주
+      return 1;
   }
 }
 
@@ -359,7 +359,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
   std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
             << std::endl;
-  zc_lock_.lock();  // 락을 걸어 동시 접근 방지
+  zc_lock_.lock();
 
   ZenFSSnapshot snapshot;
   ZenFSSnapshotOptions options;
@@ -367,7 +367,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   options.zone_file_ = 1;
   options.log_garbage_ = 1;
 
-  GetZenFSSnapshot(snapshot, options);  // 스냅샷 가져오기
+  GetZenFSSnapshot(snapshot, options);
   size_t all_inval_zone_n = 0;
   std::vector<std::pair<uint64_t, uint64_t>> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
@@ -375,7 +375,6 @@ void ZenFS::ZoneCleaning(bool forced) {
   // 모든 파일의 WriteLifeTimeHint 가져오기 - LIZC
   auto lifetime_hints = GetWriteLifeTimeHints();
 
-  // 스냅샷에서 모든 존을 순회하며 상태 확인
   for (const auto& zone : snapshot.zones_) {
     if (zone.capacity != 0) {
       continue;
@@ -386,113 +385,74 @@ void ZenFS::ZoneCleaning(bool forced) {
     uint64_t garbage_percent_approx =
         100 - 100 * zone.used_capacity / zone.max_capacity;  // 가비지 비율
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
-      // 현재 시간을 얻습니다. - CBZC1
-      // auto current_time = std::chrono::system_clock::now();
-      // uint64_t total_age = 0;
+      if (zc_scheme == GREEDY) {
+        printf("GREEDY!!!!\n");
+        victim_candidate.push_back({garbage_percent_approx, zone.start});
+      } else if (zc_scheme == CBZC1 || CBZC2) {
+        auto current_time = std::chrono::system_clock::now();
+        uint64_t total_age = 0;
+        rocksdb::IOOptions io_options;
+        for (const auto& zone_file : snapshot.zone_files_) {
+          for (const auto& extent : zone_file.extents) {
+            if (extent.zone_start == zone.start) {
+              if (zc_scheme == CBZC1) {
+                printf("CBZC1!!!\n");
+                // CBZC1 - file creation time based
+                uint64_t file_mod_time = 0;
+                IOStatus s = GetFileModificationTime(
+                    extent.filename, io_options, &file_mod_time, nullptr);
 
-      // // IOOptions 객체를 생성합니다.
-      // rocksdb::IOOptions io_options;
+                if (s.ok()) {
+                  uint64_t file_age =
+                      std::chrono::duration_cast<std::chrono::seconds>(
+                          current_time.time_since_epoch())
+                          .count() -
+                      file_mod_time;
+                  total_age += file_age;
+                }
+                // std::cout << "Total_age: " << total_age << std::endl;
+              } else {
+                // CBZC2 - LIZC
+                printf("CBZC2!!!\n");
+                auto it = lifetime_hints.find(extent.filename);
+                if (it != lifetime_hints.end()) {
+                  Env::WriteLifeTimeHint hint = it->second;
+                  uint64_t file_age = EstimateFileAge(hint);
+                  total_age += file_age;
+                }
+              }
+            }
+          }
+        }
 
-      // // zone_files_를 사용하여 해당 존에 속한 파일들에 접근합니다.
-      // for (const auto& zone_file : snapshot.zone_files_) {
-      //   for (const auto& extent : zone_file.extents) {
-      //     if (extent.zone_start ==
-      //         zone.start) {  // 현재 존에 속하는 익스텐트만 처리
-      //       // 익스텐트 정보 출력
-      //       // std::cout << "  Zone File ID: " << zone_file.file_id
-      //       //           << " | Filename: " << zone_file.filename
-      //       //           << " | Extent Start: " << extent.start
-      //       //           << " | Extent Length: " << extent.length <<
-      //       std::endl;
-      //       // std::cout << "  extent.File: " << extent.filename
-      //       //           << " | Zone Start: " << zone.start << std::endl;
+        /* cost-benefit */
+        /* benefit/cost = (free space generated * age of data) / cost
+                        = (1-u) * age / (1+u) */
+        /* cost = u(유효데이터(zone.used_capacity)(비율)를 읽는 비용)
+                + u(valid data copy) = 2u */
+        /* age = 세그먼트 내 가장 최근에 수정된 블록의 시간을 공간이 여유 상태를
+          유지할 시간의 추정치로 사용(즉, 가장 최근에 수정된 블록의 나이)
+         */
+        /* u = valid * garbage_percent_approx(free space+invalid)
+             = 1 - valid = 1-u  ex) 80 %
+         cost = 2u = (100 - gpa) * 2  */
 
-      //       /* CBZC1*/
-      //       // uint64_t file_mod_time = 0;
-
-      //       // // 파일의 수정 시간을 가져옵니다.
-      //       // IOStatus s = GetFileModificationTime(extent.filename,
-      //       io_options,
-      //       //                                      &file_mod_time, nullptr);
-      //       // // 수정 시간을 제대로 가져왔다면 출력합니다.
-      //       // if (s.ok()) {
-      //       //   uint64_t file_age =
-      //       //       std::chrono::duration_cast<std::chrono::seconds>(
-      //       //           current_time.time_since_epoch())
-      //       //           .count() -
-      //       //       file_mod_time;
-      //       //   // std::cout << "File_age: " << file_age << std::endl;
-      //       //   total_age += file_age;
-      //       // }
-
-      //       /*CBZC2 - LIZC*/
-      //       // 수명 힌트를 기반으로 나이 추정
-      //       auto it = lifetime_hints.find(extent.filename);
-      //       if (it != lifetime_hints.end()) {
-      //         Env::WriteLifeTimeHint hint = it->second;
-      //         // // WriteLifeTimeHint 값 출력
-      //         // std::cout << "Filename: " << extent.filename
-      //         //           << ", WriteLifeTimeHint: " <<
-      //         static_cast<int>(hint)
-      //         //           << std::endl;
-
-      //         uint64_t file_age = EstimateFileAge(hint);  // 추정된 나이 사용
-      //         // // 계산된 file_age 값 출력
-      //         // std::cout << "Estimated file age for " << extent.filename <<
-      //         ":
-      //         // "
-      //         //           << file_age << std::endl;
-      //         total_age += file_age;
-      //       }
-      //     }
-      //   }
-      // }
-      // std::cout << "Total_age: " << total_age << std::endl;
-      // uint64_t denominator = (100 - garbage_percent_approx) * 2;
-      // // std::cout << "  Denominator: " << denominator << std::endl;
-      /* greedy */
-      victim_candidate.push_back({garbage_percent_approx, zone.start});
-
-      /* cost-benefit */
-      // if (denominator != 0) {
-      //   // u = valid
-      //   // garbage_percent_approx(free space+invalid)=1-valid= 1-u ex) 80 %
-      //   // cost = 2u = (100-gpa)*2
-
-      //   uint64_t cost_benefit_score =
-      //       garbage_percent_approx * total_age / denominator;
-
-      //   // std::cout << "  Calculated cost-benefit score: " <<
-      //   // cost_benefit_score
-      //   //           << std::endl;
-
-      //   victim_candidate.push_back({cost_benefit_score, zone.start});
-      //   // std::cout << "  Added to victim_candidate: Zone Start: " <<
-      //   // zone.start
-      //   //           << std::endl;
-      // }
+        uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t benefit = garbage_percent_approx * total_age;
+        if (cost != 0) {
+          uint64_t cost_benefit_score = benefit / cost;
+          victim_candidate.push_back({cost_benefit_score, zone.start});
+        }
+      }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
       std::cout << "all_inal_zone..." << std::endl;
     }
   }
 
-  /* cost-benefit */
-  // benefit/cost = free space generated*age of data / cost
-  // = (1-u) * age / (1+u)
-  // cost = u(유효데이터(zone.used_capacity)(비율)를 읽는 비용)
-  // + u(valid data copy)
-  // = 2u
-  // benefit = 1-u(free space(garbage_percent_approx(?)))
-  // * age(creation file(생성시점)을 기준으로)
-  // age = 세그먼트 내 가장 최근에 수정된 블록의 시간을 공간이 여유 상태를
-  // 유지할 시간의 추정치로 사용했습니다(즉, 가장 최근에 수정된 블록의 나이)
-
-  // 가비지 비율에 따라 후보 존 정렬(greedy)
   std::cout << "Sorting victim candidates..." << std::endl;
   sort(victim_candidate.rbegin(), victim_candidate.rend());
 
-  // victim_candidate 출력
   // std::cout << "Victim candidates:" << std::endl;
   // for (const auto& candidate : victim_candidate) {
   //   std::cout << "cost-benefit score: " << candidate.first
@@ -536,7 +496,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   if (migrate_zones_start.size() > 0) {
     IOStatus s;
     Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
-    s = MigrateExtents(migrate_exts);  // 익스텐트 마이그레이션
+    s = MigrateExtents(migrate_exts);
     zc_triggerd_count_.fetch_add(1);
     if (!s.ok()) {
       Error(logger_, "Garbage collection failed");
@@ -556,7 +516,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                            forced);
     }
 
-    zc_lock_.unlock();  // 락 해제
+    zc_lock_.unlock();
     // return migrate_zones_start.size() + all_inval_zone_n;
   }
 }
@@ -569,19 +529,9 @@ void ZenFS::ZoneCleaning(bool forced) {
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
     usleep(100 * 1000);
-    /* 여유 공간 계산*/
-    // printf("#######GCWorker start\n");
-    // // 사용된 공간과 회수 가능한 공간을 더한 값을 non_free에 저장
-    // uint64_t non_free = zbd_->GetUsedSpace() + zbd_->GetReclaimableSpace();
-    // // 여유 공간을 free에 저장
-    // uint64_t free = zbd_->GetFreeSpace();
-    // // 총 공간 대비 여유 공간의 비율을 free_percent에 계산
-    // uint64_t free_percent = (100 * free) / (free + non_free);
-    // std::cout << "GCWorker : free_percent : " << free_percent << "\n";
-    //////////////////
     free_percent_ = zbd_->CalculateFreePercent();
     std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
-    if (free_percent_ < 20) {  // 20% 이하일 때만 ZoneCleaning 실행
+    if (free_percent_ < 20) {
       ZoneCleaning(true);
     }
 
@@ -1971,8 +1921,8 @@ Status ZenFS::MkFS(std::string aux_fs_p, uint32_t finish_threshold,
 }
 
 /*ZenFS에서 관리하는 모든 파일의 이름과 해당 파일의 쓰기 수명 힌트를 맵 형태로
-   반환합니다. 이 정보를 통해 파일 시스템 내의 각 파일이 어떤 수명 힌트를 가지고
-   있는지 쉽게 확인할 수 있습니다.
+   반환합니다. 이 정보를 통해 파일 시스템 내의 각 파일이 어떤 수명 힌트를
+   가지고 있는지 쉽게 확인할 수 있습니다.
 */
 std::map<std::string, Env::WriteLifeTimeHint> ZenFS::GetWriteLifeTimeHints() {
   std::map<std::string, Env::WriteLifeTimeHint> hint_map;

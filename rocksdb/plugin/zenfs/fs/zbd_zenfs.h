@@ -81,6 +81,11 @@ class ZoneFile;
 #define CAZA 1
 #define CAZA_ADV 2
 
+#define GREEDY 0
+#define CBZC1 1
+#define CBZC2 2
+#define CBZC3 3
+
 #define PARTIAL_RESET_KICKED_THRESHOLD 40
 // | zone-reset | partial-reset |
 #define RUNTIME_ZONE_RESET_DISABLED 0    // |      x     |       x       |

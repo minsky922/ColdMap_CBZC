@@ -1293,7 +1293,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
 }
 
 void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
-  printf("ZonedWritableFile::SetWriteLifeTimeHint: level_ = %d\n", level_);
+  // printf("ZonedWritableFile::SetWriteLifeTimeHint: level_ = %d\n", level_);
   if (zoneFile_->is_sst_) {
     zoneFile_->fno_ = fno_;
     zoneFile_->input_fno_ = input_fno_;
@@ -1302,7 +1302,15 @@ void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
   }
   zoneFile_->SetWriteLifeTimeHint(hint, level_);
   auto lifetime_ = zoneFile_->GetWriteLifeTimeHint();
-  printf("level_: %d, hint: %d -> lifetime_ : %d\n", level_, hint, lifetime_);
+  // printf("level_: %d, hint: %d -> lifetime_ : %d\n", level_, hint,
+  // lifetime_);
+  // std::vector<uint64_t> fno_list;
+  // zoneFile_->GetZbd()->SameLevelFileList(level_, fno_list);
+  // for (auto fno : fno_list) {
+  //   ZoneFile* zFile = zoneFile_->GetZbd()->GetSSTZoneFileInZBDNoLock(fno);
+  //   if (zFile != nullptr) {
+  //   }
+  // }
 }
 
 IOStatus ZonedSequentialFile::Read(size_t n, const IOOptions& /*options*/,
