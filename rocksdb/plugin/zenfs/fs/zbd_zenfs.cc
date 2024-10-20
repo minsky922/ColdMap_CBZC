@@ -1329,7 +1329,7 @@ bool ZonedBlockDevice::SetSSTFileforZBDNoLock(uint64_t fno,
   if (sst != nullptr) {  // already set
     return false;
   }
-  printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
+  // printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
   zoneFile->fno_ = fno;
   sst_file_bitmap_[fno] = zoneFile;
   return true;
@@ -1351,7 +1351,7 @@ void ZonedBlockDevice::SameLevelFileList(int level,
                                          bool exclude_being_compacted) {
   assert(db_ptr_ != nullptr);
   fno_list.clear();
-  printf("zbd::samelevelfilelist->level: %d", level);
+  // printf("zbd::samelevelfilelist->level: %d", level);
   db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
 }
 

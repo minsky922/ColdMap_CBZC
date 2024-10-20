@@ -351,20 +351,26 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 }
 
 void ZenFS::CalculateHorizontalLifetimes(
-    std::map<int, std::vector<uint64_t>>& level_file_map) {
+    std::map<int, std::vector<std::pair<uint64_t, size_t>>>& level_file_map) {
   for (int level = 0; level < 6; level++) {
     std::vector<uint64_t> fno_list;
     zbd_->SameLevelFileList(level, fno_list);
 
+    std::vector<std::pair<uint64_t, size_t>> file_with_index;
+    for (size_t i = 0; i < fno_list.size(); ++i) {
+      file_with_index.emplace_back(fno_list[i],
+                                   i);  // 파일 번호와 인덱스 (우선순위) 저장
+    }
+
     // 각 레벨의 파일 리스트를 map에 저장
-    level_file_map[level] = fno_list;
+    level_file_map[level] = file_with_index;
   }
-  // 1. samelevelfilelist에서 fno_list에 fd 넣을때 정규화
-  // 2. 넘어온뒤 정규화
+
   for (const auto& level : level_file_map) {
     std::cout << "Level " << level.first << ": [";
     for (size_t i = 0; i < level.second.size(); ++i) {
-      std::cout << level.second[i];
+      std::cout << "(" << level.second[i].first << ", "
+                << level.second[i].second << ")";
       if (i < level.second.size() - 1) {
         std::cout << ", ";
       }
