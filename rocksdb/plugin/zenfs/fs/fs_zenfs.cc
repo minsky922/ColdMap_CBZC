@@ -372,18 +372,18 @@ void ZenFS::CalculateHorizontalLifetimes(
     level_file_map[level] = file_with_normalized_index;
   }
 
-  // for (const auto& level : level_file_map) {
-  //   std::cout << "Level " << level.first << ": [";
-  //   for (size_t i = 0; i < level.second.size(); ++i) {
-  //     std::cout << "(" << level.second[i].first << ", "
-  //               << level.second[i].second << ")";  // fno와 정규화된 인덱스
-  //               출력
-  //     if (i < level.second.size() - 1) {
-  //       std::cout << ", ";
-  //     }
-  //   }
-  //   std::cout << "]" << std::endl;
-  // }
+  for (const auto& level : level_file_map) {
+    std::cout << "Level " << level.first << ": [";
+    for (size_t i = 0; i < level.second.size(); ++i) {
+      std::cout << "(" << level.second[i].first << ", "
+                << level.second[i].second << ")";  // fno와 정규화된 인덱스
+      출력
+      if (i < level.second.size() - 1) {
+        std::cout << ", ";
+      }
+    }
+    std::cout << "]" << std::endl;
+  }
 }
 
 void ZenFS::ReCalculateLifetimes() {
