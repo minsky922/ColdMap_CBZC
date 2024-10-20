@@ -386,7 +386,8 @@ void ZenFS::CalculateHorizontalLifetimes(
 }
 
 void ZenFS::ReCalculateLifetimes() {
-  std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map;
+  std::map<int, std::vector<std::pair<uint64_t, double>>> level_file_map;
+  ;
   // 1. 수평lifetime priority 정규화한것 불러오기
   CalculateHorizontalLifetimes(level_file_map);
   // 2. 수직 lifetime predictcompactionscore로 levelscore 불러와서 정규화
