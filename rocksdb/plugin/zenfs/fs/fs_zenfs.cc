@@ -364,7 +364,7 @@ void ZenFS::CalculateHorizontalLifetimes(
     for (size_t i = 0; i < level.second.size(); ++i) {
       std::cout << level.second[i];
       if (i < level.second.size() - 1) {
-        std::cout << ", ";  // 쉼표와 공백 추가
+        std::cout << ", ";
       }
     }
     std::cout << "]" << std::endl;
@@ -392,7 +392,6 @@ void ZenFS::ReCalculateLifetimes() {
   //     double sst_lifetime_value = CalculateSSTLifetimeValue(
   //         vertical_lifetime, horizontal_lifetime, a_, b_);
 
-  //     // 이후 sst_lifetime_value를 활용하여 추가적인 작업을 할 수 있음
   //   }
   // }
 }
