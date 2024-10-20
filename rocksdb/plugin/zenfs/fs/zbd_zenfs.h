@@ -412,20 +412,24 @@ class ZonedBlockDevice {
     if (cur_free_percent_ > 97) {
       return 0.0;
     }
-    if (level == 0) {
-      if (db_ptr_ == nullptr) {
-        return 0.0;
-      }
-      return db_ptr_->ReCalculateCompactionScore(0);
+    if (db_ptr_ == nullptr) {
+      return 0.0;
     }
+    // if (level == 0) {
+    //   if (db_ptr_ == nullptr) {
+    //     return 0.0;
+    //   }
+    //   return db_ptr_->ReCalculateCompactionScore(0);
+    // }
 
-    if (level == 1) {
-      return (double)((double)(lsm_tree_[level].load()) /
-                      (double)(max_bytes_for_level_base_));
-    }
+    // if (level == 1) {
+    //   return (double)((double)(lsm_tree_[level].load()) /
+    //                   (double)(max_bytes_for_level_base_));
+    // }
 
-    return (double)((double)(lsm_tree_[level].load()) /
-                    (double)GetLevelSizeLimit(level));
+    // return (double)((double)(lsm_tree_[level].load()) /
+    //                 (double)GetLevelSizeLimit(level));
+    return db_ptr_->ReCalculateCompactionScore(level);
   }
   inline uint64_t GetAllocationScheme() { return allocation_scheme_; }
 

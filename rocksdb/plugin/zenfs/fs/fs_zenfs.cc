@@ -364,25 +364,26 @@ void ZenFS::CalculateHorizontalLifetimes(
       double normalized_index =
           static_cast<double>(i) / static_cast<double>(num_files - 1);
       file_with_normalized_index.emplace_back(
-          fno_list[i], normalized_index);  // 파일 번호와 정규화된 인덱스 저장
+          fno_list[i],
+          normalized_index);  // rocksdb 파일 번호(fno)와 정규화된 인덱스 저장
     }
 
     // 각 레벨의 파일 리스트를 map에 저장
     level_file_map[level] = file_with_normalized_index;
   }
 
-  // 정규화된 인덱스 출력
-  for (const auto& level : level_file_map) {
-    std::cout << "Level " << level.first << ": [";
-    for (size_t i = 0; i < level.second.size(); ++i) {
-      std::cout << "(" << level.second[i].first << ", "
-                << level.second[i].second << ")";  // fno와 정규화된 인덱스 출력
-      if (i < level.second.size() - 1) {
-        std::cout << ", ";
-      }
-    }
-    std::cout << "]" << std::endl;
-  }
+  // for (const auto& level : level_file_map) {
+  //   std::cout << "Level " << level.first << ": [";
+  //   for (size_t i = 0; i < level.second.size(); ++i) {
+  //     std::cout << "(" << level.second[i].first << ", "
+  //               << level.second[i].second << ")";  // fno와 정규화된 인덱스
+  //               출력
+  //     if (i < level.second.size() - 1) {
+  //       std::cout << ", ";
+  //     }
+  //   }
+  //   std::cout << "]" << std::endl;
+  // }
 }
 
 void ZenFS::ReCalculateLifetimes() {
@@ -396,18 +397,26 @@ void ZenFS::ReCalculateLifetimes() {
   // sstsstable lifetime value를 평균치로 환산
   // 5. 가장 평균치가높은걸 victim으로 선택
 
-  // for (const auto& level_files : level_file_map) {
-  //   int level = level_files.first;
-  //   const std::vector<uint64_t>& fno_list = level_files.second;
+  // 2. 수직 lifetime predictcompactionscore로 level별 계산
+  for (int level = 0; level < 6; level++) {
+    double vertical_lifetime = zbd_->PredictCompactionScore(level);
+    std::cout << "Level : " << level
+              << ", vertical lifetime: " << vertical_lifetime << std::endl;
+    // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
+    // for (const auto& file_pair : level_file_map[level]) {
+    //   uint64_t fno = file_pair.first;
+    //   double horizontal_lifetime = file_pair.second;
 
-  //   // 수직 lifetime 계산
-  //   // double vertical_lifetime = CalculateVerticalLifetime(
-  //   //     level, immutable_options_, mutable_cf_options_, vstorage_);
+    //   // 수평 및 수직 lifetime을 기반으로 SSTlifetimeValue 계산
+    //   double sst_lifetime_value =
+    //       a_ * vertical_lifetime + b_ * horizontal_lifetime;
 
-  //   for (size_t i = 0; i < fno_list.size(); ++i) {
-  //     // 수평 lifetime 계산
-  //     double horizontal_lifetime =
-  //         CalculateHorizontalLifetime(i, fno_list.size());
+    //   // 여기에 sst_lifetime_value를 저장하거나 사용하는 로직 추가
+    //   std::cout << "File " << fno
+    //             << " has SST lifetime value: " << sst_lifetime_value
+    //             << std::endl;
+    // }
+  }
 
   //     // 수평 및 수직 lifetime을 기반으로 SSTlifetimeValue 계산
   //     double sst_lifetime_value = CalculateSSTLifetimeValue(
