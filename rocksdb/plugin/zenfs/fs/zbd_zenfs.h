@@ -672,6 +672,9 @@ class ZonedBlockDevice {
   uint32_t GetPartialResetScheme() { return partial_reset_scheme_; }
 
   void PrintZoneToFileStatus(void);
+
+  void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+                         bool exclude_being_compacted = true);
   //
  private:
   std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(
@@ -719,8 +722,8 @@ class ZonedBlockDevice {
                                 std::vector<uint64_t> &fno_list);
   uint64_t MostLargeUpperAdjacentFile(Slice &s, Slice &l, int level);
   uint64_t MostSmallDownwardAdjacentFile(Slice &s, Slice &l, int level);
-  void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
-                         bool exclude_being_compacted = true);
+  // void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+  //                        bool exclude_being_compacted = true);
   // int NumLevelFiles(int level);
   IOStatus AllocateSameLevelFilesZone(Slice &smallest, Slice &largest,
                                       const std::vector<uint64_t> &fno_list,

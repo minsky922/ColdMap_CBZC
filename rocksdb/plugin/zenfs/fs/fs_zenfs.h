@@ -488,8 +488,8 @@ class ZenFS : public FileSystemWrapper {
   bool IsZoneDevice() { return true; }
   // void ZoneCleaningWorker(bool run_once=false) override;
   void ZoneCleaning(bool forced);
-  void ZenFS::ReCalculateLifetimes();
-  void ZenFS::CalculateHorizontalLifetimes(
+  void ReCalculateLifetimes();
+  void CalculateHorizontalLifetimes(
       std::map<int, std::vector<uint64_t>>& level_file_map);
   // int GetMountTime(void) override { return mount_time_.load(); }
   // bool IsZCRunning(void) { return run_gc_worker_; }
