@@ -359,6 +359,8 @@ void ZenFS::CalculateHorizontalLifetimes(
     // 각 레벨의 파일 리스트를 map에 저장
     level_file_map[level] = fno_list;
   }
+  // 1. samelevelfilelist에서 fno_list에 fd 넣을때 정규화
+  // 2. 넘어온뒤 정규화
   for (const auto& level : level_file_map) {
     std::cout << "Level " << level.first << ": [";
     for (size_t i = 0; i < level.second.size(); ++i) {
@@ -373,7 +375,13 @@ void ZenFS::CalculateHorizontalLifetimes(
 
 void ZenFS::ReCalculateLifetimes() {
   std::map<int, std::vector<uint64_t>> level_file_map;
+  // 1. 수평lifetime priority 정규화한것 불러오기
   CalculateHorizontalLifetimes(level_file_map);
+  // 2. 수직 lifetime predictcompactionscore로 levelscore 불러와서 정규화
+  // 3. SSTlifetimeValue = a * VerticalLifetime + b * HorizontalLifetime 계산
+  // 4. ZoneLifetimeValue = (1/n) * Σ(SSTlifetimeValue) - 존의 라이프타임 - 존의
+  // sstsstable lifetime value를 평균치로 환산
+  // 5. 가장 평균치가높은걸 victim으로 선택
 
   // for (const auto& level_files : level_file_map) {
   //   int level = level_files.first;
