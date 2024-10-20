@@ -351,26 +351,32 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 }
 
 void ZenFS::CalculateHorizontalLifetimes(
-    std::map<int, std::vector<std::pair<uint64_t, size_t>>>& level_file_map) {
+    std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
   for (int level = 0; level < 6; level++) {
     std::vector<uint64_t> fno_list;
     zbd_->SameLevelFileList(level, fno_list);
 
-    std::vector<std::pair<uint64_t, size_t>> file_with_index;
-    for (size_t i = 0; i < fno_list.size(); ++i) {
-      file_with_index.emplace_back(fno_list[i],
-                                   i);  // 파일 번호와 인덱스 (우선순위) 저장
+    std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
+    size_t num_files = fno_list.size();
+
+    // 인덱스를 정규화하여 저장
+    for (size_t i = 0; i < num_files; ++i) {
+      double normalized_index =
+          static_cast<double>(i) / static_cast<double>(num_files - 1);
+      file_with_normalized_index.emplace_back(
+          fno_list[i], normalized_index);  // 파일 번호와 정규화된 인덱스 저장
     }
 
     // 각 레벨의 파일 리스트를 map에 저장
-    level_file_map[level] = file_with_index;
+    level_file_map[level] = file_with_normalized_index;
   }
 
+  // 정규화된 인덱스 출력
   for (const auto& level : level_file_map) {
     std::cout << "Level " << level.first << ": [";
     for (size_t i = 0; i < level.second.size(); ++i) {
       std::cout << "(" << level.second[i].first << ", "
-                << level.second[i].second << ")";
+                << level.second[i].second << ")";  // fno와 정규화된 인덱스 출력
       if (i < level.second.size() - 1) {
         std::cout << ", ";
       }
@@ -380,7 +386,7 @@ void ZenFS::CalculateHorizontalLifetimes(
 }
 
 void ZenFS::ReCalculateLifetimes() {
-  std::map<int, std::vector<std::pair<uint64_t, size_t>>> level_file_map;
+  std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map;
   // 1. 수평lifetime priority 정규화한것 불러오기
   CalculateHorizontalLifetimes(level_file_map);
   // 2. 수직 lifetime predictcompactionscore로 levelscore 불러와서 정규화
