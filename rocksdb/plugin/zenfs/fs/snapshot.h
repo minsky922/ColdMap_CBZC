@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "io_zenfs.h"
@@ -131,6 +132,7 @@ class ZenFSSnapshot {
   std::vector<ZoneFileSnapshot> zone_files_;  // 파일의 ID, 이름, 익스텐트 목록
   std::vector<ZoneExtentSnapshot>
       extents_;  // 익스텐트의 시작 위치, 길이, 존의 시작 위치, 파일 이름
+  // std::unordered_map<uint64_t, std::vector<ZoneFileSnapshot*>> zone_to_files;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

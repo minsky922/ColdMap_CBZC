@@ -1329,7 +1329,7 @@ bool ZonedBlockDevice::SetSSTFileforZBDNoLock(uint64_t fno,
   if (sst != nullptr) {  // already set
     return false;
   }
-  // printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
+  printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
   zoneFile->fno_ = fno;
   sst_file_bitmap_[fno] = zoneFile;
   return true;

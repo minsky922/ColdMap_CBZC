@@ -350,9 +350,57 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
   }
 }
 
+void ZenFS::CalculateHorizontalLifetimes(
+    std::map<int, std::vector<uint64_t>>& level_file_map) {
+  for (int level = 0; level < 6; level++) {
+    std::vector<uint64_t> fno_list;
+    zbd_->SameLevelFileList(level, fno_list);
+
+    // 각 레벨의 파일 리스트를 map에 저장
+    level_file_map[level] = fno_list;
+  }
+  for (const auto& level : level_file_map) {
+    std::cout << "Level " << level.first << ": [";
+    for (size_t i = 0; i < level.second.size(); ++i) {
+      std::cout << level.second[i];
+      if (i < level.second.size() - 1) {
+        std::cout << ", ";  // 쉼표와 공백 추가
+      }
+    }
+    std::cout << "]" << std::endl;
+  }
+}
+
+void ZenFS::ReCalculateLifetimes() {
+  std::map<int, std::vector<uint64_t>> level_file_map;
+  CalculateHorizontalLifetimes(level_file_map);
+
+  // for (const auto& level_files : level_file_map) {
+  //   int level = level_files.first;
+  //   const std::vector<uint64_t>& fno_list = level_files.second;
+
+  //   // 수직 lifetime 계산
+  //   // double vertical_lifetime = CalculateVerticalLifetime(
+  //   //     level, immutable_options_, mutable_cf_options_, vstorage_);
+
+  //   for (size_t i = 0; i < fno_list.size(); ++i) {
+  //     // 수평 lifetime 계산
+  //     double horizontal_lifetime =
+  //         CalculateHorizontalLifetime(i, fno_list.size());
+
+  //     // 수평 및 수직 lifetime을 기반으로 SSTlifetimeValue 계산
+  //     double sst_lifetime_value = CalculateSSTLifetimeValue(
+  //         vertical_lifetime, horizontal_lifetime, a_, b_);
+
+  //     // 이후 sst_lifetime_value를 활용하여 추가적인 작업을 할 수 있음
+  //   }
+  // }
+}
+
 void ZenFS::ZoneCleaning(bool forced) {
+  ReCalculateLifetimes();
   uint64_t zc_scheme = zbd_->GetZCScheme();
-  printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
+  // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
   auto start_chrono =
@@ -398,7 +446,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           for (const auto& extent : zone_file.extents) {
             if (extent.zone_start == zone.start) {
               if (zc_scheme == CBZC1) {
-                printf("CBZC1!!!\n");
+                // printf("CBZC1!!!\n");
                 // CBZC1 - file creation time based
                 uint64_t file_mod_time = 0;
                 IOStatus s = GetFileModificationTime(
@@ -415,7 +463,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                 // std::cout << "Total_age: " << total_age << std::endl;
               } else {
                 // CBZC2 - LIZC
-                printf("CBZC2!!!\n");
+                // printf("CBZC2!!!\n");
                 auto it = lifetime_hints.find(extent.filename);
                 if (it != lifetime_hints.end()) {
                   Env::WriteLifeTimeHint hint = it->second;
@@ -446,12 +494,12 @@ void ZenFS::ZoneCleaning(bool forced) {
           victim_candidate.push_back({cost_benefit_score, zone.start});
         }
       } else if (zc_scheme == CBZC3) {
-        printf("CBZC3!!");
-        for (const auto& zone_file : snapshot.zone_files_) {
-          int fileLevel = zone_file.GetLevel();
-          printf("File Level: %d\n", fileLevel);
-          victim_candidate.push_back({garbage_percent_approx, zone.start});
-        }
+        // printf("CBZC3!!");
+        // for (const auto& zone_file : snapshot.zone_files_) {
+        //   int fileLevel = zone_file.GetLevel();
+
+        //   victim_candidate.push_back({garbage_percent_approx, zone.start});
+        // }
       }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
@@ -2095,6 +2143,9 @@ void ZenFS::GetZenFSSnapshot(ZenFSSnapshot& snapshot,
   }
   if (options.zone_file_) {
     std::lock_guard<std::mutex> file_lock(files_mtx_);
+    // std::unordered_map<uint64_t, std::vector<ZoneFileSnapshot*>>
+    // zone_to_files;
+
     for (const auto& file_it : files_) {
       ZoneFile& file = *(file_it.second);
 
