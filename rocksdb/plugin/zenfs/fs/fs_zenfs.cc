@@ -376,8 +376,7 @@ void ZenFS::CalculateHorizontalLifetimes(
     std::cout << "Level " << level.first << ": [";
     for (size_t i = 0; i < level.second.size(); ++i) {
       std::cout << "(" << level.second[i].first << ", "
-                << level.second[i].second << ")";  // fno와 정규화된 인덱스
-      출력
+                << level.second[i].second << ")";  // fno와 정규화된 인덱스 출력
       if (i < level.second.size() - 1) {
         std::cout << ", ";
       }
