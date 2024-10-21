@@ -420,13 +420,13 @@ void ZenFS::ReCalculateLifetimes() {
           uint64_t zone_id = extent->zone_->zidx_;
 
           // 해당 존의 lifetime 합산 및 파일 수를 업데이트
-          if (zone_lifetime_map.find(zone_id) == zone_lifetime_map.end()) {
-            zone_lifetime_map[zone_id] = {sst_lifetime_value,
-                                          1};  // 새로운 존이면 초기화
+          if (zone_lifetime_map_.find(zone_id) == zone_lifetime_map_.end()) {
+            zone_lifetime_map_[zone_id] = {sst_lifetime_value,
+                                           1};  // 새로운 존이면 초기화
           } else {
-            zone_lifetime_map[zone_id].first +=
-                sst_lifetime_value;                  // total_lifetime 증가
-            zone_lifetime_map[zone_id].second += 1;  // file_count 증가
+            zone_lifetime_map_[zone_id].first +=
+                sst_lifetime_value;                   // 수명 추가
+            zone_lifetime_map_[zone_id].second += 1;  // file_count ++
           }
         }
       } else {
@@ -442,7 +442,7 @@ void ZenFS::ReCalculateLifetimes() {
   }
 
   // 각 존의 평균 lifetime 계산 및 출력
-  for (const auto& zone_entry : zone_lifetime_map) {
+  for (const auto& zone_entry : zone_lifetime_map_) {
     uint64_t zone_id = zone_entry.first;
     double total_lifetime = zone_entry.second.first;
     int file_count = zone_entry.second.second;
