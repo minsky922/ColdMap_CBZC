@@ -564,10 +564,17 @@ void ZenFS::ZoneCleaning(bool forced) {
 
           std::cout << "Zonecleaning::zone starting at " << zone_start
                     << " has average lifetime: " << average_lifetime
+                    << "Total lifetime: " << total_lifetime
+                    << ", File count: " << file_count
+                    << ", Garbage percentage: " << garbage_percent_approx << "%"
                     << std::endl;
         } else {
           std::cout << "Zone starting at " << zone_start
-                    << " has no lifetime data." << std::endl;
+                    << " has no lifetime data. "
+                    << "Total lifetime: " << total_lifetime
+                    << ", File count: " << file_count
+                    << ", Garbage percentage: " << garbage_percent_approx << "%"
+                    << std::endl;
         }
       }
     } else {  // 유효 데이터가 없는 경우
