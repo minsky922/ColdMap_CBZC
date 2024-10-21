@@ -443,11 +443,12 @@ void ZenFS::ReCalculateLifetimes() {
 
   // 각 존의 평균 lifetime 계산 및 출력
   for (const auto& zone_entry : zone_lifetime_map_) {
-    uint64_t zone_id = zone_entry.first;
+    uint64_t zone_start = zone_entry.first;
     double total_lifetime = zone_entry.second.first;
     int file_count = zone_entry.second.second;
 
-    double average_lifetime = total_lifetime / file_count;
+    double average_lifetime =
+        total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
     std::cout << "Zone starting at " << zone_start
               << " has average lifetime: " << average_lifetime << std::endl;
@@ -564,9 +565,6 @@ void ZenFS::ZoneCleaning(bool forced) {
           std::cout << "Zonecleaning::zone starting at " << zone_start
                     << " has average lifetime: " << average_lifetime
                     << std::endl;
-
-          // 여기에서 average_lifetime 값을 사용하여 존을 정리할지 여부를 결정할
-          // 수 있음
         } else {
           std::cout << "Zone starting at " << zone_start
                     << " has no lifetime data." << std::endl;
