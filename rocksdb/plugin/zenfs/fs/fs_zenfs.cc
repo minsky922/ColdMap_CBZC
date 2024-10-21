@@ -390,11 +390,13 @@ void ZenFS::ReCalculateLifetimes() {
   ;
   // 1. 수평lifetime priority 정규화한것 불러오기
   CalculateHorizontalLifetimes(level_file_map);
-  // 2. 수직 lifetime predictcompactionscore로 levelscore 불러와서 정규화
+  // 2. 수직 lifetime predictcompactionscore로 levelscore 불러오기기
   // 3. SSTlifetimeValue = a * VerticalLifetime + b * HorizontalLifetime 계산
   // 4. ZoneLifetimeValue = (1/n) * Σ(SSTlifetimeValue) - 존의 라이프타임 - 존의
   // sstsstable lifetime value를 평균치로 환산
   // 5. 가장 평균치가높은걸 victim으로 선택
+
+  zone_lifetime_map_.clear();
 
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
   for (int level = 0; level < 6; level++) {
@@ -402,27 +404,54 @@ void ZenFS::ReCalculateLifetimes() {
     std::cout << "Level : " << level
               << ", vertical lifetime: " << vertical_lifetime << std::endl;
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
-    // for (const auto& file_pair : level_file_map[level]) {
-    //   uint64_t fno = file_pair.first;
-    //   double horizontal_lifetime = file_pair.second;
+    for (const auto& file_pair : level_file_map[level]) {
+      uint64_t fno = file_pair.first;
+      double horizontal_lifetime = file_pair.second;
 
-    //   // 수평 및 수직 lifetime을 기반으로 SSTlifetimeValue 계산
-    //   double sst_lifetime_value =
-    //       a_ * vertical_lifetime + b_ * horizontal_lifetime;
+      double alpha_ = 1, beta_ = 1;
 
-    //   // 여기에 sst_lifetime_value를 저장하거나 사용하는 로직 추가
-    //   std::cout << "File " << fno
-    //             << " has SST lifetime value: " << sst_lifetime_value
-    //             << std::endl;
-    // }
+      double sst_lifetime_value =
+          alpha_ * vertical_lifetime + beta_ * horizontal_lifetime;
+
+      ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
+      if (zone_file != nullptr) {
+        // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
+        for (const auto* extent : zone_file->GetExtents()) {
+          uint64_t zone_id = extent->zone_->zidx_;
+
+          // 해당 존의 lifetime 합산 및 파일 수를 업데이트
+          if (zone_lifetime_map.find(zone_id) == zone_lifetime_map.end()) {
+            zone_lifetime_map[zone_id] = {sst_lifetime_value,
+                                          1};  // 새로운 존이면 초기화
+          } else {
+            zone_lifetime_map[zone_id].first +=
+                sst_lifetime_value;                  // total_lifetime 증가
+            zone_lifetime_map[zone_id].second += 1;  // file_count 증가
+          }
+        }
+      } else {
+        std::cerr << "Error: Cannot find ZoneFile for fno: " << fno
+                  << std::endl;
+      }
+
+      // 여기에 sst_lifetime_value를 저장하거나 사용하는 로직 추가
+      std::cout << "File " << fno
+                << " has SST lifetime value: " << sst_lifetime_value
+                << std::endl;
+    }
   }
 
-  //     // 수평 및 수직 lifetime을 기반으로 SSTlifetimeValue 계산
-  //     double sst_lifetime_value = CalculateSSTLifetimeValue(
-  //         vertical_lifetime, horizontal_lifetime, a_, b_);
+  // 각 존의 평균 lifetime 계산 및 출력
+  for (const auto& zone_entry : zone_lifetime_map) {
+    uint64_t zone_id = zone_entry.first;
+    double total_lifetime = zone_entry.second.first;
+    int file_count = zone_entry.second.second;
 
-  //   }
-  // }
+    double average_lifetime = total_lifetime / file_count;
+
+    std::cout << "Zone " << zone_id
+              << " has average lifetime: " << average_lifetime << std::endl;
+  }
 }
 
 void ZenFS::ZoneCleaning(bool forced) {
@@ -523,11 +552,22 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
       } else if (zc_scheme == CBZC3) {
         // printf("CBZC3!!");
-        // for (const auto& zone_file : snapshot.zone_files_) {
-        //   int fileLevel = zone_file.GetLevel();
+        uint64_t zone_id = zone.start;  // 존의 시작을 id로 사용
 
-        //   victim_candidate.push_back({garbage_percent_approx, zone.start});
-        // }
+        if (zone_lifetime_map_.find(zone_id) != zone_lifetime_map_.end()) {
+          double total_lifetime = zone_lifetime_map_[zone_id].first;
+          int file_count = zone_lifetime_map_[zone_id].second;
+
+          double average_lifetime =
+              total_lifetime / file_count;  // 존의 평균 lifetime 계산
+
+          std::cout << "Zone " << zone_id
+                    << " has average lifetime: " << average_lifetime
+                    << std::endl;
+        } else {
+          std::cout << "Zone " << zone_id << " has no lifetime data."
+                    << std::endl;
+        }
       }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
