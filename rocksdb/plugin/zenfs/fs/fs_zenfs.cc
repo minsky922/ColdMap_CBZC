@@ -552,7 +552,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
       } else if (zc_scheme == CBZC3) {
         // printf("CBZC3!!");
-        uint64_t zone_id = zone.start;  // 존의 시작을 id로 사용
+        // uint64_t zone_id = zone.start;  // 존의 시작을 id로 사용
+        uint64_t zone_id = zone.zidx_;  // zidx_ 사용
 
         if (zone_lifetime_map_.find(zone_id) != zone_lifetime_map_.end()) {
           double total_lifetime = zone_lifetime_map_[zone_id].first;
@@ -561,7 +562,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           double average_lifetime =
               total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
-          std::cout << "Zone " << zone_id
+          std::cout << "Zonecleaning::Zone " << zone_id
                     << " has average lifetime: " << average_lifetime
                     << std::endl;
         } else {
