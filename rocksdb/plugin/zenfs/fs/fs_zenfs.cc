@@ -417,16 +417,16 @@ void ZenFS::ReCalculateLifetimes() {
       if (zone_file != nullptr) {
         // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
         for (const auto* extent : zone_file->GetExtents()) {
-          uint64_t zone_id = extent->zone_->zidx_;
+          uint64_t zone_start = extent->zone_->start_;  // 존의 시작 위치 사용
 
           // 해당 존의 lifetime 합산 및 파일 수를 업데이트
-          if (zone_lifetime_map_.find(zone_id) == zone_lifetime_map_.end()) {
-            zone_lifetime_map_[zone_id] = {sst_lifetime_value,
-                                           1};  // 새로운 존이면 초기화
+          if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
+            zone_lifetime_map_[zone_start] = {sst_lifetime_value,
+                                              1};  // 새로운 존이면 초기화
           } else {
-            zone_lifetime_map_[zone_id].first +=
-                sst_lifetime_value;                   // 수명 추가
-            zone_lifetime_map_[zone_id].second += 1;  // file_count ++
+            zone_lifetime_map_[zone_start].first +=
+                sst_lifetime_value;                      // 수명 추가
+            zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
           }
         }
       } else {
@@ -449,7 +449,7 @@ void ZenFS::ReCalculateLifetimes() {
 
     double average_lifetime = total_lifetime / file_count;
 
-    std::cout << "Zone " << zone_id
+    std::cout << "Zone starting at " << zone_start
               << " has average lifetime: " << average_lifetime << std::endl;
   }
 }
@@ -552,22 +552,24 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
       } else if (zc_scheme == CBZC3) {
         // printf("CBZC3!!");
-        // uint64_t zone_id = zone.start;  // 존의 시작을 id로 사용
-        uint64_t zone_id = zone.zidx_;  // zidx_ 사용
+        uint64_t zone_start = zone.start;
 
-        if (zone_lifetime_map_.find(zone_id) != zone_lifetime_map_.end()) {
-          double total_lifetime = zone_lifetime_map_[zone_id].first;
-          int file_count = zone_lifetime_map_[zone_id].second;
+        if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
+          double total_lifetime = zone_lifetime_map_[zone_start].first;
+          int file_count = zone_lifetime_map_[zone_start].second;
 
           double average_lifetime =
               total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
-          std::cout << "Zonecleaning::Zone " << zone_id
+          std::cout << "Zonecleaning::zone starting at " << zone_start
                     << " has average lifetime: " << average_lifetime
                     << std::endl;
+
+          // 여기에서 average_lifetime 값을 사용하여 존을 정리할지 여부를 결정할
+          // 수 있음
         } else {
-          std::cout << "Zone " << zone_id << " has no lifetime data."
-                    << std::endl;
+          std::cout << "Zone starting at " << zone_start
+                    << " has no lifetime data." << std::endl;
         }
       }
     } else {  // 유효 데이터가 없는 경우
