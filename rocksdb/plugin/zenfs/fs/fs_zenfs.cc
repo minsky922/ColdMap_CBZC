@@ -571,8 +571,9 @@ void ZenFS::ZoneCleaning(bool forced) {
         } else {
           std::cout << "Zone starting at " << zone_start
                     << " has no lifetime data. "
-                    << "Total lifetime: " << total_lifetime
-                    << ", File count: " << file_count
+                    << "Total lifetime: "
+                    << zone_lifetime_map_[zone_start].first
+                    << ", File count: " << zone_lifetime_map_[zone_start].second
                     << ", Garbage percentage: " << garbage_percent_approx << "%"
                     << std::endl;
         }
