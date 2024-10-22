@@ -463,8 +463,10 @@ void ZenFS::ReCalculateLifetimes() {
 }
 
 void ZenFS::ZoneCleaning(bool forced) {
-  ReCalculateLifetimes();
   uint64_t zc_scheme = zbd_->GetZCScheme();
+  if (zc_scheme == CBZC3) {
+    ReCalculateLifetimes();
+  }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
@@ -488,7 +490,9 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::set<uint64_t> migrate_zones_start;
 
   // 모든 파일의 WriteLifeTimeHint 가져오기 - LIZC
-  auto lifetime_hints = GetWriteLifeTimeHints();
+  if (zc_scheme == CBZC2) {
+    auto lifetime_hints = GetWriteLifeTimeHints();
+  }
 
   for (const auto& zone : snapshot.zones_) {
     // zone.capacity == 0 -> full-zone
@@ -586,6 +590,12 @@ void ZenFS::ZoneCleaning(bool forced) {
                     << ", Garbage percentage: " << garbage_percent_approx << "%"
                     << std::endl;
         }
+        uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t benefit = garbage_percent_approx * average_lifetime;
+        if (cost != 0) {
+          uint64_t cost_benefit_score = benefit / cost;
+          victim_candidate.push_back({cost_benefit_score, zone.start});
+        }
       }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
@@ -596,11 +606,11 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::cout << "Sorting victim candidates..." << std::endl;
   sort(victim_candidate.rbegin(), victim_candidate.rend());
 
-  // std::cout << "Victim candidates:" << std::endl;
-  // for (const auto& candidate : victim_candidate) {
-  //   std::cout << "cost-benefit score: " << candidate.first
-  //             << ", Zone Start: " << candidate.second << std::endl;
-  // }
+  std::cout << "Victim candidates:" << std::endl;
+  for (const auto& candidate : victim_candidate) {
+    std::cout << "cost-benefit score: " << candidate.first
+              << ", Zone Start: " << candidate.second << std::endl;
+  }
 
   uint64_t threshold = 0;
   uint64_t reclaimed_zone_n = 1;

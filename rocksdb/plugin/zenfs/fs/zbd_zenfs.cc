@@ -895,7 +895,7 @@ void ZonedBlockDevice::WaitForOpenIOZoneToken(bool prioritized) {
 IOStatus ZonedBlockDevice::RuntimeReset(void) {
   IOStatus s = IOStatus::OK();
   if (RuntimeZoneResetDisabled()) {
-    printf("RuntimeZoneResetDisabled!!\n");
+    // printf("RuntimeZoneResetDisabled!!\n");
     return s;
   }
   if (ProactiveZoneCleaning()) {
