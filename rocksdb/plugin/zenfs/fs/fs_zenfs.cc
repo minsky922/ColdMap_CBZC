@@ -490,9 +490,9 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::set<uint64_t> migrate_zones_start;
 
   // 모든 파일의 WriteLifeTimeHint 가져오기 - LIZC
-  if (zc_scheme == CBZC2) {
-    auto lifetime_hints = GetWriteLifeTimeHints();
-  }
+  // if (zc_scheme == CBZC2) {
+  auto lifetime_hints = GetWriteLifeTimeHints();
+  // }
 
   for (const auto& zone : snapshot.zones_) {
     // zone.capacity == 0 -> full-zone
@@ -567,6 +567,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
         std::cout << "zone.capacity: " << zone.capacity << std::endl;
+        double average_lifetime;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
           double total_lifetime = zone_lifetime_map_[zone_start].first;
