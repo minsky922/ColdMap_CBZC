@@ -473,8 +473,8 @@ void ZenFS::ZoneCleaning(bool forced) {
       std::chrono::high_resolution_clock::now();  // valid data copy time
   auto start_time = std::chrono::system_clock::now();
   auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
-  std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
-            << std::endl;
+  // std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
+  //           << std::endl;
   // zc_lock_.lock();
 
   ZenFSSnapshot snapshot;
@@ -643,8 +643,9 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (victim_candidate[i].first > threshold) {
       should_be_copied +=
           (zone_size - (victim_candidate[i].first * zone_size / 100));
-      std::cout << "cost-benefit score: " << victim_candidate[i].first
-                << ", Zone Start: " << victim_candidate[i].second << std::endl;
+      // std::cout << "cost-benefit score: " << victim_candidate[i].first
+      //           << ", Zone Start: " << victim_candidate[i].second <<
+      //           std::endl;
       migrate_zones_start.emplace(victim_candidate[i].second);
     }
   }
@@ -670,8 +671,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     // 종료 시간 기록
     auto end_time = std::chrono::system_clock::now();
     auto end_time_t = std::chrono::system_clock::to_time_t(end_time);
-    std::cout << "ZoneCleaning ended at: " << std::ctime(&end_time_t)
-              << std::endl;
+    // std::cout << "ZoneCleaning ended at: " << std::ctime(&end_time_t)
+    //           << std::endl;
     if (should_be_copied > 0) {
       auto elapsed = std::chrono::high_resolution_clock::now() - start_chrono;
       long long microseconds =
