@@ -599,7 +599,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       }
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
-      std::cout << "all_inal_zone..." << std::endl;
+      // std::cout << "all_inal_zone..." << std::endl;
     }
   }
 
@@ -668,7 +668,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                            migrate_zones_start.size(), should_be_copied,
                            forced);
     }
-
+    std::cout << "all invalid zone_n: " << all_inval_zone_n << std::endl;
     zc_lock_.unlock();
     // return migrate_zones_start.size() + all_inval_zone_n;
   }
