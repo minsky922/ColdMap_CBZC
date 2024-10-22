@@ -474,7 +474,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
   std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
             << std::endl;
-  zc_lock_.lock();
+  // zc_lock_.lock();
 
   ZenFSSnapshot snapshot;
   ZenFSSnapshotOptions options;
@@ -597,12 +597,12 @@ void ZenFS::ZoneCleaning(bool forced) {
         // uint64_t benefit = garbage_percent_approx * average_lifetime;
         double cost = 2 * (static_cast<double>(zone.used_capacity) /
                            static_cast<double>(zone.max_capacity));
-        std::cout << "cost : " << cost << std::endl;
+        // std::cout << "cost : " << cost << std::endl;
 
         double benefit = (static_cast<double>(zone.max_capacity) -
                           static_cast<double>(zone.used_capacity)) *
                          average_lifetime;  // free space * lifetime
-        std::cout << "benefit : " << benefit << std::endl;
+        // std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
           double cost_benefit_score = benefit / cost;
           victim_candidate.push_back({cost_benefit_score, zone.start});
@@ -619,10 +619,10 @@ void ZenFS::ZoneCleaning(bool forced) {
   sort(victim_candidate.rbegin(), victim_candidate.rend());
 
   std::cout << "Victim candidates:" << std::endl;
-  for (const auto& candidate : victim_candidate) {
-    std::cout << "cost-benefit score: " << candidate.first
-              << ", Zone Start: " << candidate.second << std::endl;
-  }
+  // for (const auto& candidate : victim_candidate) {
+  //   std::cout << "cost-benefit score: " << candidate.first
+  //             << ", Zone Start: " << candidate.second << std::endl;
+  // }
 
   uint64_t threshold = 0;
   uint64_t reclaimed_zone_n = 1;
@@ -682,7 +682,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                            forced);
     }
     std::cout << "after all invalid zone_n: " << all_inval_zone_n << std::endl;
-    zc_lock_.unlock();
+    // zc_lock_.unlock();
     // return migrate_zones_start.size() + all_inval_zone_n;
   }
 }
@@ -697,7 +697,7 @@ void ZenFS::GCWorker() {
     usleep(100 * 1000);
     free_percent_ = zbd_->CalculateFreePercent();
     std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
-    if (free_percent_ < 20) {
+    if (free_percent_ < 30) {
       ZoneCleaning(true);
     }
 

@@ -528,7 +528,7 @@ class ZonedBlockDevice {
     // uint64_t device_size = (uint64_t)ZENFS_IO_ZONES * (uint64_t)ZONE_SIZE;
     uint64_t device_size = (uint64_t)io_zones.size() *
                            BYTES_TO_MB(io_zones[0]->max_capacity_);  // MB
-    std::cout << "calculated device_size: " << device_size << std::endl;
+    // std::cout << "calculated device_size: " << device_size << std::endl;
     // uint64_t zone_sz = BYTES_TO_MB(zbd_be_->GetZoneSize());  // MB
     // uint64_t device_size = (uint64_t)GetNrZones() * zone_sz;  // MB
     // printf("calcuatefreepercent::io_zones.size() : %ld\n",
