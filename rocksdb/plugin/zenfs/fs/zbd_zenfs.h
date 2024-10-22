@@ -369,6 +369,11 @@ class ZonedBlockDevice {
   };
   struct FARStat {
     uint64_t free_percent_;
+    ize_t reset_count_;
+    size_t reset_count_zc_;
+    size_t erase_size_ = 0;
+    size_t erase_size_zc_ = 0;
+    size_t erase_size_proactive_zc_ = 0;
 
     size_t RC_;
     int T_;
@@ -472,7 +477,8 @@ class ZonedBlockDevice {
   //////////////////////////////////////
   std::string GetFilename();
   uint32_t GetBlockSize();
-
+  IOStatus RuntimeZoneReset(std::vector<bool> &is_reseted);
+  IOStatus RuntimePartialZoneReset(std::vector<bool> &is_reseted);
   IOStatus ResetUnusedIOZones();
   //////////////////////////////////////////////////
   void AddIOBlockedTimeLapse(int s, int e) {

@@ -60,7 +60,7 @@ class ZoneSnapshot {
   uint64_t start;  // 존의 시작 위치
   uint64_t wp;     // 존의 쓰기 포인터
 
-  uint64_t capacity;       // 존의 총 용량
+  uint64_t capacity;       // 남아있는 사용 가능한 용량
   uint64_t used_capacity;  // 존에서 사용된 용량
   uint64_t max_capacity;   // 존의 최대 용량
 

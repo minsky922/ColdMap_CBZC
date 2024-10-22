@@ -807,6 +807,66 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
                           // IOStatus::OK()를 반환
 }
 
+IOStatus ZonedBlockDevice::RuntimeZoneReset(std::vector<bool> &is_reseted) {
+  size_t total_invalid = 0;
+
+  uint64_t zeu_size = 1 << 30;
+  (void)(zeu_size);
+  IOStatus reset_status = IOStatus::OK();
+  for (size_t i = 0; i < io_zones.size(); i++) {
+    const auto z = io_zones[i];
+    if (is_reseted[i]) {
+      continue;
+    }
+    if (z->IsEmpty()) {
+      continue;
+    }
+    if (z->IsUsed()) {
+      continue;
+    }
+    if (z->Acquire()) {
+      if (z->IsEmpty()) {
+        z->Release();
+        continue;
+      }
+      if (z->IsUsed()) {
+        z->Release();
+        continue;
+      }
+
+      bool full = z->IsFull();
+
+      total_invalid = z->wp_ - z->start_ < z->max_capacity_
+                          ? (z->wp_ - z->start_)
+                          : z->max_capacity_;
+
+      if ((z->max_capacity_ - total_invalid) >
+          reset_threshold_arr_[cur_free_percent_]) {
+        goto no_reset;
+      }
+      erase_size_.fetch_add(total_invalid);
+      if (total_invalid % zeu_size) {
+        wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
+      }
+
+      reset_status = z->Reset();
+
+      if (!reset_status.ok()) return reset_status;
+      is_reseted[i] = true;
+      reset_count_.fetch_add(1);
+      z->reset_count_++;
+
+    no_reset:
+      if (!full && z->IsEmpty()) {  // not full -> empty
+        PutActiveIOZoneToken();
+      }
+      z->Release();
+    }
+  }
+
+  return IOStatus::OK();
+}
+
 void ZonedBlockDevice::WaitForOpenIOZoneToken(bool prioritized) {
   long allocator_open_limit;
 
@@ -830,6 +890,45 @@ void ZonedBlockDevice::WaitForOpenIOZoneToken(bool prioritized) {
       return false;
     }
   });
+}
+
+IOStatus ZonedBlockDevice::RuntimeReset(void) {
+  IOStatus s = IOStatus::OK();
+  if (RuntimeZoneResetDisabled()) {
+    return s;
+  }
+  if (ProactiveZoneCleaning()) {
+    return s;
+  }
+  std::vector<bool> is_reseted;
+  // auto start_chrono = std::chrono::high_resolution_clock::now();
+  is_reseted.assign(io_zones.size(), false);
+  switch (GetPartialResetScheme()) {
+    // case PARTIAL_RESET_ONLY:
+    //   s = RuntimePartialZoneReset(is_reseted);
+    //   break;
+    // case PARTIAL_RESET_WITH_ZONE_RESET:
+    //   s = RuntimeZoneReset(is_reseted);
+    //   if (!s.ok()) break;
+    //   s = RuntimePartialZoneReset(is_reseted);
+    //   break;
+    // case PARTIAL_RESET_BACKGROUND_T_WITH_ZONE_RESET:
+    //   /* fall through */
+    // case PARTIAL_RESET_AT_BACKGROUND:
+    //   /* fall through */
+    case RUNTIME_ZONE_RESET_ONLY:
+      // if(AsyncZCEnabled()){
+      //   ResetMultipleUnusedIOZones();
+      // }else{
+      // ResetUnusedIOZones();
+      // }
+      s = RuntimeZoneReset(is_reseted);
+
+      break;
+    default:
+      break;
+  }
+  return s;
 }
 
 bool ZonedBlockDevice::GetActiveIOZoneTokenIfAvailable() {

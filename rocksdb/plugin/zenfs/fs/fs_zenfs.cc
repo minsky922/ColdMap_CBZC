@@ -360,12 +360,19 @@ void ZenFS::CalculateHorizontalLifetimes(
     size_t num_files = fno_list.size();
 
     // 인덱스를 정규화하여 저장
-    for (size_t i = 0; i < num_files; ++i) {
-      double normalized_index =
-          static_cast<double>(i) / static_cast<double>(num_files - 1);
-      file_with_normalized_index.emplace_back(
-          fno_list[i],
-          normalized_index);  // rocksdb 파일 번호(fno)와 정규화된 인덱스 저장
+    if (level == 0) {
+      // Level 0일 경우 모든 파일의 정규화된 인덱스 값은 1로 설정
+      for (size_t i = 0; i < num_files; ++i) {
+        file_with_normalized_index.emplace_back(fno_list[i], 1.0);  // 인덱스 1
+      }
+    } else {
+      // Level 0이 아닌 경우, 인덱스를 정규화하여 저장
+      for (size_t i = 0; i < num_files; ++i) {
+        double normalized_index =
+            static_cast<double>(i) / static_cast<double>(num_files - 1);
+        file_with_normalized_index.emplace_back(
+            fno_list[i], normalized_index);  // 정규화된 인덱스 저장
+      }
     }
 
     // 각 레벨의 파일 리스트를 map에 저장
@@ -484,10 +491,11 @@ void ZenFS::ZoneCleaning(bool forced) {
   auto lifetime_hints = GetWriteLifeTimeHints();
 
   for (const auto& zone : snapshot.zones_) {
-    if (zone.capacity != 0) {
+    // zone.capacity == 0 -> full-zone
+    if (zone.capacity != 0) {  // skip not-full zone
       continue;
     }
-    if (zone.used_capacity == zone.max_capacity) {
+    if (zone.used_capacity == zone.max_capacity) {  // skip all valid zone
       continue;
     }
     uint64_t garbage_percent_approx =
@@ -554,6 +562,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       } else if (zc_scheme == CBZC3) {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
+        std::cout << "zone.capacity: " << zone.capacity << std::endl;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
           double total_lifetime = zone_lifetime_map_[zone_start].first;
@@ -1241,7 +1250,10 @@ IOStatus ZenFS::DeleteDirRecursive(const std::string& d,
     std::lock_guard<std::mutex> lock(files_mtx_);
     s = DeleteDirRecursiveNoLock(d, options, dbg);
   }
-  if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  // if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  if (s.ok()) {
+    s = zbd_->RuntimeReset();
+  }
   return s;
 }
 
@@ -1298,7 +1310,10 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
         new ZonedWritableFile(zbd_, !file_opts.use_direct_writes, zoneFile));
   }
 
-  if (resetIOZones) s = zbd_->ResetUnusedIOZones();
+  // if (resetIOZones) s = zbd_->ResetUnusedIOZones();
+  if (resetIOZones) {
+    s = zbd_->RuntimeReset();
+  }
 
   return s;
 }
@@ -1312,7 +1327,10 @@ IOStatus ZenFS::DeleteFile(const std::string& fname, const IOOptions& options,
   files_mtx_.lock();
   s = DeleteFileNoLock(fname, options, dbg);
   files_mtx_.unlock();
-  if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  // if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  if (s.ok()) {
+    s = zbd_->RuntimeReset();
+  }
   zbd_->LogZoneStats();
 
   return s;
@@ -1536,7 +1554,10 @@ IOStatus ZenFS::RenameFile(const std::string& source_path,
     std::lock_guard<std::mutex> lock(files_mtx_);
     s = RenameFileNoLock(source_path, dest_path, options, dbg);
   }
-  if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  // if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  if (s.ok()) {
+    s = zbd_->RuntimeReset();
+  }
   return s;
 }
 
