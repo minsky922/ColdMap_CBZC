@@ -49,7 +49,12 @@
  * to roll the metadata log safely. One extra
  * is allocated to cover for one zone going offline.
  */
+
+#define ZENFS_SPARE_ZONES (1)
+
 #define ZENFS_META_ZONES (3)
+
+#define ZENFS_IO_ZONES (80)
 
 /* Minimum of number of zones that makes sense */
 #define ZENFS_MIN_ZONES (32)
@@ -287,10 +292,13 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
 
   active_io_zones_ = 0;
   open_io_zones_ = 0;
-  uint64_t device_io_capacity = 85899345920;  // 80GB
+  // uint64_t device_io_capacity = 85899345920;  // 80GB
   // uint64_t device_io_capacity = 10737418240;  // 10GB
+  // for (; i < zone_rep->ZoneCount() &&
+  //        (io_zones.size() * zbd_be_->GetZoneSize()) < (device_io_capacity);
+  //      i++) {
   for (; i < zone_rep->ZoneCount() &&
-         (io_zones.size() * zbd_be_->GetZoneSize()) < (device_io_capacity);
+         i < ZENFS_IO_ZONES + ZENFS_META_ZONES + ZENFS_SPARE_ZONES;
        i++) {
     // for (; i < zone_rep->ZoneCount(); i++) {
     /* Only use sequential write required zones */
@@ -328,7 +336,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   uint64_t device_free_space = io_zones.size() * zbd_be_->GetZoneSize();
   printf("device free space : %ld\n", BYTES_TO_MB(device_free_space));
   // printf("zone sz %ld\n", zone_sz_);
-  device_free_space_.store(device_free_space);
+  // device_free_space_.store(device_free_space);
 
   start_time_ = time(NULL);
 
