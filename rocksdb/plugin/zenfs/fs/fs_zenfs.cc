@@ -567,7 +567,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
         std::cout << "zone.capacity: " << zone.capacity << std::endl;
-        double average_lifetime;
+        double average_lifetime = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
           double total_lifetime = zone_lifetime_map_[zone_start].first;
