@@ -216,6 +216,7 @@ class WinFileSystem : public FileSystem {
 #undef GetFreeSpace
   IOStatus GetFreeSpace(const std::string& /*path*/,
                         const IOOptions& /*options*/, uint64_t* /*diskfree*/,
+                        uint64_t* /*free_percent*/,
                         IODebugContext* /*dbg*/) override;
   FileOptions OptimizeForLogWrite(const FileOptions& file_options,
                                   const DBOptions& db_options) const override;

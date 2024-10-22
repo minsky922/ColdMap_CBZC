@@ -849,8 +849,12 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
                                              io_zones[i]->start_);
         }
         // wasted_wp_.fetch_add(io_zones[i]->capacity_);
+        clock_t start = clock();
         IOStatus reset_status = z->Reset();
         reset_count_.fetch_add(1);
+        clock_t end = clock();
+        reset_latency += (end - start);
+        runtime_reset_reset_latency_.fetch_add(reset_latency);
         if (!reset_status.ok()) {
           z->Release();
           return reset_status;

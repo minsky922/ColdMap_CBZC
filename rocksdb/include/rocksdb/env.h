@@ -651,7 +651,8 @@ class Env : public Customizable {
 
   // Get the amount of free disk space
   virtual Status GetFreeSpace(const std::string& /*path*/,
-                              uint64_t* /*diskfree*/) {
+                              uint64_t* /*diskfree*/,
+                              uint64_t* /*free_percent*/) {
     return Status::NotSupported("Env::GetFreeSpace() not supported.");
   }
 
@@ -1656,8 +1657,9 @@ class EnvWrapper : public Env {
       const ImmutableDBOptions& db_options) const override {
     return target_.env->OptimizeForBlobFileRead(env_options, db_options);
   }
-  Status GetFreeSpace(const std::string& path, uint64_t* diskfree) override {
-    return target_.env->GetFreeSpace(path, diskfree);
+  Status GetFreeSpace(const std::string& path, uint64_t* diskfree,
+                      uint64_t* free_percent) override {
+    return target_.env->GetFreeSpace(path, diskfree, free_percent);
   }
   void SanitizeEnvOptions(EnvOptions* env_opts) const override {
     target_.env->SanitizeEnvOptions(env_opts);

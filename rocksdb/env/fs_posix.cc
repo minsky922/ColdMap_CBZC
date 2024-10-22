@@ -912,10 +912,10 @@ class PosixFileSystem : public FileSystem {
   }
 
   IOStatus GetFreeSpace(const std::string& fname, const IOOptions& /*opts*/,
-                        uint64_t* free_space,
+                        uint64_t* free_space, uint64_t* free_percent,
                         IODebugContext* /*dbg*/) override {
     struct statvfs sbuf;
-
+    (void)(free_percent);
     if (statvfs(fname.c_str(), &sbuf) < 0) {
       return IOError("While doing statvfs", fname, errno);
     }

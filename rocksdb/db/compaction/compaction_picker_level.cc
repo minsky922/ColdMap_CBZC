@@ -40,6 +40,9 @@ bool LevelCompactionPicker::NeedsCompaction(
       return true;
     }
   }
+  uint64_t zns_free_percent = 100;
+  ioptions_.fs->GetFreeSpace(std::string(), IOOptions(), nullptr,
+                             &zns_free_percent, nullptr);
   return false;
 }
 
@@ -168,6 +171,9 @@ void LevelCompactionBuilder::PickFileToCompact(
 
 void LevelCompactionBuilder::SetupInitialFiles() {
   // Find the compactions by size on all levels.
+  uint64_t zns_free_percent = 100;
+  ioptions_.fs->GetFreeSpace(std::string(), IOOptions(), nullptr,
+                             &zns_free_percent, nullptr);
   bool skipped_l0_to_base = false;
   for (int i = 0; i < compaction_picker_->NumberLevels() - 1; i++) {
     start_level_score_ = vstorage_->CompactionScore(i);
@@ -451,6 +457,9 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   // %lu\n",ioptions_.compaction_scheme,start_level_,file_size.size());
   // 컴팩션진행을 위한 파일 선택
   unsigned int cmp_idx;
+  uint64_t zns_free_percent = 100;
+  ioptions_.fs->GetFreeSpace(std::string(), IOOptions(), nullptr,
+                             &zns_free_percent, nullptr);
   /////////////////////////////////////////////////////////////////
   for (cmp_idx = vstorage_->NextCompactionIndex(start_level_);
        cmp_idx < file_size.size(); cmp_idx++) {

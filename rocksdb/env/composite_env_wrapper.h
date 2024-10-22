@@ -228,10 +228,12 @@ class CompositeEnv : public Env {
 #ifdef GetFreeSpace
 #undef GetFreeSpace
 #endif
-  Status GetFreeSpace(const std::string& path, uint64_t* diskfree) override {
+  Status GetFreeSpace(const std::string& path, uint64_t* diskfree,
+                      uint64_t* free_percent) override {
     IOOptions io_opts;
     IODebugContext dbg;
-    return file_system_->GetFreeSpace(path, io_opts, diskfree, &dbg);
+    return file_system_->GetFreeSpace(path, io_opts, diskfree, free_percent,
+                                      &dbg);
   }
   uint64_t NowMicros() override { return system_clock_->NowMicros(); }
   uint64_t NowNanos() override { return system_clock_->NowNanos(); }

@@ -661,6 +661,7 @@ class FileSystem : public Customizable {
   virtual IOStatus GetFreeSpace(const std::string& /*path*/,
                                 const IOOptions& /*options*/,
                                 uint64_t* /*diskfree*/,
+                                uint64_t* /*free_percent*/,
                                 IODebugContext* /*dbg*/) {
     return IOStatus::NotSupported("GetFreeSpace");
   }
@@ -1553,8 +1554,9 @@ class FileSystemWrapper : public FileSystem {
     return target_->OptimizeForBlobFileRead(file_options, db_options);
   }
   IOStatus GetFreeSpace(const std::string& path, const IOOptions& options,
-                        uint64_t* diskfree, IODebugContext* dbg) override {
-    return target_->GetFreeSpace(path, options, diskfree, dbg);
+                        uint64_t* diskfree, uint64_t* free_percent,
+                        IODebugContext* dbg) override {
+    return target_->GetFreeSpace(path, options, diskfree, free_percent, dbg);
   }
   IOStatus IsDirectory(const std::string& path, const IOOptions& options,
                        bool* is_dir, IODebugContext* dbg) override {

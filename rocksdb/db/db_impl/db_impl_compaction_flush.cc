@@ -2430,7 +2430,7 @@ void DBImpl::EnableManualCompaction() {
 
 void DBImpl::MaybeScheduleFlushOrCompaction() {
   uint64_t zns_free_space;
-  // uint64_t zns_free_percent;
+  uint64_t zns_free_percent;
   mutex_.AssertHeld();
   // DB가 성공적으로 열리지 않은 경우, 컴팩션을 진행할 수 없음
   if (!opened_successfully_) {
@@ -2456,8 +2456,8 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
   bool is_flush_pool_empty =
       env_->GetBackgroundThreads(Env::Priority::HIGH) == 0;
   // 파일 시스템에서 사용할 수 있는 여유 공간을 가져옴
-  GetFileSystem()->GetFreeSpace(std::string(), IOOptions(), &zns_free_space,
-                                nullptr);
+  immutable_db_options_.fs->GetFreeSpace(
+      std::string(), IOOptions(), &zns_free_space, &zns_free_percent, nullptr);
   // 백그라운드 플러시 작업을 예약하는 루프
   while (!is_flush_pool_empty && unscheduled_flushes_ > 0 &&
          bg_flush_scheduled_ < bg_job_limits.max_flushes) {
@@ -2509,8 +2509,8 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     return;
   }
   // 파일 시스템에서 사용할 수 있는 여유 공간을 다시 확인
-  GetFileSystem()->GetFreeSpace(std::string(), IOOptions(), &zns_free_space,
-                                nullptr);
+  immutable_db_options_.fs->GetFreeSpace(
+      std::string(), IOOptions(), &zns_free_space, &zns_free_percent, nullptr);
   // 백그라운드 컴팩션 작업을 예약하는 루프
   while (bg_compaction_scheduled_ + bg_bottom_compaction_scheduled_ <
              bg_job_limits.max_compactions &&

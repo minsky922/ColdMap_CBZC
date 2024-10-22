@@ -161,9 +161,8 @@ bool SstFileManagerImpl::EnoughRoomForCompaction(
 
   // Update cur_compactions_reserved_size_ so concurrent compaction
   // don't max out space
-  size_t needed_headroom =
-      cur_compactions_reserved_size_ + size_added_by_compaction +
-      compaction_buffer_size_;
+  size_t needed_headroom = cur_compactions_reserved_size_ +
+                           size_added_by_compaction + compaction_buffer_size_;
   if (max_allowed_space_ != 0 &&
       (needed_headroom + total_files_size_ > max_allowed_space_)) {
     return false;
@@ -177,8 +176,9 @@ bool SstFileManagerImpl::EnoughRoomForCompaction(
     auto fn =
         TableFileName(cfd->ioptions()->cf_paths, inputs[0][0]->fd.GetNumber(),
                       inputs[0][0]->fd.GetPathId());
-    uint64_t free_space = 0;
-    Status s = fs_->GetFreeSpace(fn, IOOptions(), &free_space, nullptr);
+    uint64_t free_space = 0, free_percent = 0;
+    Status s =
+        fs_->GetFreeSpace(fn, IOOptions(), nullptr, &free_percent, nullptr);
     s.PermitUncheckedError();  // TODO: Check the status
     // needed_headroom is based on current size reserved by compactions,
     // minus any files created by running compactions as they would count
@@ -260,8 +260,9 @@ void SstFileManagerImpl::ClearError() {
       return;
     }
 
-    uint64_t free_space = 0;
-    Status s = fs_->GetFreeSpace(path_, IOOptions(), &free_space, nullptr);
+    uint64_t free_space = 0, free_percent = 0;
+    Status s = fs_->GetFreeSpace(path_, IOOptions(), &free_space, &free_percent,
+                                 nullptr);
     free_space = max_allowed_space_ > 0
                      ? std::min(max_allowed_space_, free_space)
                      : free_space;
@@ -415,13 +416,12 @@ bool SstFileManagerImpl::CancelErrorRecovery(ErrorHandler* handler) {
   return false;
 }
 
-Status SstFileManagerImpl::ScheduleFileDeletion(
-    const std::string& file_path, const std::string& path_to_sync,
-    const bool force_bg) {
+Status SstFileManagerImpl::ScheduleFileDeletion(const std::string& file_path,
+                                                const std::string& path_to_sync,
+                                                const bool force_bg) {
   TEST_SYNC_POINT_CALLBACK("SstFileManagerImpl::ScheduleFileDeletion",
                            const_cast<std::string*>(&file_path));
-  return delete_scheduler_.DeleteFile(file_path, path_to_sync,
-                                      force_bg);
+  return delete_scheduler_.DeleteFile(file_path, path_to_sync, force_bg);
 }
 
 void SstFileManagerImpl::WaitForEmptyTrash() {
