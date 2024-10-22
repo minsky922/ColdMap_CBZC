@@ -379,17 +379,18 @@ void ZenFS::CalculateHorizontalLifetimes(
     level_file_map[level] = file_with_normalized_index;
   }
 
-  for (const auto& level : level_file_map) {
-    std::cout << "Level " << level.first << ": [";
-    for (size_t i = 0; i < level.second.size(); ++i) {
-      std::cout << "(" << level.second[i].first << ", "
-                << level.second[i].second << ")";  // fno와 정규화된 인덱스 출력
-      if (i < level.second.size() - 1) {
-        std::cout << ", ";
-      }
-    }
-    std::cout << "]" << std::endl;
-  }
+  // for (const auto& level : level_file_map) {
+  //   std::cout << "Level " << level.first << ": [";
+  //   for (size_t i = 0; i < level.second.size(); ++i) {
+  //     std::cout << "(" << level.second[i].first << ", "
+  //               << level.second[i].second << ")";  // fno와 정규화된 인덱스
+  //               출력
+  //     if (i < level.second.size() - 1) {
+  //       std::cout << ", ";
+  //     }
+  //   }
+  //   std::cout << "]" << std::endl;
+  // }
 }
 
 void ZenFS::ReCalculateLifetimes() {
@@ -593,10 +594,13 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
 
         // uint64_t cost = (100 - garbage_percent_approx) * 2;
-        double cost = 2 * (zone.used_capacity / zone.max_capacity);
-        std::cout << "cost : " << cost << std::endl;
         // uint64_t benefit = garbage_percent_approx * average_lifetime;
-        double benefit = (zone.max_capacity - zone.used_capacity) *
+        double cost = 2 * (static_cast<double>(zone.used_capacity) /
+                           static_cast<double>(zone.max_capacity));
+        std::cout << "cost : " << cost << std::endl;
+
+        double benefit = (static_cast<double>(zone.max_capacity) -
+                          static_cast<double>(zone.used_capacity)) *
                          average_lifetime;  // free space * lifetime
         std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
