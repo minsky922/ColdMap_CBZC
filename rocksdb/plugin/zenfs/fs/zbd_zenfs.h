@@ -149,6 +149,7 @@ class Zone {
   unsigned int log2_erase_unit_size_ = 0;
   uint64_t erase_unit_size_ = 0;
   uint64_t block_sz_;
+  uint64_t reset_count_ = 0;
   //
   std::atomic<uint64_t> used_capacity_;
 
@@ -369,7 +370,7 @@ class ZonedBlockDevice {
   };
   struct FARStat {
     uint64_t free_percent_;
-    ize_t reset_count_;
+    size_t reset_count_;
     size_t reset_count_zc_;
     size_t erase_size_ = 0;
     size_t erase_size_zc_ = 0;
