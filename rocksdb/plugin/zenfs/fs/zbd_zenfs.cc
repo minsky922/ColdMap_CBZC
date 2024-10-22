@@ -50,9 +50,9 @@
  * is allocated to cover for one zone going offline.
  */
 
-#define ZENFS_SPARE_ZONES (1)
+// #define ZENFS_SPARE_ZONES (1)
 
-#define ZENFS_META_ZONES (3)
+// #define ZENFS_META_ZONES (3)
 
 #define ZENFS_IO_ZONES (80)
 
@@ -297,9 +297,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // for (; i < zone_rep->ZoneCount() &&
   //        (io_zones.size() * zbd_be_->GetZoneSize()) < (device_io_capacity);
   //      i++) {
-  for (; i < zone_rep->ZoneCount() &&
-         i < ZENFS_IO_ZONES + ZENFS_META_ZONES + ZENFS_SPARE_ZONES;
-       i++) {
+  for (; i < zone_rep->ZoneCount() && i < ZENFS_IO_ZONES + 4; i++) {
     // for (; i < zone_rep->ZoneCount(); i++) {
     /* Only use sequential write required zones */
     if (zbd_be_->ZoneIsSwr(zone_rep, i)) {
