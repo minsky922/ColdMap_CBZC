@@ -593,14 +593,14 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
 
         // uint64_t cost = (100 - garbage_percent_approx) * 2;
-        uint64_t cost = 2 * (zone.used_capacity / zone.max_capacity);
+        double cost = 2 * (zone.used_capacity / zone.max_capacity);
         std::cout << "cost : " << cost << std::endl;
         // uint64_t benefit = garbage_percent_approx * average_lifetime;
-        uint64_t benefit = (zone.max_capacity - zone.used_capacity) *
-                           average_lifetime;  // free space * lifetime
+        double benefit = (zone.max_capacity - zone.used_capacity) *
+                         average_lifetime;  // free space * lifetime
         std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
-          uint64_t cost_benefit_score = benefit / cost;
+          double cost_benefit_score = benefit / cost;
           victim_candidate.push_back({cost_benefit_score, zone.start});
         }
       }
