@@ -613,7 +613,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       // std::cout << "all_inal_zone..." << std::endl;
     }
   }
-  std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
+  // std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
 
   // std::cout << "Sorting victim candidates..." << std::endl;
   sort(victim_candidate.rbegin(), victim_candidate.rend());
@@ -681,9 +681,9 @@ void ZenFS::ZoneCleaning(bool forced) {
                            migrate_zones_start.size(), should_be_copied,
                            forced);
     }
-    std::cout << "after all invalid zone_n: " << all_inval_zone_n << std::endl;
-    // zc_lock_.unlock();
-    // return migrate_zones_start.size() + all_inval_zone_n;
+    // std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
+    // std::endl; zc_lock_.unlock(); return migrate_zones_start.size() +
+    // all_inval_zone_n;
   }
 }
 
