@@ -463,9 +463,9 @@ void ZenFS::ReCalculateLifetimes() {
 
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
-  if (zc_scheme == CBZC3) {
-    ReCalculateLifetimes();
-  }
+  // if (zc_scheme == CBZC3) {
+  ReCalculateLifetimes();
+  // }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
@@ -473,8 +473,8 @@ void ZenFS::ZoneCleaning(bool forced) {
       std::chrono::high_resolution_clock::now();  // valid data copy time
   auto start_time = std::chrono::system_clock::now();
   auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
-  // std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
-  //           << std::endl;
+  std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
+            << std::endl;
   // zc_lock_.lock();
 
   ZenFSSnapshot snapshot;
@@ -613,7 +613,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       // std::cout << "all_inal_zone..." << std::endl;
     }
   }
-  // std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
+  std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
 
   // std::cout << "Sorting victim candidates..." << std::endl;
   sort(victim_candidate.rbegin(), victim_candidate.rend());
@@ -643,9 +643,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (victim_candidate[i].first > threshold) {
       should_be_copied +=
           (zone_size - (victim_candidate[i].first * zone_size / 100));
-      // std::cout << "cost-benefit score: " << victim_candidate[i].first
-      //           << ", Zone Start: " << victim_candidate[i].second <<
-      //           std::endl;
+      std::cout << "cost-benefit score: " << victim_candidate[i].first
+                << ", Zone Start: " << victim_candidate[i].second << std::endl;
       migrate_zones_start.emplace(victim_candidate[i].second);
     }
   }
@@ -682,7 +681,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                            migrate_zones_start.size(), should_be_copied,
                            forced);
     }
-    // std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
+    std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
     // std::endl; zc_lock_.unlock(); return migrate_zones_start.size() +
     // all_inval_zone_n;
   }
@@ -700,7 +699,7 @@ void ZenFS::GCWorker() {
       usleep(100 * 1000);
     }
     zbd_->SetZCRunning(false);
-    // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
+    std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
     if (free_percent_ < 20) {
       zbd_->SetZCRunning(true);
       ZoneCleaning(true);
