@@ -361,7 +361,18 @@ class ZenFS : public FileSystemWrapper {
   IOStatus GetFreeSpace(const std::string& /*path*/,
                         const IOOptions& /*options*/, uint64_t* diskfree,
                         IODebugContext* /*dbg*/) override {
-    *diskfree = zbd_->GetFreeSpace();
+    if (diskfree != nullptr) {
+      *diskfree = zbd_->GetFreeSpace();
+    } else {  // if nullptr
+      goto ret;
+    }
+    while (free_percent_ < 30) {
+      std::cout << "GetFreeSpace->free_percent_: " << free_percent_
+                << std::endl;
+    }
+  ret:
+    *free_percent = free_percent_;
+
     return IOStatus::OK();
   }
 

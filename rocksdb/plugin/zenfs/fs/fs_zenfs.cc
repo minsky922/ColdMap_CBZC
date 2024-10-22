@@ -374,6 +374,7 @@ void ZenFS::CalculateHorizontalLifetimes(
             fno_list[i], normalized_index);  // 정규화된 인덱스 저장
       }
     }
+    // sst파일 사이즈가 다르다 사이즈를 감안해야함
 
     // 각 레벨의 파일 리스트를 map에 저장
     level_file_map[level] = file_with_normalized_index;
@@ -438,7 +439,7 @@ void ZenFS::ReCalculateLifetimes() {
                 sst_lifetime_value;                      // 수명 추가
             zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
           }
-        }
+        }  // sstfilesize * sstlifetime value
       } else {
         std::cerr << "Error: Cannot find ZoneFile for fno: " << fno
                   << std::endl;
@@ -598,7 +599,6 @@ void ZenFS::ZoneCleaning(bool forced) {
         double cost = 2 * (static_cast<double>(zone.used_capacity) /
                            static_cast<double>(zone.max_capacity));
         // std::cout << "cost : " << cost << std::endl;
-
         double benefit = (static_cast<double>(zone.max_capacity) -
                           static_cast<double>(zone.used_capacity)) *
                          average_lifetime;  // free space * lifetime
@@ -1419,6 +1419,13 @@ void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
             << ", zc_scheme = " << zc_scheme << std::endl;
   zbd_->SetResetScheme(r, partial_reset_scheme, T, zc, until, allocation_scheme,
                        zc_scheme, other_options);
+  run_bg_reset_worker_ = true;
+  if (gc_worker_ != nullptr) {
+    if (bg_reset_worker_ == nullptr) {
+      bg_reset_worker_.reset(
+          new std::thread(&ZenFS::BackgroundStatTimeLapse, this));
+    }
+  }
 
   // if (partial_reset_scheme == PARTIAL_RESET_AT_BACKGROUND ||
   //     partial_reset_scheme == PARTIAL_RESET_BACKGROUND_T_WITH_ZONE_RESET) {
@@ -2019,12 +2026,12 @@ Status ZenFS::Mount(bool readonly) {
       Info(logger_, "Starting garbage collection worker");
       run_gc_worker_ = true;
       gc_worker_.reset(new std::thread(&ZenFS::GCWorker, this));
-      // run_bg_reset_worker_ = true;
-      // if (bg_reset_worker_ == nullptr) {
-      //   printf("starting bg_reset_worker");
-      //   bg_reset_worker_.reset(
-      //       new std::thread(&ZenFS::BackgroundStatTimeLapse, this));
-      // }
+      run_bg_reset_worker_ = true;
+      if (bg_reset_worker_ == nullptr) {
+        printf("starting bg_reset_worker");
+        bg_reset_worker_.reset(
+            new std::thread(&ZenFS::BackgroundStatTimeLapse, this));
+      }
     }
   }
 

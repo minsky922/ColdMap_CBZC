@@ -769,44 +769,99 @@ void ZonedBlockDevice::CalculateResetThreshold(uint64_t free_percent) {
 재설정이 완료되면, 필요에 따라 토큰을 반환합니다.*/
 IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
   clock_t reset_latency{0};
-  for (const auto z : io_zones) {
-    // Acquire 함수는 존을 사용할 수 있는지 확인하고 가능하면 락을 거는 역할
-    if (z->Acquire()) {
-      // 현재 존이 비어있지 않고 사용중이지 않은 경우를 확인
-      if (!z->IsEmpty() && !z->IsUsed()) {
-        bool full = z->IsFull();  // 현재 존이 가득 찬 상태인지 확인하여 full
-                                  // 변수에 저장
-        uint64_t cp = z->GetCapacityLeft();
-        //(cp > reset_threshold_) {
-        //   IOStatus release_status = z->CheckRelease();
-        //   if(!release_status.ok()){
-        //     return release_status;
-        //   }
-        //   continue;
-        // }
-        clock_t start = clock();
-        IOStatus reset_status = z->Reset();  // z->Reset(): 현재 존을 재설정
-        reset_count_.fetch_add(1);
-        wasted_wp_.fetch_add(cp);
+  // lazyreset으로 변경
+  // for (const auto z : io_zones) {
+  //   // Acquire 함수는 존을 사용할 수 있는지 확인하고 가능하면 락을 거는 역할
+  //   if (z->Acquire()) {
+  //     // 현재 존이 비어있지 않고 사용중이지 않은 경우를 확인
+  //     if (!z->IsEmpty() && !z->IsUsed()) {
+  //       bool full = z->IsFull();  // 현재 존이 가득 찬 상태인지 확인하여 full
+  //                                 // 변수에 저장
+  //       uint64_t cp = z->GetCapacityLeft();
+  //       //(cp > reset_threshold_) {
+  //       //   IOStatus release_status = z->CheckRelease();
+  //       //   if(!release_status.ok()){
+  //       //     return release_status;
+  //       //   }
+  //       //   continue;
+  //       // }
+  //       clock_t start = clock();
+  //       IOStatus reset_status = z->Reset();  // z->Reset(): 현재 존을 재설정
+  //       reset_count_.fetch_add(1);
+  //       wasted_wp_.fetch_add(cp);
 
-        clock_t end = clock();
-        reset_latency += (end - start);
-        runtime_reset_reset_latency_.fetch_add(end - start);
-        IOStatus release_status =
-            z->CheckRelease();  // z->CheckRelease(): 재설정 후 존을 해제
-        if (!reset_status.ok())
-          return reset_status;  // 두 함수의 상태를 확인하여 오류가 발생하면
-                                // 해당 상태를 반환
-        if (!release_status.ok()) return release_status;  //
-        if (!full)
-          PutActiveIOZoneToken();  // 현재 존이 가득 차지 않았다면,
-                                   // PutActiveIOZoneToken 함수를 호출하여
-                                   // 토큰을 반환
-      } else {  // 현재 존이 비어있거나 사용 중인 경우, CheckRelease 함수로
-                // 해제 상태를 확인하고, 오류가 발생하면 해당 상태를 반환
-        IOStatus release_status = z->CheckRelease();
-        if (!release_status.ok()) return release_status;
+  //       clock_t end = clock();
+  //       reset_latency += (end - start);
+  //       runtime_reset_reset_latency_.fetch_add(end - start);
+  //       IOStatus release_status =
+  //           z->CheckRelease();  // z->CheckRelease(): 재설정 후 존을 해제
+  //       if (!reset_status.ok())
+  //         return reset_status;  // 두 함수의 상태를 확인하여 오류가 발생하면
+  //                               // 해당 상태를 반환
+  //       if (!release_status.ok()) return release_status;  //
+  //       if (!full)
+  //         PutActiveIOZoneToken();  // 현재 존이 가득 차지 않았다면,
+  //                                  // PutActiveIOZoneToken 함수를 호출하여
+  //                                  // 토큰을 반환
+  //     } else {  // 현재 존이 비어있거나 사용 중인 경우, CheckRelease 함수로
+  //               // 해제 상태를 확인하고, 오류가 발생하면 해당 상태를 반환
+  //       IOStatus release_status = z->CheckRelease();
+  //       if (!release_status.ok()) return release_status;
+  //     }
+  //   }
+  // }
+
+  // IOStatus reset_status;
+
+  for (size_t i = 0; i < io_zones.size(); i++) {
+    const auto z = io_zones[i];
+    bool full = z->IsFull();
+    if (!full) {
+      continue;
+    }
+    if (z->IsUsed()) {
+      continue;
+    }
+    if (z->IsEmpty()) {
+      continue;
+    }
+
+    if (z->Acquire()) {
+      if (z->IsEmpty()) {
+        z->Release();
+        continue;
       }
+      // if(!ProactiveZoneCleaning() && !full){
+      //   z->Release();
+      //   continue;
+      // }
+      if (!full) {
+        z->Release();
+        continue;
+      }
+
+      if (!z->IsUsed()) {
+        // bool full=
+        if (full) {
+          erase_size_zc_.fetch_add(io_zones[i]->max_capacity_);
+        } else {
+          erase_size_proactive_zc_.fetch_add(io_zones[i]->wp_ -
+                                             io_zones[i]->start_);
+        }
+        // wasted_wp_.fetch_add(io_zones[i]->capacity_);
+        IOStatus reset_status = z->Reset();
+        reset_count_.fetch_add(1);
+        if (!reset_status.ok()) {
+          z->Release();
+          return reset_status;
+        }
+        if (!full) {
+          PutActiveIOZoneToken();
+          // PutOpenIOZoneToken();
+        }
+      }
+
+      z->Release();
     }
   }
   return IOStatus::OK();  // 모든 존에 대한 작업이 성공적으로 완료되면
