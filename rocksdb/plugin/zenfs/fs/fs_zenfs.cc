@@ -573,12 +573,12 @@ void ZenFS::ZoneCleaning(bool forced) {
           double total_lifetime = zone_lifetime_map_[zone_start].first;
           int file_count = zone_lifetime_map_[zone_start].second;
 
-          double average_lifetime =
+          average_lifetime =
               total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
           std::cout << "Zonecleaning::zone starting at " << zone_start
                     << " has average lifetime: " << average_lifetime
-                    << "Total lifetime: " << total_lifetime
+                    << " Total lifetime: " << total_lifetime
                     << ", File count: " << file_count
                     << ", Garbage percentage: " << garbage_percent_approx << "%"
                     << std::endl;
@@ -591,6 +591,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                     << ", Garbage percentage: " << garbage_percent_approx << "%"
                     << std::endl;
         }
+
         uint64_t cost = (100 - garbage_percent_approx) * 2;
         uint64_t benefit = garbage_percent_approx * average_lifetime;
         if (cost != 0) {
