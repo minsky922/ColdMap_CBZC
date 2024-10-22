@@ -395,7 +395,8 @@ void ZenFS::CalculateHorizontalLifetimes(
 void ZenFS::ReCalculateLifetimes() {
   std::map<int, std::vector<std::pair<uint64_t, double>>> level_file_map;
   ;
-  // 1. 수평lifetime priority 정규화한것 불러오기
+  // 1. 수평lifetime priority 정규화한것 불러오기 - 우선순위 높은게(인덱스
+  // 낮은게) cold
   CalculateHorizontalLifetimes(level_file_map);
   // 2. 수직 lifetime predictcompactionscore로 levelscore 불러오기기
   // 3. SSTlifetimeValue = a * VerticalLifetime + b * HorizontalLifetime 계산
@@ -406,19 +407,20 @@ void ZenFS::ReCalculateLifetimes() {
   zone_lifetime_map_.clear();
 
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
+  // 수직 levelscore - 높을수록 hot
   for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    std::cout << "Level : " << level
-              << ", vertical lifetime: " << vertical_lifetime << std::endl;
+    // std::cout << "Level : " << level
+    //           << ", vertical lifetime: " << vertical_lifetime << std::endl;
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
       double horizontal_lifetime = file_pair.second;
 
       double alpha_ = 1, beta_ = 1;
-
+      // 수직은 높을수록 hot, 수평은 높을수록 cold
       double sst_lifetime_value =
-          alpha_ * vertical_lifetime + beta_ * horizontal_lifetime;
+          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 / vertical_lifetime);
 
       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
       if (zone_file != nullptr) {
@@ -440,26 +442,21 @@ void ZenFS::ReCalculateLifetimes() {
         std::cerr << "Error: Cannot find ZoneFile for fno: " << fno
                   << std::endl;
       }
-
-      // 여기에 sst_lifetime_value를 저장하거나 사용하는 로직 추가
-      std::cout << "File " << fno
-                << " has SST lifetime value: " << sst_lifetime_value
-                << std::endl;
     }
   }
 
   // 각 존의 평균 lifetime 계산 및 출력
-  for (const auto& zone_entry : zone_lifetime_map_) {
-    uint64_t zone_start = zone_entry.first;
-    double total_lifetime = zone_entry.second.first;
-    int file_count = zone_entry.second.second;
+  // for (const auto& zone_entry : zone_lifetime_map_) {
+  //   uint64_t zone_start = zone_entry.first;
+  //   double total_lifetime = zone_entry.second.first;
+  //   int file_count = zone_entry.second.second;
 
-    double average_lifetime =
-        total_lifetime / file_count;  // 존의 평균 lifetime 계산
+  //   double average_lifetime =
+  //       total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
-    std::cout << "Zone starting at " << zone_start
-              << " has average lifetime: " << average_lifetime << std::endl;
-  }
+  //   std::cout << "Zone starting at " << zone_start
+  //             << " has average lifetime: " << average_lifetime << std::endl;
+  // }
 }
 
 void ZenFS::ZoneCleaning(bool forced) {
@@ -566,7 +563,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       } else if (zc_scheme == CBZC3) {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
-        std::cout << "zone.capacity: " << zone.capacity << std::endl;
+        // std::cout << "zone.capacity: " << zone.capacity << std::endl; -> 0
         double average_lifetime = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
@@ -576,24 +573,32 @@ void ZenFS::ZoneCleaning(bool forced) {
           average_lifetime =
               total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
-          std::cout << "Zonecleaning::zone starting at " << zone_start
-                    << " has average lifetime: " << average_lifetime
-                    << " Total lifetime: " << total_lifetime
-                    << ", File count: " << file_count
-                    << ", Garbage percentage: " << garbage_percent_approx << "%"
-                    << std::endl;
+          // std::cout << "Zonecleaning::zone starting at " << zone_start
+          //           << " has average lifetime: " << average_lifetime
+          //           << " Total lifetime: " << total_lifetime
+          //           << ", File count: " << file_count
+          //           << ", Garbage percentage: " << garbage_percent_approx <<
+          //           "%"
+          //           << std::endl;
         } else {
-          std::cout << "Zone starting at " << zone_start
-                    << " has no lifetime data. "
-                    << "Total lifetime: "
-                    << zone_lifetime_map_[zone_start].first
-                    << ", File count: " << zone_lifetime_map_[zone_start].second
-                    << ", Garbage percentage: " << garbage_percent_approx << "%"
-                    << std::endl;
+          // std::cout << "Zone starting at " << zone_start
+          //           << " has no lifetime data. "
+          //           << "Total lifetime: "
+          //           << zone_lifetime_map_[zone_start].first
+          //           << ", File count: " <<
+          //           zone_lifetime_map_[zone_start].second
+          //           << ", Garbage percentage: " << garbage_percent_approx <<
+          //           "%"
+          //           << std::endl;
         }
 
-        uint64_t cost = (100 - garbage_percent_approx) * 2;
-        uint64_t benefit = garbage_percent_approx * average_lifetime;
+        // uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t cost = 2 * (zone.used_capacity / zone.max_capacity);
+        std::cout << "cost : " << cost << std::endl;
+        // uint64_t benefit = garbage_percent_approx * average_lifetime;
+        uint64_t benefit = (zone.max_capacity - zone.used_capacity) *
+                           average_lifetime;  // free space * lifetime
+        std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
           uint64_t cost_benefit_score = benefit / cost;
           victim_candidate.push_back({cost_benefit_score, zone.start});
@@ -604,8 +609,9 @@ void ZenFS::ZoneCleaning(bool forced) {
       // std::cout << "all_inal_zone..." << std::endl;
     }
   }
+  std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
 
-  std::cout << "Sorting victim candidates..." << std::endl;
+  // std::cout << "Sorting victim candidates..." << std::endl;
   sort(victim_candidate.rbegin(), victim_candidate.rend());
 
   std::cout << "Victim candidates:" << std::endl;
@@ -639,7 +645,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     }
   }
 
-  std::cout << "ZoneCleaning::reclaimed_zone_n: " << reclaimed_zone_n << "\n";
+  // std::cout << "ZoneCleaning::reclaimed_zone_n: " << reclaimed_zone_n <<
+  // "\n";
 
   std::vector<ZoneExtentSnapshot*> migrate_exts;
   for (auto& ext : snapshot.extents_) {
@@ -670,7 +677,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                            migrate_zones_start.size(), should_be_copied,
                            forced);
     }
-    std::cout << "all invalid zone_n: " << all_inval_zone_n << std::endl;
+    std::cout << "after all invalid zone_n: " << all_inval_zone_n << std::endl;
     zc_lock_.unlock();
     // return migrate_zones_start.size() + all_inval_zone_n;
   }
