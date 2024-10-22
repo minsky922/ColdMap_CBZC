@@ -509,8 +509,8 @@ IOStatus ZoneFile::AllocateNewZone() {
       if (zone != nullptr) {
         break;
       }
-      // zbd_->ResetUnusedIOZones();
-      zbd_->RuntimeReset();
+      zbd_->ResetUnusedIOZones();
+      // zbd_->RuntimeReset();
     }
 
     auto end_time = std::chrono::system_clock::now();  // 종료 시간 기록

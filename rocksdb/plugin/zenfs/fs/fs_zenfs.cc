@@ -1273,10 +1273,10 @@ IOStatus ZenFS::DeleteDirRecursive(const std::string& d,
     std::lock_guard<std::mutex> lock(files_mtx_);
     s = DeleteDirRecursiveNoLock(d, options, dbg);
   }
-  // if (s.ok()) s = zbd_->ResetUnusedIOZones();
-  if (s.ok()) {
-    s = zbd_->RuntimeReset();
-  }
+  if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  // if (s.ok()) {
+  //   s = zbd_->RuntimeReset();
+  // }
   return s;
 }
 
@@ -1333,10 +1333,10 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
         new ZonedWritableFile(zbd_, !file_opts.use_direct_writes, zoneFile));
   }
 
-  // if (resetIOZones) s = zbd_->ResetUnusedIOZones();
-  if (resetIOZones) {
-    s = zbd_->RuntimeReset();
-  }
+  if (resetIOZones) s = zbd_->ResetUnusedIOZones();
+  // if (resetIOZones) {
+  //   s = zbd_->RuntimeReset();
+  // }
 
   return s;
 }
@@ -1350,10 +1350,10 @@ IOStatus ZenFS::DeleteFile(const std::string& fname, const IOOptions& options,
   files_mtx_.lock();
   s = DeleteFileNoLock(fname, options, dbg);
   files_mtx_.unlock();
-  // if (s.ok()) s = zbd_->ResetUnusedIOZones();
-  if (s.ok()) {
-    s = zbd_->RuntimeReset();
-  }
+  if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  // if (s.ok()) {
+  //   s = zbd_->RuntimeReset();
+  // }
   zbd_->LogZoneStats();
 
   return s;
@@ -1577,10 +1577,10 @@ IOStatus ZenFS::RenameFile(const std::string& source_path,
     std::lock_guard<std::mutex> lock(files_mtx_);
     s = RenameFileNoLock(source_path, dest_path, options, dbg);
   }
-  // if (s.ok()) s = zbd_->ResetUnusedIOZones();
-  if (s.ok()) {
-    s = zbd_->RuntimeReset();
-  }
+  if (s.ok()) s = zbd_->ResetUnusedIOZones();
+  // if (s.ok()) {
+  //   s = zbd_->RuntimeReset();
+  // }
   return s;
 }
 
