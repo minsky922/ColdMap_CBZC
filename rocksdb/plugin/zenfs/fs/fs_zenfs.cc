@@ -694,12 +694,17 @@ void ZenFS::ZoneCleaning(bool forced) {
  이를 통해 ZenFS의 여유 공간을 확보하고 성능을 유지합니다.*/
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
-    usleep(100 * 1000);
     free_percent_ = zbd_->CalculateFreePercent();
+    if (free_percent_ > 20) {
+      usleep(100 * 1000);
+    }
+    zbd_->SetZCRunning(false);
     std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
     if (free_percent_ < 20) {
+      zbd_->SetZCRunning(true);
       ZoneCleaning(true);
     }
+    zbd_->SetZCRunning(false);
 
     //   usleep(1000 * 1000 * 10);  // 10초 동안 대기
     //   /* 여유 공간 계산*/
