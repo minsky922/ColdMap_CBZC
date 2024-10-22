@@ -367,9 +367,9 @@ class ZenFS : public FileSystemWrapper {
     } else {  // if nullptr
       goto ret;
     }
-    while (free_percent_ < 30) {
-      std::cout << "GetFreeSpace->free_percent_: " << free_percent_
-                << std::endl;
+    while (free_percent_ < 20) {
+      // std::cout << "GetFreeSpace->free_percent_: " << free_percent_
+      //           << std::endl;
     }
   ret:
     *free_percent = free_percent_;
