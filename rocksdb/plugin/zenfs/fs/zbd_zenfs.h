@@ -405,6 +405,7 @@ class ZonedBlockDevice {
   bool zc_until_set_ = false;
   uint64_t zc_ = 20;
   uint64_t until_ = 20;
+  std::atomic<bool> zc_running_ = false;
 
   uint64_t GetLevelSizeLimit(int level) {
     uint64_t max_bytes_for_level = max_bytes_for_level_base_;
@@ -525,20 +526,30 @@ class ZonedBlockDevice {
 
   uint64_t CalculateFreePercent(void) {
     // uint64_t device_size = (uint64_t)ZENFS_IO_ZONES * (uint64_t)ZONE_SIZE;
-    uint64_t zone_sz = BYTES_TO_MB(zbd_be_->GetZoneSize());  // MB
+    uint64_t device_size = (uint64_t)io_zones.size() *
+                           BYTES_TO_MB(io_zones[0]->max_capacity_);  // MB
+    std::cout << "calculated device_size: " << device_size << std::endl;
+    // uint64_t zone_sz = BYTES_TO_MB(zbd_be_->GetZoneSize());  // MB
     // uint64_t device_size = (uint64_t)GetNrZones() * zone_sz;  // MB
     // printf("calcuatefreepercent::io_zones.size() : %ld\n",
     // io_zones.size()); uint64_t device_size = io_zones.size() * zone_sz;  //
     // MB
-    uint64_t device_size = (uint64_t)80 * zone_sz;  // MB
-    uint64_t d_free_space = device_size;            // MB
+    // uint64_t device_size = (uint64_t)80 * zone_sz;  // MB
+    uint64_t d_free_space = device_size;  // MB
     uint64_t writed = 0;
+    // for (const auto z : io_zones) {
+    //   // if (z->IsBusy()) {
+    //   //   d_free_space -= (uint64_t)ZONE_SIZE;
+    //   // } else {
+    //   writed += z->wp_ - z->start_;  // BYTE
+    //   // }
+    // }
     for (const auto z : io_zones) {
-      // if (z->IsBusy()) {
-      //   d_free_space -= (uint64_t)ZONE_SIZE;
-      // } else {
-      writed += z->wp_ - z->start_;  // BYTE
-      // }
+      uint64_t tmp = z->wp_ - z->start_;
+      if (tmp > z->max_capacity_) {
+        tmp = z->max_capacity_;
+      }
+      writed += tmp;
     }
 
     // printf("df1 %ld\n", d_free_space);
@@ -686,6 +697,9 @@ class ZonedBlockDevice {
 
   void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
                          bool exclude_being_compacted = true);
+
+  void SetZCRunning(bool v) { zc_running_.store(v); }
+  bool GetZCRunning(void) { return zc_running_.load(); }
   //
  private:
   std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(
