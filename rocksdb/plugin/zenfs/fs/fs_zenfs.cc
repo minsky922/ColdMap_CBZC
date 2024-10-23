@@ -463,9 +463,9 @@ void ZenFS::ReCalculateLifetimes() {
 
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
-  // if (zc_scheme == CBZC3) {
-  ReCalculateLifetimes();
-  // }
+  if (zc_scheme == CBZC3) {
+    ReCalculateLifetimes();
+  }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
