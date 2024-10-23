@@ -536,7 +536,8 @@ void ZenFS::ZoneCleaning(bool forced) {
                 auto it = lifetime_hints.find(extent.filename);
                 if (it != lifetime_hints.end()) {
                   Env::WriteLifeTimeHint hint = it->second;
-                  uint64_t file_age = EstimateFileAge(hint);
+                  // uint64_t file_age = EstimateFileAge(hint);
+                  uint64_t file_age = hint;
                   total_age += file_age;
                 }
               }
