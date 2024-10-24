@@ -467,7 +467,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   ReCalculateLifetimes();
   // }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
-  uint64_t zone_size = zbd_->GetZoneSize();
+  // uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
   int start = GetMountTime();
   struct timespec start_timespec, end_timespec;
@@ -482,11 +482,6 @@ void ZenFS::ZoneCleaning(bool forced) {
   size_t all_inval_zone_n = 0;
   std::vector<std::pair<uint64_t, uint64_t>> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
-
-  // 모든 파일의 WriteLifeTimeHint 가져오기 - LIZC
-  if (zc_scheme == CBZC2) {
-    auto lifetime_hints = GetWriteLifeTimeHints();
-  }
 
   for (const auto& zone : snapshot.zones_) {
     // zone.capacity == 0 -> full-zone
@@ -506,6 +501,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         auto current_time = std::chrono::system_clock::now();
         uint64_t total_age = 0;
         rocksdb::IOOptions io_options;
+        auto lifetime_hints = GetWriteLifeTimeHints();
         for (const auto& zone_file : snapshot.zone_files_) {
           for (const auto& extent : zone_file.extents) {
             if (extent.zone_start == zone.start) {
@@ -651,7 +647,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::vector<ZoneExtentSnapshot*> migrate_exts;
   for (auto& ext : snapshot.extents_) {
     if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
-      should_be_copied += ext->length;
+      should_be_copied += ext.length;
       migrate_exts.push_back(&ext);
     }
   }

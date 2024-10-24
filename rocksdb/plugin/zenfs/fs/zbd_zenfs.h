@@ -499,16 +499,16 @@ class ZonedBlockDevice {
     io_blocked_thread_n_++;
     return ret;
   }
-  void IOBlockedEndCheckPoint(int start) {
-    int end = clock();
-    std::lock_guard<std::mutex> lg_(io_lock_);
-    io_blocked_thread_n_--;
-    io_block_timelapse_.push_back({gettid(), start, -1});
-    if (io_blocked_thread_n_ == 0) {
-      zc_io_block_ += (end - start);
-    }
-    return;
-  }
+  // void IOBlockedEndCheckPoint(int start) {
+  //   int end = clock();
+  //   std::lock_guard<std::mutex> lg_(io_lock_);
+  //   io_blocked_thread_n_--;
+  //   io_block_timelapse_.push_back({gettid(), start, -1});
+  //   if (io_blocked_thread_n_ == 0) {
+  //     zc_io_block_ += (end - start);
+  //   }
+  //   return;
+  // }
   void AddZCTimeLapse(int s, int e, long long us, size_t zc_z, size_t copied,
                       bool forced) {
     if (forced == true) {
