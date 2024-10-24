@@ -509,9 +509,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         auto current_time = std::chrono::system_clock::now();
         uint64_t total_age = 0;
         rocksdb::IOOptions io_options;
-        if (zc_scheme == CBZC2) {
-          auto lifetime_hints = GetWriteLifeTimeHints();
-        }
+        auto lifetime_hints = GetWriteLifeTimeHints();
         for (const auto& zone_file : snapshot.zone_files_) {
           for (const auto& extent : zone_file.extents) {
             if (extent.zone_start == zone.start) {
