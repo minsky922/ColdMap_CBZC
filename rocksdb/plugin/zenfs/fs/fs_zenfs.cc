@@ -504,10 +504,14 @@ void ZenFS::ZoneCleaning(bool forced) {
         // printf("GREEDY!!!!\n");
         victim_candidate.push_back({garbage_percent_approx, zone.start});
       } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
+        struct timespec start_age_ts, end_age_ts;
+        clock_gettime(CLOCK_MONOTONIC, &start_age_ts);
         auto current_time = std::chrono::system_clock::now();
         uint64_t total_age = 0;
         rocksdb::IOOptions io_options;
-        auto lifetime_hints = GetWriteLifeTimeHints();
+        if (zc_scheme == CBZC2) {
+          auto lifetime_hints = GetWriteLifeTimeHints();
+        }
         for (const auto& zone_file : snapshot.zone_files_) {
           for (const auto& extent : zone_file.extents) {
             if (extent.zone_start == zone.start) {
@@ -541,6 +545,11 @@ void ZenFS::ZoneCleaning(bool forced) {
             }
           }
         }
+        clock_gettime(CLOCK_MONOTONIC, &end_age_ts);
+        long elapsed_ns_age =
+            (end_age_ts.tv_sec - start_age_ts.tv_sec) * 1000000000 +
+            (end_age_ts.tv_nsec - start_age_ts.tv_nsec);
+        zbd_->AddCalculatelifetimeLapse(elapsed_ns_age);
 
         /* cost-benefit */
         /* benefit/cost = (free space generated * age of data) / cost
