@@ -522,7 +522,13 @@ class ZonedBlockDevice {
     cumulative_io_blocking_ += (ns / 1000) / 1000;
   }
   void AddCalculatelifetimeLapse(long ns) {
-    calculate_lapse += (ns / 1000) / 1000;
+    if (zc_scheme_ == CBZC3) {
+      // printf("calculate lifetime CBZC3!!\n");
+      calculate_lapse += (ns / 1000) / 1000;
+    } else {
+      printf("calculate lifetime CBZC1,2!!");
+      calculate_lapse += (ns / 1000) / 1000;
+    }
   }
 
   uint64_t CalculateCapacityRemain() {
