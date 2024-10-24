@@ -355,6 +355,7 @@ class ZonedBlockDevice {
   uint64_t tuning_point_;
   uint64_t cbzc_enabled_;
   uint64_t cumulative_io_blocking_ = 0;  // ms
+  uint64_t calculate_lapse = 0;          // ms
 
   uint64_t default_extent_size_ = 256 << 20;
   enum {
@@ -520,254 +521,263 @@ class ZonedBlockDevice {
   void AddCumulativeIOBlocking(long ns) {
     cumulative_io_blocking_ += (ns / 1000) / 1000;
   }
-
-  uint64_t CalculateCapacityRemain() {
-    uint64_t ret = 0;
-    for (const auto z : io_zones) {
-      ret += z->capacity_;
-    }
-    return ret;
+  void AddCalculatelifetimeLapse(long ns) {
+    if (zc_scheme_ == CBZC3) {
+      printf("calculat lifetime CBZC3!!\n");
+      calculate_lapse += (ns / 1000) / 1000;
+    };
   }
 
-  uint64_t CalculateFreePercent(void) {
-    // uint64_t device_size = (uint64_t)ZENFS_IO_ZONES * (uint64_t)ZONE_SIZE;
-    uint64_t device_size = (uint64_t)io_zones.size() *
-                           BYTES_TO_MB(io_zones[0]->max_capacity_);  // MB
-    // std::cout << "calculated device_size: " << device_size << std::endl;
-    // uint64_t zone_sz = BYTES_TO_MB(zbd_be_->GetZoneSize());  // MB
-    // uint64_t device_size = (uint64_t)GetNrZones() * zone_sz;  // MB
-    // printf("calcuatefreepercent::io_zones.size() : %ld\n",
-    // io_zones.size()); uint64_t device_size = io_zones.size() * zone_sz;  //
-    // MB
-    // uint64_t device_size = (uint64_t)80 * zone_sz;  // MB
-    uint64_t d_free_space = device_size;  // MB
-    uint64_t writed = 0;
-    // for (const auto z : io_zones) {
-    //   // if (z->IsBusy()) {
-    //   //   d_free_space -= (uint64_t)ZONE_SIZE;
-    //   // } else {
-    //   writed += z->wp_ - z->start_;  // BYTE
-    //   // }
-    // }
-    for (const auto z : io_zones) {
-      uint64_t tmp = z->wp_ - z->start_;
-      if (tmp > z->max_capacity_) {
-        tmp = z->max_capacity_;
-      }
-      writed += tmp;
-    }
+}
 
-    // printf("df1 %ld\n", d_free_space);
-    // d_free_space -= (writed >> 20);
-    d_free_space -= BYTES_TO_MB(writed);
-    // printf("df2 %ld\n", d_free_space);
-    device_free_space_.store(d_free_space);
-    cur_free_percent_ = (d_free_space * 100) / device_size;
-    // CalculateResetThreshold();
-    // printf("cf %ld\n", cur_free_percent_);
-    return cur_free_percent_;
+uint64_t
+CalculateCapacityRemain() {
+  uint64_t ret = 0;
+  for (const auto z : io_zones) {
+    ret += z->capacity_;
   }
+  return ret;
+}
 
-  void LogZoneStats();
-  void LogZoneUsage();
-  void LogGarbageInfo();
-
-  uint64_t GetZoneSize();
-  uint32_t GetNrZones();
-  std::vector<Zone *> GetMetaZones() { return meta_zones; }
-
-  void SetFinishTreshold(uint32_t threshold) { finish_threshold_ = threshold; }
-
-  void PutOpenIOZoneToken();
-  void PutActiveIOZoneToken();
-
-  void EncodeJson(std::ostream &json_stream);
-
-  void SetZoneDeferredStatus(IOStatus status);
-
-  std::shared_ptr<ZenFSMetrics> GetMetrics() { return metrics_; }
-
-  void GetZoneSnapshot(std::vector<ZoneSnapshot> &snapshot);
-
-  int Read(char *buf, uint64_t offset, int n, bool direct);
-  IOStatus InvalidateCache(uint64_t pos, uint64_t size);
-
-  IOStatus ReleaseMigrateZone(Zone *zone);
-
-  IOStatus TakeMigrateZone(Zone **out_zone, Env::WriteLifeTimeHint lifetime,
-                           uint32_t min_capacity);
-
-  // void AddBytesWritten(uint64_t written) { bytes_written_ += written; };
-  // void AddGCBytesWritten(uint64_t written) { gc_bytes_written_ += written;
-  // };
-  void AddBytesWritten(uint64_t written) { bytes_written_.fetch_add(written); };
-  void AddGCBytesWritten(uint64_t written) {
-    gc_bytes_written_.fetch_add(written);
-    zc_copied_timelapse_.push_back(written);
-  };
-  uint64_t GetGCBytesWritten(void) { return gc_bytes_written_.load(); }
-  uint64_t GetUserBytesWritten() {
-    return bytes_written_.load() - gc_bytes_written_.load();
-  };
-  uint64_t GetTotalBytesWritten() { return bytes_written_.load(); };
-  int GetResetCount() { return reset_count_.load(); }
-  uint64_t GetWWP() { return wasted_wp_.load(); }
-  // void SetResetScheme(uint32_t r, bool f, uint64_t T) {
-  //   std::cout << "zbd_->SetResetScheme: r = " << r << ", f = " << f
-  //             << ", T = " << T << std::endl;
-  //   reset_scheme_ = r;
-  //   reset_at_foreground_ = f;
-  //   tuning_point_ = T;
-  //   // if(zc!=0){
-  //   //   zc_until_set_=true;
-  //   //   zc_=zc;
-  //   //   until_=until;
-  //   // }
-
-  //   // for(uint64_t f=0;f<=100;f++){
-  //   //   CalculateResetThreshold(f);
+uint64_t CalculateFreePercent(void) {
+  // uint64_t device_size = (uint64_t)ZENFS_IO_ZONES * (uint64_t)ZONE_SIZE;
+  uint64_t device_size = (uint64_t)io_zones.size() *
+                         BYTES_TO_MB(io_zones[0]->max_capacity_);  // MB
+  // std::cout << "calculated device_size: " << device_size << std::endl;
+  // uint64_t zone_sz = BYTES_TO_MB(zbd_be_->GetZoneSize());  // MB
+  // uint64_t device_size = (uint64_t)GetNrZones() * zone_sz;  // MB
+  // printf("calcuatefreepercent::io_zones.size() : %ld\n",
+  // io_zones.size()); uint64_t device_size = io_zones.size() * zone_sz;  //
+  // MB
+  // uint64_t device_size = (uint64_t)80 * zone_sz;  // MB
+  uint64_t d_free_space = device_size;  // MB
+  uint64_t writed = 0;
+  // for (const auto z : io_zones) {
+  //   // if (z->IsBusy()) {
+  //   //   d_free_space -= (uint64_t)ZONE_SIZE;
+  //   // } else {
+  //   writed += z->wp_ - z->start_;  // BYTE
   //   // }
   // }
-  void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
-                      uint64_t zc, uint64_t until, uint64_t allocation_scheme,
-                      uint64_t zc_scheme,
-                      std::vector<uint64_t> &other_options) {
-    reset_scheme_ = r;
-    allocation_scheme_ = allocation_scheme;
-    zc_scheme_ = zc_scheme;
-    partial_reset_scheme_ = partial_reset_scheme;
-    tuning_point_ = T;
-    input_aware_scheme_ = other_options[0];
-    cbzc_enabled_ = other_options[1];
-    default_extent_size_ = other_options[2];
-
-    std::cout << "zbd_->SetResetScheme: r = " << r << ", T = " << T
-              << ", allocation_schme = " << allocation_scheme
-              << ", zc_scheme = " << zc_scheme << std::endl;
-
-    for (auto opt : other_options) {
-      printf("other options %lu\n", opt);
+  for (const auto z : io_zones) {
+    uint64_t tmp = z->wp_ - z->start_;
+    if (tmp > z->max_capacity_) {
+      tmp = z->max_capacity_;
     }
-    if (zc != 0) {
-      zc_until_set_ = true;
-      zc_ = zc;
-      until_ = until;
-    }
-
-    for (uint64_t f = 0; f <= 100; f++) {
-      CalculateResetThreshold(f);
-    }
-  }
-  void SetDBPtr(DB *db_ptr) { db_ptr_ = db_ptr; }
-
-  bool SetSSTFileforZBDNoLock(uint64_t fno, ZoneFile *zoneFile);
-
-  ZoneFile *GetSSTZoneFileInZBDNoLock(uint64_t fno);
-
-  // void GiveZenFStoLSMTreeHint(
-  //     std::vector<uint64_t> &compaction_inputs_input_level_fno,
-  //     std::vector<uint64_t> &compaction_inputs_output_level_fno,
-  //     int output_level, bool trivial_move);
-  //
-  IOStatus RuntimeReset(void);
-  double GetMaxInvalidateCompactionScore(std::vector<uint64_t> &file_candidates,
-                                         uint64_t *candidate_size, bool stats);
-  double GetMaxSameZoneScore(std::vector<uint64_t> &compaction_inputs_fno);
-  inline bool RuntimeZoneResetDisabled() {
-    return partial_reset_scheme_ == RUNTIME_ZONE_RESET_DISABLED;
-  }
-  inline bool RuntimeZoneResetOnly() {
-    return partial_reset_scheme_ == RUNTIME_ZONE_RESET_ONLY;
-  }
-  inline bool PartialResetWithZoneReset() {
-    return (partial_reset_scheme_ == PARTIAL_RESET_WITH_ZONE_RESET);
-  }
-  inline bool PartialResetOnly() {
-    return partial_reset_scheme_ == PARTIAL_RESET_ONLY;
-    //  &&         log2_erase_unit_size_ > 0;
-  }
-  inline bool PartialResetAtBackground() {
-    return partial_reset_scheme_ == PARTIAL_RESET_AT_BACKGROUND;
-  }
-  inline bool PartialResetAtBackgroundThresholdWithZoneReset() {
-    return partial_reset_scheme_ == PARTIAL_RESET_BACKGROUND_T_WITH_ZONE_RESET;
-  }
-  inline bool ProactiveZoneCleaning() {
-    return partial_reset_scheme_ == PROACTIVE_ZONECLEANING;
+    writed += tmp;
   }
 
-  uint32_t GetPartialResetScheme() { return partial_reset_scheme_; }
+  // printf("df1 %ld\n", d_free_space);
+  // d_free_space -= (writed >> 20);
+  d_free_space -= BYTES_TO_MB(writed);
+  // printf("df2 %ld\n", d_free_space);
+  device_free_space_.store(d_free_space);
+  cur_free_percent_ = (d_free_space * 100) / device_size;
+  // CalculateResetThreshold();
+  // printf("cf %ld\n", cur_free_percent_);
+  return cur_free_percent_;
+}
 
-  void PrintZoneToFileStatus(void);
+void LogZoneStats();
+void LogZoneUsage();
+void LogGarbageInfo();
 
-  void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
-                         bool exclude_being_compacted = true);
+uint64_t GetZoneSize();
+uint32_t GetNrZones();
+std::vector<Zone *> GetMetaZones() { return meta_zones; }
 
-  void SetZCRunning(bool v) { zc_running_.store(v); }
-  bool GetZCRunning(void) { return zc_running_.load(); }
-  //
- private:
-  std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(
-      std::vector<uint64_t> &zone_score) {
-    std::vector<std::pair<uint64_t, uint64_t>> ret;
-    ret.clear();
-    for (uint64_t index = 0; index < zone_score.size(); index++) {
-      ret.push_back({zone_score[index], index});
-    }
-    std::sort(ret.rbegin(), ret.rend());
-    return ret;
+void SetFinishTreshold(uint32_t threshold) { finish_threshold_ = threshold; }
+
+void PutOpenIOZoneToken();
+void PutActiveIOZoneToken();
+
+void EncodeJson(std::ostream &json_stream);
+
+void SetZoneDeferredStatus(IOStatus status);
+
+std::shared_ptr<ZenFSMetrics> GetMetrics() { return metrics_; }
+
+void GetZoneSnapshot(std::vector<ZoneSnapshot> &snapshot);
+
+int Read(char *buf, uint64_t offset, int n, bool direct);
+IOStatus InvalidateCache(uint64_t pos, uint64_t size);
+
+IOStatus ReleaseMigrateZone(Zone *zone);
+
+IOStatus TakeMigrateZone(Zone **out_zone, Env::WriteLifeTimeHint lifetime,
+                         uint32_t min_capacity);
+
+// void AddBytesWritten(uint64_t written) { bytes_written_ += written; };
+// void AddGCBytesWritten(uint64_t written) { gc_bytes_written_ += written;
+// };
+void AddBytesWritten(uint64_t written) { bytes_written_.fetch_add(written); };
+void AddGCBytesWritten(uint64_t written) {
+  gc_bytes_written_.fetch_add(written);
+  zc_copied_timelapse_.push_back(written);
+};
+uint64_t GetGCBytesWritten(void) { return gc_bytes_written_.load(); }
+uint64_t GetUserBytesWritten() {
+  return bytes_written_.load() - gc_bytes_written_.load();
+};
+uint64_t GetTotalBytesWritten() { return bytes_written_.load(); };
+int GetResetCount() { return reset_count_.load(); }
+uint64_t GetWWP() { return wasted_wp_.load(); }
+// void SetResetScheme(uint32_t r, bool f, uint64_t T) {
+//   std::cout << "zbd_->SetResetScheme: r = " << r << ", f = " << f
+//             << ", T = " << T << std::endl;
+//   reset_scheme_ = r;
+//   reset_at_foreground_ = f;
+//   tuning_point_ = T;
+//   // if(zc!=0){
+//   //   zc_until_set_=true;
+//   //   zc_=zc;
+//   //   until_=until;
+//   // }
+
+//   // for(uint64_t f=0;f<=100;f++){
+//   //   CalculateResetThreshold(f);
+//   // }
+// }
+void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
+                    uint64_t zc, uint64_t until, uint64_t allocation_scheme,
+                    uint64_t zc_scheme, std::vector<uint64_t> &other_options) {
+  reset_scheme_ = r;
+  allocation_scheme_ = allocation_scheme;
+  zc_scheme_ = zc_scheme;
+  partial_reset_scheme_ = partial_reset_scheme;
+  tuning_point_ = T;
+  input_aware_scheme_ = other_options[0];
+  cbzc_enabled_ = other_options[1];
+  default_extent_size_ = other_options[2];
+
+  std::cout << "zbd_->SetResetScheme: r = " << r << ", T = " << T
+            << ", allocation_schme = " << allocation_scheme
+            << ", zc_scheme = " << zc_scheme << std::endl;
+
+  for (auto opt : other_options) {
+    printf("other options %lu\n", opt);
+  }
+  if (zc != 0) {
+    zc_until_set_ = true;
+    zc_ = zc;
+    until_ = until;
   }
 
-  IOStatus GetZoneDeferredStatus();
-  bool GetActiveIOZoneTokenIfAvailable();
-  void WaitForOpenIOZoneToken(bool prioritized);
-  IOStatus ApplyFinishThreshold();
-  IOStatus FinishCheapestIOZone();
-  IOStatus GetBestOpenZoneMatch(Env::WriteLifeTimeHint file_lifetime,
-                                unsigned int *best_diff_out, Zone **zone_out,
-                                uint32_t min_capacity = 0);
-  IOStatus GetAnyLargestRemainingZone(Zone **zone_out,
-                                      uint32_t min_capacity = 0);
-  IOStatus AllocateEmptyZone(Zone **zone_out);
-  //////////////////////////////////////////////
-  IOStatus AllocateAllInvalidZone(Zone **zone_out);
-  bool CompactionSimulator(uint64_t predicted_size, int level, Slice &smallest,
-                           Slice &largest);
-  bool CalculateZoneScore(std::vector<uint64_t> &fno_list,
-                          std::vector<uint64_t> &zone_score);
-  void AllocateZoneBySortedScore(
-      std::vector<std::pair<uint64_t, uint64_t>> &sorted, Zone **allocated_zone,
-      uint64_t min_capacity);
-  IOStatus AllocateCompactionAwaredZone(
-      Slice &smallest, Slice &largest, int level,
-      Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
-      uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity = 0);
-  IOStatus AllocateMostL0FilesZone(std::vector<uint64_t> &zone_score,
-                                   std::vector<uint64_t> &fno_list,
-                                   std::vector<bool> &is_input_in_zone,
-                                   Zone **zone_out, uint64_t min_capacity);
-  void AdjacentFileList(Slice &smallest, Slice &largest, int level,
-                        std::vector<uint64_t> &fno_list);
-  void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
-                                std::vector<uint64_t> &fno_list);
-  uint64_t MostLargeUpperAdjacentFile(Slice &s, Slice &l, int level);
-  uint64_t MostSmallDownwardAdjacentFile(Slice &s, Slice &l, int level);
-  // void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
-  //                        bool exclude_being_compacted = true);
-  // int NumLevelFiles(int level);
-  IOStatus AllocateSameLevelFilesZone(Slice &smallest, Slice &largest,
-                                      const std::vector<uint64_t> &fno_list,
-                                      std::vector<bool> &is_input_in_zone,
-                                      Zone **zone_out, uint64_t min_capacity);
-  IOStatus GetNearestZoneFromZoneFile(ZoneFile *zFile,
-                                      std::vector<bool> &is_input_in_zone,
-                                      Zone **zone_out, uint64_t min_capacity);
-  ////////////////////////////////////////////////////////
-  inline uint64_t LazyLog(uint64_t sz, uint64_t fr, uint64_t T);
-  inline uint64_t LazyLinear(uint64_t sz, uint64_t fr, uint64_t T);
-  inline uint64_t Custom(uint64_t sz, uint64_t fr, uint64_t T);
-  inline uint64_t LogLinear(uint64_t sz, uint64_t fr, uint64_t T);
-  inline uint64_t LazyExponential(uint64_t sz, uint64_t fr, uint64_t T);
+  for (uint64_t f = 0; f <= 100; f++) {
+    CalculateResetThreshold(f);
+  }
+}
+void SetDBPtr(DB *db_ptr) { db_ptr_ = db_ptr; }
+
+bool SetSSTFileforZBDNoLock(uint64_t fno, ZoneFile *zoneFile);
+
+ZoneFile *GetSSTZoneFileInZBDNoLock(uint64_t fno);
+
+// void GiveZenFStoLSMTreeHint(
+//     std::vector<uint64_t> &compaction_inputs_input_level_fno,
+//     std::vector<uint64_t> &compaction_inputs_output_level_fno,
+//     int output_level, bool trivial_move);
+//
+IOStatus RuntimeReset(void);
+double GetMaxInvalidateCompactionScore(std::vector<uint64_t> &file_candidates,
+                                       uint64_t *candidate_size, bool stats);
+double GetMaxSameZoneScore(std::vector<uint64_t> &compaction_inputs_fno);
+inline bool RuntimeZoneResetDisabled() {
+  return partial_reset_scheme_ == RUNTIME_ZONE_RESET_DISABLED;
+}
+inline bool RuntimeZoneResetOnly() {
+  return partial_reset_scheme_ == RUNTIME_ZONE_RESET_ONLY;
+}
+inline bool PartialResetWithZoneReset() {
+  return (partial_reset_scheme_ == PARTIAL_RESET_WITH_ZONE_RESET);
+}
+inline bool PartialResetOnly() {
+  return partial_reset_scheme_ == PARTIAL_RESET_ONLY;
+  //  &&         log2_erase_unit_size_ > 0;
+}
+inline bool PartialResetAtBackground() {
+  return partial_reset_scheme_ == PARTIAL_RESET_AT_BACKGROUND;
+}
+inline bool PartialResetAtBackgroundThresholdWithZoneReset() {
+  return partial_reset_scheme_ == PARTIAL_RESET_BACKGROUND_T_WITH_ZONE_RESET;
+}
+inline bool ProactiveZoneCleaning() {
+  return partial_reset_scheme_ == PROACTIVE_ZONECLEANING;
+}
+
+uint32_t GetPartialResetScheme() { return partial_reset_scheme_; }
+
+void PrintZoneToFileStatus(void);
+
+void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+                       bool exclude_being_compacted = true);
+
+void SetZCRunning(bool v) { zc_running_.store(v); }
+bool GetZCRunning(void) { return zc_running_.load(); }
+//
+private:
+std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(
+    std::vector<uint64_t> &zone_score) {
+  std::vector<std::pair<uint64_t, uint64_t>> ret;
+  ret.clear();
+  for (uint64_t index = 0; index < zone_score.size(); index++) {
+    ret.push_back({zone_score[index], index});
+  }
+  std::sort(ret.rbegin(), ret.rend());
+  return ret;
+}
+
+IOStatus GetZoneDeferredStatus();
+bool GetActiveIOZoneTokenIfAvailable();
+void WaitForOpenIOZoneToken(bool prioritized);
+IOStatus ApplyFinishThreshold();
+IOStatus FinishCheapestIOZone();
+IOStatus GetBestOpenZoneMatch(Env::WriteLifeTimeHint file_lifetime,
+                              unsigned int *best_diff_out, Zone **zone_out,
+                              uint32_t min_capacity = 0);
+IOStatus GetAnyLargestRemainingZone(Zone **zone_out, uint32_t min_capacity = 0);
+IOStatus AllocateEmptyZone(Zone **zone_out);
+//////////////////////////////////////////////
+IOStatus AllocateAllInvalidZone(Zone **zone_out);
+bool CompactionSimulator(uint64_t predicted_size, int level, Slice &smallest,
+                         Slice &largest);
+bool CalculateZoneScore(std::vector<uint64_t> &fno_list,
+                        std::vector<uint64_t> &zone_score);
+void AllocateZoneBySortedScore(
+    std::vector<std::pair<uint64_t, uint64_t>> &sorted, Zone **allocated_zone,
+    uint64_t min_capacity);
+IOStatus AllocateCompactionAwaredZone(Slice &smallest, Slice &largest,
+                                      int level,
+                                      Env::WriteLifeTimeHint file_lifetime,
+                                      std::vector<uint64_t> input_fno,
+                                      uint64_t predicted_size, Zone **zone_out,
+                                      uint64_t min_capacity = 0);
+IOStatus AllocateMostL0FilesZone(std::vector<uint64_t> &zone_score,
+                                 std::vector<uint64_t> &fno_list,
+                                 std::vector<bool> &is_input_in_zone,
+                                 Zone **zone_out, uint64_t min_capacity);
+void AdjacentFileList(Slice &smallest, Slice &largest, int level,
+                      std::vector<uint64_t> &fno_list);
+void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
+                              std::vector<uint64_t> &fno_list);
+uint64_t MostLargeUpperAdjacentFile(Slice &s, Slice &l, int level);
+uint64_t MostSmallDownwardAdjacentFile(Slice &s, Slice &l, int level);
+// void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+//                        bool exclude_being_compacted = true);
+// int NumLevelFiles(int level);
+IOStatus AllocateSameLevelFilesZone(Slice &smallest, Slice &largest,
+                                    const std::vector<uint64_t> &fno_list,
+                                    std::vector<bool> &is_input_in_zone,
+                                    Zone **zone_out, uint64_t min_capacity);
+IOStatus GetNearestZoneFromZoneFile(ZoneFile *zFile,
+                                    std::vector<bool> &is_input_in_zone,
+                                    Zone **zone_out, uint64_t min_capacity);
+////////////////////////////////////////////////////////
+inline uint64_t LazyLog(uint64_t sz, uint64_t fr, uint64_t T);
+inline uint64_t LazyLinear(uint64_t sz, uint64_t fr, uint64_t T);
+inline uint64_t Custom(uint64_t sz, uint64_t fr, uint64_t T);
+inline uint64_t LogLinear(uint64_t sz, uint64_t fr, uint64_t T);
+inline uint64_t LazyExponential(uint64_t sz, uint64_t fr, uint64_t T);
 };
 
 }  // namespace ROCKSDB_NAMESPACE
