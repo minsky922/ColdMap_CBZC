@@ -29,8 +29,8 @@ UNTIL=20
 # sudo rm -rf ${RESULT_DIR_PATH}
 # mkdir ${RESULT_DIR_PATH}
 
-
-for zc_scheme_name in GREEDY CBZC1 CBZC2 CBZC3; do
+for zc_scheme_name in CBZC1 CBZC2; do
+# for zc_scheme_name in GREEDY CBZC1 CBZC2 CBZC3; do
     zc_scheme=${!zc_scheme_name}
 
     for run in 1 2 3; do
