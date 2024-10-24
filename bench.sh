@@ -59,7 +59,6 @@ for zc_scheme_name in GREEDY CBZC1 CBZC2 CBZC3; do
             -max_background_flushes=${T_FLUSH} \
             -subcompactions=${T_SUBCOMPACTION} \
             -histogram \
-            -reset_scheme=$ALGORITHM \
             -tuning_point=$T \
             -reset_scheme=0 \
             -partial_reset_scheme=1 \
