@@ -292,7 +292,8 @@ class ZonedBlockDevice {
   std::vector<int> compaction_blocked_at_amount_;
 
   /* time_lapse */
-  int zc_io_block_ = 0;
+  // int zc_io_block_ = 0;
+  int zone_cleaning_io_block_ = 0;
   clock_t ZBD_mount_time_;
   bool zone_allocation_state_ = true;
 
@@ -488,7 +489,8 @@ class ZonedBlockDevice {
     // 뮤텍스가 잠기고 객체가 소멸될 때 자동으로 잠금이 해제됩니다.
     std::lock_guard<std::mutex> lg_(io_lock_);
     io_block_timelapse_.push_back({gettid(), s, e});
-    zc_io_block_ += (e - s);
+    // zc_io_block_ += (e - s);
+    zone_cleaning_io_block_ += (e - s);
   }
 
   clock_t IOBlockedStartCheckPoint(void) {
@@ -515,6 +517,9 @@ class ZonedBlockDevice {
     zc_timelapse_.push_back({zc_z, s, e, us, copied, forced});
   }
   void AddTimeLapse(int T);
+  void AddCumulativeIOBlocking(long ns) {
+    cumulative_io_blocking_ += (ns / 1000) / 1000;
+  }
 
   uint64_t CalculateCapacityRemain() {
     uint64_t ret = 0;

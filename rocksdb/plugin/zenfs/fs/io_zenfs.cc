@@ -486,10 +486,11 @@ IOStatus ZoneFile::AllocateNewZone() {
   IOStatus s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
   // std::cout << "AllocateNewZone->zone: " << zone << "\n";
   if (zone == nullptr) {
-    auto start_time = std::chrono::system_clock::now();  // 시작 시간 기록
-    auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
-    std::cout << "Zone allocation started at: " << std::ctime(&start_time_t);
+    // auto start_time = std::chrono::system_clock::now();  // 시작 시간 기록
+    // auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
+    // std::cout << "Zone allocation started at: " << std::ctime(&start_time_t);
     // for (int try_n = 0; try_n < 16; try_n++) {
+    int start = zenfs_->GetMountTime();
     while (zbd_->CalculateCapacityRemain() > (1 << 20) * 128) {
       // if (zbd_->IsZoneAllocationFailed()) {
       //   return IOStatus::NoSpace("Zone allocation failed\n");
@@ -512,19 +513,20 @@ IOStatus ZoneFile::AllocateNewZone() {
       zbd_->ResetUnusedIOZones();
       // zbd_->RuntimeReset();
     }
+    int end = zenfs_->GetMountTime();
 
-    auto end_time = std::chrono::system_clock::now();  // 종료 시간 기록
-    auto end_time_t = std::chrono::system_clock::to_time_t(end_time);
-    std::cout << "Zone allocation ended at: " << std::ctime(&end_time_t);
+    // auto end_time = std::chrono::system_clock::now();  // 종료 시간 기록
+    // auto end_time_t = std::chrono::system_clock::to_time_t(end_time);
+    // std::cout << "Zone allocation ended at: " << std::ctime(&end_time_t);
 
-    auto start = std::chrono::duration_cast<std::chrono::seconds>(
-                     start_time.time_since_epoch())
-                     .count();
-    auto end = std::chrono::duration_cast<std::chrono::seconds>(
-                   end_time.time_since_epoch())
-                   .count();
-    std::cout << "IO Blocked Time Start: " << start << " End: " << end
-              << std::endl;
+    // auto start = std::chrono::duration_cast<std::chrono::seconds>(
+    //                  start_time.time_since_epoch())
+    //                  .count();
+    // auto end = std::chrono::duration_cast<std::chrono::seconds>(
+    //                end_time.time_since_epoch())
+    //                .count();
+    // std::cout << "IO Blocked Time Start: " << start << " End: " << end
+    //           << std::endl;
     zbd_->AddIOBlockedTimeLapse(start, end);
   }
   if (!s.ok()) {

@@ -505,7 +505,7 @@ class ZenFS : public FileSystemWrapper {
   void ReCalculateLifetimes();
   void CalculateHorizontalLifetimes(
       std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map);
-  // int GetMountTime(void) override { return mount_time_.load(); }
+  int GetMountTime(void) override { return mount_time_.load(); }
   // bool IsZCRunning(void) { return run_gc_worker_; }
   void ZCLock(void) override { zc_lock_.lock(); }
   void ZCUnLock(void) override { zc_lock_.unlock(); }

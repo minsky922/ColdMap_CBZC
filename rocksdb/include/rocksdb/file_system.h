@@ -380,7 +380,7 @@ class FileSystem : public Customizable {
   // virtual void ZoneCleaningWorker(bool) {}
   // virtual size_t ZoneCleaning(bool) { return 0; }
   // virtual bool IsZCRunning(void) { return false; }
-  // virtual int GetMountTime(void) { return -1; }
+  virtual int GetMountTime(void) { return -1; }
   virtual void ZCLock(void) {}
   virtual void ZCUnLock(void) {}
 
@@ -1397,7 +1397,7 @@ class FileSystemWrapper : public FileSystem {
   // target_->ZoneCleaningWorker(run_once);
   // }
   // size_t ZoneCleaning(bool forced) { return target_->ZoneCleaning(forced); }
-  // int GetMountTime(void) { return target_->GetMountTime(); }
+  int GetMountTime(void) { return target_->GetMountTime(); }
   // bool IsZCRunning(void) { return target_->IsZCRunning(); }
   void ZCLock(void) { target_->ZCLock(); }
   void ZCUnLock(void) { target_->ZCUnLock(); }

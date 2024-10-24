@@ -482,30 +482,34 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
   //        compaction_blocked_at_amount_.size());
-  printf("ZC IO Blocking time : %d\n", zc_io_block_);
+  printf("FAR STAT 2 ::ZC IO Blocking time : %d\n", zone_cleaning_io_block_);
 
   printf("============================================================\n");
   uint64_t total_copied = 0;
   size_t rc_zc = 0;
   int io_blocking_sum = 0;
-  // long long io_blocking_ms_sum = 0;
-  for (size_t i = 0;
-       i < zc_timelapse_.size() && i < zc_copied_timelapse_.size(); i++) {
+  long long io_blocking_ms_sum = 0;
+  // for (size_t i = 0;
+  //  i < zc_timelapse_.size() && i < zc_copied_timelapse_.size(); i++) {
+  for (size_t i = 0; i < zc_timelapse_.size(); i++) {
     bool forced = zc_timelapse_[i].forced;
     size_t zc_z = zc_timelapse_[i].zc_z;
     int s = zc_timelapse_[i].s;
     int e = zc_timelapse_[i].e;
-    // long long us = zc_timelapse_[i].us;
+    long long us = zc_timelapse_[i].us;
     io_blocking_sum += e - s + 1;
-    // io_blocking_ms_sum += us;
-    printf("[%lu] :: %d ~ %d, %ld (MB), Reclaimed Zone : %lu [%s]\n", i + 1, s,
-           e, (zc_copied_timelapse_[i]) / (1 << 20), zc_z,
+    io_blocking_ms_sum += us / 1000;
+    printf("[%lu] :: %d ~ %d, %llu ms, %ld (MB), Reclaimed Zone : %lu [%s]\n",
+           i + 1, s, e, us / 1000, (zc_timelapse_[i].copied >> 20), zc_z,
            forced ? "FORCED" : " ");
-    total_copied += zc_copied_timelapse_[i];
+    // total_copied += zc_copied_timelapse_[i];
+    total_copied += zc_timelapse_[i].copied;
     rc_zc += zc_z;
   }
   printf("Total ZC Copied (MB) :: %lu, Recaimed by ZC :: %lu \n",
          total_copied / (1 << 20), rc_zc);
+  printf("Total ZC copied- GC_BYTES_WRITTEN(MB):: %lu \n",
+         (gc_bytes_written_.load()) >> 20);
   printf("FAR STAT  :: Reset Count (R+ZC) : %ld+%ld=%ld\n", rc - rc_zc, rc_zc,
          rc);
   // for (size_t i = 0; i < io_block_timelapse_.size(); i++) {
@@ -516,6 +520,13 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   // }
 
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
+  printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
+  printf("Cumulative I/O Blocking %lu\n", cumulative_io_blocking_);
+  if (GetUserBytesWritten()) {
+    printf("copy/written ratio : %lu/%lu=%lu\n", gc_bytes_written_.load(),
+           GetUserBytesWritten(),
+           (gc_bytes_written_.load() * 100) / GetUserBytesWritten());
+  }
   // printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
 
   for (const auto z : meta_zones) {
@@ -851,7 +862,9 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
         // wasted_wp_.fetch_add(io_zones[i]->capacity_);
         clock_t start = clock();
         IOStatus reset_status = z->Reset();
+        uint64_t cp = z->GetCapacityLeft();
         reset_count_.fetch_add(1);
+        wasted_wp_.fetch_add(cp);
         clock_t end = clock();
         reset_latency += (end - start);
         runtime_reset_reset_latency_.fetch_add(reset_latency);

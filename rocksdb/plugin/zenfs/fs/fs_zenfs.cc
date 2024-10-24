@@ -463,19 +463,14 @@ void ZenFS::ReCalculateLifetimes() {
 
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
-  if (zc_scheme == CBZC3) {
-    ReCalculateLifetimes();
-  }
+  // if (zc_scheme == CBZC3) {
+  ReCalculateLifetimes();
+  // }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
-  auto start_chrono =
-      std::chrono::high_resolution_clock::now();  // valid data copy time
-  auto start_time = std::chrono::system_clock::now();
-  auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
-  std::cout << "ZoneCleaning started at: " << std::ctime(&start_time_t)
-            << std::endl;
-  // zc_lock_.lock();
+  int start = GetMountTime();
+  struct timespec start_timespec, end_timespec;
 
   ZenFSSnapshot snapshot;
   ZenFSSnapshotOptions options;
@@ -489,9 +484,9 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::set<uint64_t> migrate_zones_start;
 
   // 모든 파일의 WriteLifeTimeHint 가져오기 - LIZC
-  // if (zc_scheme == CBZC2) {
-  auto lifetime_hints = GetWriteLifeTimeHints();
-  // }
+  if (zc_scheme == CBZC2) {
+    auto lifetime_hints = GetWriteLifeTimeHints();
+  }
 
   for (const auto& zone : snapshot.zones_) {
     // zone.capacity == 0 -> full-zone
@@ -614,12 +609,12 @@ void ZenFS::ZoneCleaning(bool forced) {
       // std::cout << "all_inal_zone..." << std::endl;
     }
   }
-  std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
+  // std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
 
   // std::cout << "Sorting victim candidates..." << std::endl;
   sort(victim_candidate.rbegin(), victim_candidate.rend());
 
-  std::cout << "Victim candidates:" << std::endl;
+  // std::cout << "Victim candidates:" << std::endl;
   // for (const auto& candidate : victim_candidate) {
   //   std::cout << "cost-benefit score: " << candidate.first
   //             << ", Zone Start: " << candidate.second << std::endl;
@@ -642,10 +637,10 @@ void ZenFS::ZoneCleaning(bool forced) {
        (i < reclaimed_zone_n && migrate_zones_start.size() < reclaimed_zone_n);
        i++) {
     if (victim_candidate[i].first > threshold) {
-      should_be_copied +=
-          (zone_size - (victim_candidate[i].first * zone_size / 100));
-      std::cout << "cost-benefit score: " << victim_candidate[i].first
-                << ", Zone Start: " << victim_candidate[i].second << std::endl;
+      // should_be_copied +=
+      //     (zone_size - (victim_candidate[i].first * zone_size / 100));
+      // std::cout << "cost-benefit score: " << victim_candidate[i].first
+      // << ", Zone Start: " << victim_candidate[i].second << std::endl;
       migrate_zones_start.emplace(victim_candidate[i].second);
     }
   }
@@ -656,6 +651,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::vector<ZoneExtentSnapshot*> migrate_exts;
   for (auto& ext : snapshot.extents_) {
     if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
+      should_be_copied += ext->length;
       migrate_exts.push_back(&ext);
     }
   }
@@ -663,28 +659,29 @@ void ZenFS::ZoneCleaning(bool forced) {
   if (migrate_zones_start.size() > 0) {
     IOStatus s;
     Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
+    clock_gettime(CLOCK_MONOTONIC, &start_timespec);
     s = MigrateExtents(migrate_exts);
-    zc_triggerd_count_.fetch_add(1);
+    clock_gettime(CLOCK_MONOTONIC, &end_timespec);
     if (!s.ok()) {
       Error(logger_, "Garbage collection failed");
     }
     // 종료 시간 기록
-    auto end_time = std::chrono::system_clock::now();
-    auto end_time_t = std::chrono::system_clock::to_time_t(end_time);
-    // std::cout << "ZoneCleaning ended at: " << std::ctime(&end_time_t)
-    //           << std::endl;
+    int end = GetMountTime();
     if (should_be_copied > 0) {
-      auto elapsed = std::chrono::high_resolution_clock::now() - start_chrono;
-      long long microseconds =
-          std::chrono::duration_cast<std::chrono::microseconds>(elapsed)
-              .count();
-      zbd_->AddZCTimeLapse(start_time_t, end_time_t, microseconds,
+      long elapsed_ns_timespec =
+          (end_timespec.tv_sec - start_timespec.tv_sec) * 1000000000 +
+          (end_timespec.tv_nsec - start_timespec.tv_nsec);
+      // long long microseconds =
+      //     std::chrono::duration_cast<std::chrono::microseconds>(elapsed)
+      //         .count();
+      zbd_->AddCumulativeIOBlocking(elapsed_ns_timespec);
+      zbd_->AddZCTimeLapse(start, end, (elapsed_ns_timespec / 1000),
                            migrate_zones_start.size(), should_be_copied,
                            forced);
     }
-    std::cout << "after all invalid zone_n: " << all_inval_zone_n << std::endl;
-    // zc_lock_.unlock();
-    // return migrate_zones_start.size() +
+    zc_triggerd_count_.fetch_add(1);
+    // std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
+    // std::endl; zc_lock_.unlock(); return migrate_zones_start.size() +
     // all_inval_zone_n;
   }
 }
