@@ -522,7 +522,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
   printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
   printf("Cumulative I/O Blocking(ms) %lu\n", cumulative_io_blocking_);
-  printf("Calculate Lifetime Time(ms)", calculate_lapse);
+  printf("Calculate Lifetime Time(ms) %lu\n", calculate_lapse);
   if (GetUserBytesWritten()) {
     printf("copy/written ratio : %lu/%lu=%lu\n", gc_bytes_written_.load(),
            GetUserBytesWritten(),
