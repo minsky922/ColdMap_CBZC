@@ -45,7 +45,7 @@ for zc_scheme_name in CBZC1 CBZC2; do
         sudo ${ROCKSDB_PATH}/plugin/zenfs/util/zenfs mkfs --force --enable_gc --zbd=${RAW_ZNS} --aux_path=${LOG_PATH}
         sleep 3
 
-        result_file=${RESULT_DIR_PATH}/result_${zc_scheme_name}_run_${run}
+        result_file=${RESULT_DIR_PATH}/${zc_scheme_name}_${run}
         echo $result_file
         
         sudo ${ROCKSDB_PATH}/db_bench \
