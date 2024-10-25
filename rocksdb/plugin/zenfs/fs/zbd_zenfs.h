@@ -526,7 +526,7 @@ class ZonedBlockDevice {
       // printf("calculate lifetime CBZC3!!\n");
       calculate_lapse += (ns / 1000) / 1000;
     } else {
-      // printf("calculate lifetime CBZC1,2!!");
+      printf("calculate lifetime CBZC1,2!!");
       calculate_lapse += (ns / 1000) / 1000;
     }
   }
