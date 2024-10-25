@@ -530,7 +530,8 @@ class ZonedBlockDevice {
       calculate_lapse += (ns / 1000);
       // std::cout << calculate_lapse << std::endl;
     } else {
-      std::cout << calculate_lapse << std::endl;
+      calculate_lapse += (ns / 1000) / 1000;
+      // std::cout << calculate_lapse << std::endl;
     }
   }
 
