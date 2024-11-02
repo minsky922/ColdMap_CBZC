@@ -464,14 +464,14 @@ void ZenFS::ReCalculateLifetimes() {
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
   if (zc_scheme == CBZC3) {
-    // struct timespec start_ts, end_ts;
-    // clock_gettime(CLOCK_MONOTONIC, &start_ts);
+    struct timespec start_ts, end_ts;
+    clock_gettime(CLOCK_MONOTONIC, &start_ts);
     // printf("CBZC3");
     ReCalculateLifetimes();
-    // clock_gettime(CLOCK_MONOTONIC, &end_ts);
-    // long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
-    //                      (end_ts.tv_nsec - start_ts.tv_nsec);
-    // zbd_->AddCalculatelifetimeLapse(elapsed_ns_ts);
+    clock_gettime(CLOCK_MONOTONIC, &end_ts);
+    long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
+                         (end_ts.tv_nsec - start_ts.tv_nsec);
+    zbd_->AddCalculatelifetimeLapse(elapsed_ns_ts);
   }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   // uint64_t zone_size = zbd_->GetZoneSize();
@@ -704,9 +704,9 @@ void ZenFS::ZoneCleaning(bool forced) {
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
     free_percent_ = zbd_->CalculateFreePercent();
-    if (free_percent_ > 20) {
-      usleep(100 * 1000);
-    }
+    // if (free_percent_ > 20) {
+    //   usleep(100 * 1000);
+    // }
     zbd_->SetZCRunning(false);
     // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
     if (free_percent_ < 20) {
