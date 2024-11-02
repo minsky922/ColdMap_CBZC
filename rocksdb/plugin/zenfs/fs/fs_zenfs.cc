@@ -466,7 +466,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   if (zc_scheme == CBZC3) {
     // struct timespec start_ts, end_ts;
     // clock_gettime(CLOCK_MONOTONIC, &start_ts);
-    printf("CBZC3");
+    // printf("CBZC3");
     ReCalculateLifetimes();
     // clock_gettime(CLOCK_MONOTONIC, &end_ts);
     // long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
