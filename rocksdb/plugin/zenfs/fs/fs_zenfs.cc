@@ -704,9 +704,9 @@ void ZenFS::ZoneCleaning(bool forced) {
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
     free_percent_ = zbd_->CalculateFreePercent();
-    if (free_percent_ > 20) {
-      usleep(100 * 1000);
-    }
+    // if (free_percent_ > 20) {
+    usleep(100 * 1000);
+    // }
     zbd_->SetZCRunning(false);
     // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
     if (free_percent_ < 20) {
