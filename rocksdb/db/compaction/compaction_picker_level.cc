@@ -428,7 +428,7 @@ uint32_t LevelCompactionBuilder::GetPathId(
   }
   return p;
 }
-
+// SICA
 bool LevelCompactionBuilder::PickFileToCompact() {
   // level 0 files are overlapping. So we cannot pick more
   // than one concurrent compactions at this level. This
