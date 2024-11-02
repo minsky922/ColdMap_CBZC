@@ -1309,7 +1309,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Zone **out_zone,
     }
 
     s = ResetUnusedIOZones();
-    sleep(1);
+    // sleep(1);
     if (!s.ok()) {
       return s;
     }
