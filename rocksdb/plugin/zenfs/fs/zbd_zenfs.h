@@ -524,7 +524,7 @@ class ZonedBlockDevice {
   void AddCalculatelifetimeLapse(long ns) {
     // if (zc_scheme_ == CBZC3) {
     //   // printf("calculate lifetime CBZC3!!\n");
-    //   calculate_lapse += (ns / 1000) / 1000;
+    calculate_lapse += (ns / 1000) / 1000;
     // } else if (zc_scheme_ == CBZC2) {
     //   // std::cout << ns << std::endl;
     //   calculate_lapse += (ns / 1000);
