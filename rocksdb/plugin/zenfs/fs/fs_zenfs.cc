@@ -571,7 +571,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         uint64_t cost = (100 - garbage_percent_approx) * 2;
         uint64_t benefit = garbage_percent_approx * total_age;
         if (cost != 0) {
-          uint64_t cost_benefit_score = benefit / cost;
+          // uint64_t cost_benefit_score = benefit / cost;
+          double cost_benefit_score = benefit / cost;
           // victim_candidate.push_back({cost_benefit_score, zone.start});
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx});
