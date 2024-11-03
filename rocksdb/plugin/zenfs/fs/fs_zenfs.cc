@@ -635,10 +635,11 @@ void ZenFS::ZoneCleaning(bool forced) {
   // std::cout << "Sorting victim candidates..." << std::endl;
   // sort(victim_candidate.rbegin(), victim_candidate.rend());
   if (zc_scheme == GREEDY) {
-    // GREEDY에서는 garbage_percent_approx (score)를 기준으로 내림차순 정렬
-    std::sort(
-        victim_candidate.begin(), victim_candidate.end(),
-        [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
+    // GREEDY에서는 garbage_percent_approx 를 기준으로 내림차순 정렬
+    std::sort(victim_candidate.begin(), victim_candidate.end(),
+              [](const ZoneInfo& a, const ZoneInfo& b) {
+                return a.garbage_percent_approx > b.garbage_percent_approx;
+              });
   } else {
     // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
     std::sort(
@@ -647,7 +648,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   }
 
   std::cout
-      << "Victim candidates with cost-benefit score and garbage percentage:"
+      << "==================================================================="
       << std::endl;
   for (const auto& candidate : victim_candidate) {
     std::cout << "cost-benefit score: " << candidate.score
