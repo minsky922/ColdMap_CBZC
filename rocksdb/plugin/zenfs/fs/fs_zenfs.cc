@@ -507,10 +507,11 @@ void ZenFS::ZoneCleaning(bool forced) {
     uint64_t garbage_percent_approx =
         100 - 100 * zone.used_capacity / zone.max_capacity;  // 가비지 비율
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
-      if (zc_scheme == GREEDY) {
-        // printf("GREEDY!!!!\n");
-        // victim_candidate.push_back({garbage_percent_approx, zone.start});
-      } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
+      // if (zc_scheme == GREEDY) {
+      //   // printf("GREEDY!!!!\n");
+      //   // victim_candidate.push_back({garbage_percent_approx, zone.start});
+      // } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
+      if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_age_ts);
         auto current_time = std::chrono::system_clock::now();
