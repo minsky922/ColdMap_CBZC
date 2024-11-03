@@ -352,7 +352,7 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 
 void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
-  for (int level = 0; level < 7; level++) {
+  for (int level = 0; level < 6; level++) {
     std::vector<uint64_t> fno_list;
     zbd_->SameLevelFileList(level, fno_list);
 
@@ -410,10 +410,10 @@ void ZenFS::ReCalculateLifetimes() {
 
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
   // 수직 levelscore - 높을수록 hot
-  for (int level = 0; level < 7; level++) {
+  for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    std::cout << "Level : " << level
-              << ", vertical lifetime: " << vertical_lifetime << std::endl;
+    // std::cout << "Level : " << level
+    //           << ", vertical lifetime: " << vertical_lifetime << std::endl;
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
@@ -487,7 +487,13 @@ void ZenFS::ZoneCleaning(bool forced) {
 
   GetZenFSSnapshot(snapshot, options);
   size_t all_inval_zone_n = 0;
-  std::vector<std::pair<uint64_t, uint64_t>> victim_candidate;
+  // std::vector<std::pair<uint64_t, uint64_t>> victim_candidate;
+  struct ZoneInfo {
+    uint64_t cost_benefit_score;
+    uint64_t zone_start;
+    uint64_t garbage_percent_approx;
+  };
+  std::vector<ZoneInfo> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
 
   for (const auto& zone : snapshot.zones_) {
@@ -503,7 +509,7 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
       if (zc_scheme == GREEDY) {
         // printf("GREEDY!!!!\n");
-        victim_candidate.push_back({garbage_percent_approx, zone.start});
+        // victim_candidate.push_back({garbage_percent_approx, zone.start});
       } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_age_ts);
@@ -566,9 +572,11 @@ void ZenFS::ZoneCleaning(bool forced) {
         uint64_t benefit = garbage_percent_approx * total_age;
         if (cost != 0) {
           uint64_t cost_benefit_score = benefit / cost;
-          victim_candidate.push_back({cost_benefit_score, zone.start});
+          // victim_candidate.push_back({cost_benefit_score, zone.start});
+          victim_candidate.push_back(std::make_tuple(
+              cost_benefit_score, zone.start, garbage_percent_approx));
         }
-      } else if (zc_scheme == CBZC3) {
+      } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY) {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
         // std::cout << "zone.capacity: " << zone.capacity << std::endl; -> 0
@@ -611,7 +619,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         // std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
           double cost_benefit_score = benefit / cost;
-          victim_candidate.push_back({cost_benefit_score, zone.start});
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx});
         }
       }
     } else {  // 유효 데이터가 없는 경우
@@ -622,13 +631,28 @@ void ZenFS::ZoneCleaning(bool forced) {
   // std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
 
   // std::cout << "Sorting victim candidates..." << std::endl;
-  sort(victim_candidate.rbegin(), victim_candidate.rend());
+  // sort(victim_candidate.rbegin(), victim_candidate.rend());
+  if (zc_scheme == GREEDY) {
+    // GREEDY에서는 garbage_percent_approx (score)를 기준으로 내림차순 정렬
+    std::sort(
+        victim_candidate.begin(), victim_candidate.end(),
+        [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
+  } else {
+    // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
+    std::sort(
+        victim_candidate.begin(), victim_candidate.end(),
+        [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
+  }
 
-  // std::cout << "Victim candidates:" << std::endl;
-  // for (const auto& candidate : victim_candidate) {
-  //   std::cout << "cost-benefit score: " << candidate.first
-  //             << ", Zone Start: " << candidate.second << std::endl;
-  // }
+  std::cout
+      << "Victim candidates with cost-benefit score and garbage percentage:"
+      << std::endl;
+  for (const auto& candidate : victim_candidate) {
+    std::cout << "cost-benefit score: " << candidate.cost_benefit_score
+              << ", Zone Start: " << candidate.zone_start
+              << ", Garbage Percentage: " << candidate.garbage_percent_approx
+              << "%" << std::endl;
+  }
 
   uint64_t threshold = 0;
   uint64_t reclaimed_zone_n = 1;
@@ -646,13 +670,14 @@ void ZenFS::ZoneCleaning(bool forced) {
   for (size_t i = 0;
        (i < reclaimed_zone_n && migrate_zones_start.size() < reclaimed_zone_n);
        i++) {
-    if (victim_candidate[i].first > threshold) {
-      // should_be_copied +=
-      //     (zone_size - (victim_candidate[i].first * zone_size / 100));
-      // std::cout << "cost-benefit score: " << victim_candidate[i].first
-      // << ", Zone Start: " << victim_candidate[i].second << std::endl;
-      migrate_zones_start.emplace(victim_candidate[i].second);
-    }
+    // if (victim_candidate[i].first > threshold) {
+    // should_be_copied +=
+    //     (zone_size - (victim_candidate[i].first * zone_size / 100));
+    // std::cout << "cost-benefit score: " << victim_candidate[i].first
+    // << ", Zone Start: " << victim_candidate[i].second << std::endl;
+    // migrate_zones_start.emplace(victim_candidate[i].second);
+    migrate_zones_start.emplace(victim_candidate[i].zone_start);
+    // }
   }
 
   // std::cout << "ZoneCleaning::reclaimed_zone_n: " << reclaimed_zone_n <<
