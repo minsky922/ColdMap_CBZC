@@ -489,7 +489,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   size_t all_inval_zone_n = 0;
   // std::vector<std::pair<uint64_t, uint64_t>> victim_candidate;
   struct ZoneInfo {
-    uint64_t cost_benefit_score;
+    double score;
     uint64_t zone_start;
     uint64_t garbage_percent_approx;
   };
@@ -654,7 +654,7 @@ void ZenFS::ZoneCleaning(bool forced) {
               << "%" << std::endl;
   }
 
-  uint64_t threshold = 0;
+  // uint64_t threshold = 0;
   uint64_t reclaimed_zone_n = 1;
 
   // if (forced) {
