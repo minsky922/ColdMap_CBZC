@@ -573,8 +573,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         if (cost != 0) {
           uint64_t cost_benefit_score = benefit / cost;
           // victim_candidate.push_back({cost_benefit_score, zone.start});
-          victim_candidate.push_back(std::make_tuple(
-              cost_benefit_score, zone.start, garbage_percent_approx));
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx});
         }
       } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY) {
         // printf("CBZC3!!");
@@ -648,7 +648,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       << "Victim candidates with cost-benefit score and garbage percentage:"
       << std::endl;
   for (const auto& candidate : victim_candidate) {
-    std::cout << "cost-benefit score: " << candidate.cost_benefit_score
+    std::cout << "cost-benefit score: " << candidate.score
               << ", Zone Start: " << candidate.zone_start
               << ", Garbage Percentage: " << candidate.garbage_percent_approx
               << "%" << std::endl;
