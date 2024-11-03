@@ -352,7 +352,7 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 
 void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
-  for (int level = 0; level < 6; level++) {
+  for (int level = 0; level < 7; level++) {
     std::vector<uint64_t> fno_list;
     zbd_->SameLevelFileList(level, fno_list);
 
@@ -410,10 +410,10 @@ void ZenFS::ReCalculateLifetimes() {
 
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
   // 수직 levelscore - 높을수록 hot
-  for (int level = 0; level < 6; level++) {
+  for (int level = 0; level < 7; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    // std::cout << "Level : " << level
-    //           << ", vertical lifetime: " << vertical_lifetime << std::endl;
+    std::cout << "Level : " << level
+              << ", vertical lifetime: " << vertical_lifetime << std::endl;
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
