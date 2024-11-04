@@ -3896,6 +3896,7 @@ void VersionStorageInfo::CalculateBaseBytes(const ImmutableOptions& ioptions,
       }
 
       level_multiplier_ = options.max_bytes_for_level_multiplier;
+      printf("max_bytes_for_level_multiplier %lu", level_multiplier);
       assert(base_level_size > 0);
       if (l0_size > base_level_size &&
           (l0_size > options.max_bytes_for_level_base ||
