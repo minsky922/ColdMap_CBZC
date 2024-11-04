@@ -1536,7 +1536,7 @@ void ZonedBlockDevice::SameLevelFileList(int level,
   assert(db_ptr_ != nullptr);
   fno_list.clear();
   if (db_ptr_ == nullptr) {
-    prinf("ZonedBlockDevice::SameLevelFileList!!!!\n");
+    printf("ZonedBlockDevice::SameLevelFileList!!!!\n");
     return;
   }
   // printf("zbd::samelevelfilelist->level: %d", level);
