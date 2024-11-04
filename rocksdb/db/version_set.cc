@@ -3898,8 +3898,8 @@ void VersionStorageInfo::CalculateBaseBytes(const ImmutableOptions& ioptions,
 
       level_multiplier_ = options.max_bytes_for_level_multiplier;
 
-      std::cout << "###########max_bytes_for_level_multiplier: "
-                << options.max_bytes_for_level_multiplier << std::endl;
+      // std::cout << "###########max_bytes_for_level_multiplier: "
+      //           << options.max_bytes_for_level_multiplier << std::endl;
       assert(base_level_size > 0);
       if (l0_size > base_level_size &&
           (l0_size > options.max_bytes_for_level_base ||

@@ -355,7 +355,9 @@ void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
   for (int level = 0; level < 6; level++) {
     std::vector<uint64_t> fno_list;
-    zbd_->SameLevelFileList(level, fno_list);
+    if (zbd_->db_ptr_ != nullptr) {
+      zbd_->SameLevelFileList(level, fno_list);
+    }
 
     std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
     size_t num_files = fno_list.size();

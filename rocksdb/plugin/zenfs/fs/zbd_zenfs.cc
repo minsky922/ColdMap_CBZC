@@ -1535,6 +1535,10 @@ void ZonedBlockDevice::SameLevelFileList(int level,
                                          bool exclude_being_compacted) {
   assert(db_ptr_ != nullptr);
   fno_list.clear();
+  if (db_ptr_ == nullptr) {
+    prinf("ZonedBlockDevice::SameLevelFileList!!!!\n");
+    return;
+  }
   // printf("zbd::samelevelfilelist->level: %d", level);
   db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
 }
