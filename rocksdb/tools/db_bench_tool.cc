@@ -1701,6 +1701,10 @@ DEFINE_uint64(allocation_scheme, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(zc_scheme, 0, "0<Tuninig point<100");
 
+DEFINE_uint64(alpha_value, 0, "0<Tuninig point<100");
+
+DEFINE_uint64(sigma_value, 0, "0<Tuninig point<100");
+
 DEFINE_uint64(compaction_scheme, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(max_compaction_kick, 25, "0<Tuninig point<100");
@@ -4066,6 +4070,8 @@ class Benchmark {
     options.reset_scheme = FLAGS_reset_scheme;
     options.allocation_scheme = FLAGS_allocation_scheme;
     options.zc_scheme = FLAGS_zc_scheme;
+    options.alpha_value = FLAGS_alpha_value;
+    options.sigma_value = FLAGS_sigma_value;
     options.compaction_scheme = FLAGS_compaction_scheme;
     options.max_compaction_kick = FLAGS_max_compaction_kick;
     options.partial_reset_scheme = FLAGS_partial_reset_scheme;

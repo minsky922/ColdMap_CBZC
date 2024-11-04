@@ -489,7 +489,8 @@ class ZenFS : public FileSystemWrapper {
   }
   void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
-                      uint64_t zc_scheme,
+                      uint64_t zc_scheme, double alpha_value,
+                      double sigma_value,
                       std::vector<uint64_t>& other_options) override;
   // void GiveZenFStoLSMTreeHint(
   //     std::vector<uint64_t>& compaction_inputs_input_level_fno,

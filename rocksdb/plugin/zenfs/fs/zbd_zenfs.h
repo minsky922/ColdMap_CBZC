@@ -350,6 +350,8 @@ class ZonedBlockDevice {
   // bool reset_at_foreground_;
   uint64_t allocation_scheme_;
   uint64_t zc_scheme_;
+  double alpha_value;
+  double sigma_value;
   uint32_t partial_reset_scheme_;
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
@@ -399,6 +401,8 @@ class ZonedBlockDevice {
 
  public:
   uint64_t GetZCScheme() const { return zc_scheme_; }
+  double GetAlphaValue() const { return alpha_value; }
+  double GetSigmaValue() const { return sigma_value; }
 
   //
   std::atomic<uint64_t> lsm_tree_[10];
@@ -644,11 +648,14 @@ class ZonedBlockDevice {
   // }
   void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
-                      uint64_t zc_scheme,
+                      uint64_t zc_scheme, double alpha_value,
+                      double sigma_value,
                       std::vector<uint64_t> &other_options) {
     reset_scheme_ = r;
     allocation_scheme_ = allocation_scheme;
     zc_scheme_ = zc_scheme;
+    alpha_value = alpha_value;
+    sigma_value = sigma_value;
     partial_reset_scheme_ = partial_reset_scheme;
     tuning_point_ = T;
     input_aware_scheme_ = other_options[0];

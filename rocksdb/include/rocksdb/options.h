@@ -668,6 +668,8 @@ struct DBOptions {
   uint32_t reset_scheme;
   uint64_t allocation_scheme;
   uint64_t zc_scheme;
+  double alpha_value;
+  double sigma_value;
   uint64_t compaction_scheme;
   uint64_t input_aware_scheme;
   uint64_t max_compaction_kick;
