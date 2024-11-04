@@ -467,7 +467,7 @@ void ZenFS::ReCalculateLifetimes() {
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
   if (db_ptr_ == nullptr) {
-    printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
+    // printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
     return;
   }
   // if (zc_scheme == CBZC3) {
