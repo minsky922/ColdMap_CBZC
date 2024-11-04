@@ -297,13 +297,14 @@ ZenFS::~ZenFS() {
   zbd_->LogZoneUsage();                  // 존 사용량 로깅
   LogFiles();                            // 파일 정보 로깅
 
-  if (gc_worker_) {          // 가비지 컬렉션 스레드 종료
-    run_gc_worker_ = false;  // 가비지 컬렉션 실행 중지
-    gc_worker_->join();      // 가비지 컬렉션 스레드 종료 대기
+  run_gc_worker_ = false;  // 가비지 컬렉션 실행 중지
+  run_bg_reset_worker_ = false;
+
+  if (gc_worker_) {      // 가비지 컬렉션 스레드 종료
+    gc_worker_->join();  // 가비지 컬렉션 스레드 종료 대기
   }
 
   if (bg_reset_worker_) {
-    run_bg_reset_worker_ = false;
     // cv_.notify_all();
     bg_reset_worker_->join();
   }
