@@ -411,18 +411,28 @@ void ZenFS::ReCalculateLifetimes() {
 
   zone_lifetime_map_.clear();
 
+  double alpha_value = zbd_->GetAlphaValue();
+  if (alpha_value < 0 || alpha_value > 1) {
+    std::cerr << "alpha_value out of range (0 to 1): " << alpha_value
+              << std::endl;
+    return;
+  }
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
   // 수직 levelscore - 높을수록 hot
   for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
     std::cout << "Level : " << level
               << ", vertical lifetime: " << vertical_lifetime << std::endl;
+    if (vertical_lifetime == 0) {
+      vertical_lifetime = 1  // cold 상태를 나타내기 위해 1로 설정
+    }
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
       double horizontal_lifetime = file_pair.second;
 
-      double alpha_ = 1, beta_ = 1;
+      // double alpha_ = 1, beta_ = 1;
+      double alpha_ = alpha_value, beta_ = 1 - alpha;
       // 수직은 높을수록 hot, 수평은 높을수록 cold
       double sst_lifetime_value =
           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 / vertical_lifetime);
