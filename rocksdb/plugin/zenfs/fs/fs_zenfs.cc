@@ -401,17 +401,17 @@ void ZenFS::CalculateHorizontalLifetimes(
     // }
   }
 
-  for (const auto& level : level_file_map) {
-    std::cout << "Level " << level.first << ": [";
-    for (size_t i = 0; i < level.second.size(); ++i) {
-      std::cout << "(" << level.second[i].first << ", "
-                << level.second[i].second << ")";
-      if (i < level.second.size() - 1) {
-        std::cout << ", ";
-      }
-    }
-    std::cout << "]" << std::endl;
-  }
+  // for (const auto& level : level_file_map) {
+  //   std::cout << "Level " << level.first << ": [";
+  //   for (size_t i = 0; i < level.second.size(); ++i) {
+  //     std::cout << "(" << level.second[i].first << ", "
+  //               << level.second[i].second << ")";
+  //     if (i < level.second.size() - 1) {
+  //       std::cout << ", ";
+  //     }
+  //   }
+  //   std::cout << "]" << std::endl;
+  // }
 }
 
 void ZenFS::ReCalculateLifetimes() {
@@ -438,8 +438,8 @@ void ZenFS::ReCalculateLifetimes() {
   // 수직 levelscore - 높을수록 hot
   for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    std::cout << "Level : " << level
-              << ", vertical lifetime: " << vertical_lifetime << std::endl;
+    // std::cout << "Level : " << level
+    //           << ", vertical lifetime: " << vertical_lifetime << std::endl;
     if (vertical_lifetime == 0) {
       vertical_lifetime = 1;  // cold 상태를 나타내기 위해 1로 설정
     }
