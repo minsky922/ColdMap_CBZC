@@ -350,8 +350,8 @@ class ZonedBlockDevice {
   // bool reset_at_foreground_;
   uint64_t allocation_scheme_;
   uint64_t zc_scheme_;
-  double alpha_value;
-  double sigma_value;
+  double alpha_value_;
+  double sigma_value_;
   uint32_t partial_reset_scheme_;
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
@@ -654,8 +654,8 @@ class ZonedBlockDevice {
     reset_scheme_ = r;
     allocation_scheme_ = allocation_scheme;
     zc_scheme_ = zc_scheme;
-    alpha_value = alpha_value;
-    sigma_value = sigma_value;
+    alpha_value_ = alpha_value;
+    sigma_value_ = sigma_value;
     partial_reset_scheme_ = partial_reset_scheme;
     tuning_point_ = T;
     input_aware_scheme_ = other_options[0];
