@@ -401,8 +401,8 @@ class ZonedBlockDevice {
 
  public:
   uint64_t GetZCScheme() const { return zc_scheme_; }
-  double GetAlphaValue() const { return alpha_value; }
-  double GetSigmaValue() const { return sigma_value; }
+  double GetAlphaValue() const { return alpha_value_; }
+  double GetSigmaValue() const { return sigma_value_; }
 
   //
   std::atomic<uint64_t> lsm_tree_[10];
