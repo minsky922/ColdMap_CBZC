@@ -3075,8 +3075,12 @@ void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
     // if (file->being_compacted && exclude_being_compacted) {
     //   continue;
     // }
-    // fno_list.push_back(file->fd.GetNumber());
-    fno_list.emplace_back(file->fd.GetNumber(), file->being_compacted);
+
+    fno_list.push_back(file->fd.GetNumber());
+    if (file->being_compacted) {
+      compacting_files.insert(
+          file->fd.GetNumber());  // 컴팩션 중인 파일 번호 기록
+    }
   }
 }
 
