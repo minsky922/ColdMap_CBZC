@@ -676,6 +676,7 @@ void ZenFS::ZoneCleaning(bool forced) {
               });
   } else {
     // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
+    std::cout << "zc_scheme: " << zc_scheme << std::endl;
     std::sort(
         victim_candidate.begin(), victim_candidate.end(),
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
