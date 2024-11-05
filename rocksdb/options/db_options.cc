@@ -617,13 +617,11 @@ static std::unordered_map<std::string, OptionTypeInfo>
          {offsetof(struct ImmutableDBOptions, zc_scheme), OptionType::kUInt64T,
           OptionVerificationType::kNormal, OptionTypeFlags::kNone}},
         {"alpha_value",
-         {offsetof(struct ImmutableDBOptions, alpha_value),
-          OptionType::kUInt64T, OptionVerificationType::kNormal,
-          OptionTypeFlags::kNone}},
+         {offsetof(struct ImmutableDBOptions, alpha_value), OptionType::kDouble,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone}},
         {"sigma_value",
-         {offsetof(struct ImmutableDBOptions, sigma_value),
-          OptionType::kUInt64T, OptionVerificationType::kNormal,
-          OptionTypeFlags::kNone}},
+         {offsetof(struct ImmutableDBOptions, sigma_value), OptionType::kDouble,
+          OptionVerificationType::kNormal, OptionTypeFlags::kNone}},
 };
 
 const std::string OptionsHelper::kDBOptionsName = "DBOptions";

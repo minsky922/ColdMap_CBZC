@@ -1701,9 +1701,9 @@ DEFINE_uint64(allocation_scheme, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(zc_scheme, 0, "0<Tuninig point<100");
 
-DEFINE_uint64(alpha_value, 0, "0<Tuninig point<100");
+DEFINE_double(alpha_value, 0, "0<Tuninig point<100");
 
-DEFINE_uint64(sigma_value, 0, "0<Tuninig point<100");
+DEFINE_double(sigma_value, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(compaction_scheme, 0, "0<Tuninig point<100");
 
