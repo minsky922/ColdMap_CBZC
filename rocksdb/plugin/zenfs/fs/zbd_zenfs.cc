@@ -1532,15 +1532,15 @@ ZoneFile *ZonedBlockDevice::GetSSTZoneFileInZBDNoLock(uint64_t fno) {
 
 void ZonedBlockDevice::SameLevelFileList(int level,
                                          std::vector<uint64_t> &fno_list,
-                                         bool exclude_being_compacted) {
+                                         std::set<uint64_t> &compacting_files) {
   assert(db_ptr_ != nullptr);
   fno_list.clear();
   if (db_ptr_ == nullptr) {
-    printf("ZonedBlockDevice::SameLevelFileList!!!!\n");
+    // printf("ZonedBlockDevice::SameLevelFileList!!!!\n");
     return;
   }
   // printf("zbd::samelevelfilelist->level: %d", level);
-  db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
+  db_ptr_->SameLevelFileList(level, fno_list, compacting_files);
 }
 
 IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
@@ -1644,8 +1644,8 @@ l0:
     // zone_score.assign(0,zone_score.size());
     zone_score.clear();
     zone_score.assign(io_zones.size(), 0);
-    SameLevelFileList(0, fno_list);
-    SameLevelFileList(1, fno_list);
+    // SameLevelFileList(0, fno_list);
+    // SameLevelFileList(1, fno_list);
     s = AllocateMostL0FilesZone(zone_score, fno_list, is_input_in_zone,
                                 &allocated_zone, min_capacity);
     if (allocated_zone != nullptr) {
@@ -1657,7 +1657,7 @@ l0:
     zone_score.clear();
     zone_score.assign(io_zones.size() - ZENFS_META_ZONES - ZENFS_SPARE_ZONES,
                       0);
-    SameLevelFileList(level, fno_list);
+    // SameLevelFileList(level, fno_list);
     s = AllocateSameLevelFilesZone(smallest, largest, fno_list,
                                    is_input_in_zone, &allocated_zone,
                                    min_capacity);

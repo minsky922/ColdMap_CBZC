@@ -392,8 +392,10 @@ class DB {
                                         std::vector<uint64_t>& fno_list);
   virtual void ZenFSInstallSuperVersionAndScheduleWork(void);
   virtual uint64_t NowMicros(void);
+  // virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
+  //                                bool exclude_being_compacted = true);
   virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
-                                 bool exclude_being_compacted = true);
+                                 std::set<uint64_t>& compacting_files);
 
   virtual double ReCalculateCompactionScore(int level);
   virtual std::vector<int> NumLevelsFiles(void);

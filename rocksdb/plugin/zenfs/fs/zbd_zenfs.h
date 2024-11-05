@@ -721,8 +721,10 @@ class ZonedBlockDevice {
 
   void PrintZoneToFileStatus(void);
 
+  // void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+  //                        bool exclude_being_compacted = true);
   void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
-                         bool exclude_being_compacted = true);
+                         std::set<uint64_t> &compacting_files);
 
   void SetZCRunning(bool v) { zc_running_.store(v); }
   bool GetZCRunning(void) { return zc_running_.load(); }

@@ -355,46 +355,63 @@ void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
   for (int level = 0; level < 6; level++) {
     std::vector<uint64_t> fno_list;
+    std::set<uint64_t> compacting_files;
     if (db_ptr_ != nullptr) {
-      zbd_->SameLevelFileList(level, fno_list);
+      zbd_->SameLevelFileList(level, fno_list, compacting_files);
     }
 
     std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
-    size_t num_files = fno_list.size();
+    // size_t num_files = fno_list.size();
+    // 컴팩션 중이 아닌 파일 수 계산
+    size_t num_non_compacting_files = fno_list.size() - compacting_files.size();
 
-    // 인덱스를 정규화하여 저장
-    if (level == 0) {
-      // Level 0일 경우 모든 파일의 정규화된 인덱스 값은 1로 설정
-      for (size_t i = 0; i < num_files; ++i) {
-        file_with_normalized_index.emplace_back(fno_list[i], 1.0);  // 인덱스 1
+    // // 인덱스를 정규화하여 저장
+    // if (level == 0) {
+    //   // Level 0일 경우 모든 파일의 정규화된 인덱스 값은 1로 설정
+    //   for (size_t i = 0; i < num_files; ++i) {
+    //     file_with_normalized_index.emplace_back(fno_list[i], 1.0);  // 인덱스
+    //     1
+    //   }
+    // } else {
+    //   // Level 0이 아닌 경우, 인덱스를 정규화하여 저장
+    // for (size_t i = 0; i < num_files; ++i) {
+    for (size_t i = 0, non_compacting_index = 0; i < fno_list.size(); ++i) {
+      // double normalized_index =
+      //     static_cast<double>(i) / static_cast<double>(num_files - 1);
+      // file_with_normalized_index.emplace_back(
+      //     fno_list[i], normalized_index);  // 정규화된 인덱스 저장
+      uint64_t fno = fno_list[i];
+      double normalized_index;
+
+      // 컴팩션 중인 파일은 인덱스를 1.0으로 설정
+      if (compacting_files.find(fno) != compacting_files.end()) {
+        normalized_index = 1.0;
+      } else {
+        // 정규화된 인덱스 계산
+        normalized_index =
+            level == 0 ? 1.0
+                       : static_cast<double>(non_compacting_index) /
+                             static_cast<double>(num_non_compacting_files - 1);
+        non_compacting_index++;
       }
-    } else {
-      // Level 0이 아닌 경우, 인덱스를 정규화하여 저장
-      for (size_t i = 0; i < num_files; ++i) {
-        double normalized_index =
-            static_cast<double>(i) / static_cast<double>(num_files - 1);
-        file_with_normalized_index.emplace_back(
-            fno_list[i], normalized_index);  // 정규화된 인덱스 저장
-      }
+      file_with_normalized_index.emplace_back(fno, normalized_index);
     }
-    // sst파일 사이즈가 다르다 사이즈를 감안해야함
-
     // 각 레벨의 파일 리스트를 map에 저장
     level_file_map[level] = file_with_normalized_index;
+    // }
   }
 
-  // for (const auto& level : level_file_map) {
-  //   std::cout << "Level " << level.first << ": [";
-  //   for (size_t i = 0; i < level.second.size(); ++i) {
-  //     std::cout << "(" << level.second[i].first << ", "
-  //               << level.second[i].second << ")";  // fno와 정규화된 인덱스
-  //               출력
-  //     if (i < level.second.size() - 1) {
-  //       std::cout << ", ";
-  //     }
-  //   }
-  //   std::cout << "]" << std::endl;
-  // }
+  for (const auto& level : level_file_map) {
+    std::cout << "Level " << level.first << ": [";
+    for (size_t i = 0; i < level.second.size(); ++i) {
+      std::cout << "(" << level.second[i].first << ", "
+                << level.second[i].second << ")";
+      if (i < level.second.size() - 1) {
+        std::cout << ", ";
+      }
+    }
+    std::cout << "]" << std::endl;
+  }
 }
 
 void ZenFS::ReCalculateLifetimes() {
