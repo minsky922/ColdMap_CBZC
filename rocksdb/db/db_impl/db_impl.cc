@@ -297,7 +297,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   printf(
       "reset_scheme %lu partial_reset_scheme %lu tuning_point %lu "
       "allocation_scheme %lu compaction_scheme %lu input_aware_scheme %lu "
-      "zc_scheme %lu alpha_value %lu sigma_value %lu\n",
+      "zc_scheme %lu alpha_value %f sigma_value %f\n",
       immutable_db_options_.reset_scheme,
       immutable_db_options_.partial_reset_scheme,
       immutable_db_options_.tuning_point,
