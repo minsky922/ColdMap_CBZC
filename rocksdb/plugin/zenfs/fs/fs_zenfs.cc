@@ -451,25 +451,32 @@ void ZenFS::ReCalculateLifetimes() {
   }
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
   // 수직 levelscore - 높을수록 hot
+  std::vector<double> normalized_vertical_lifetimes(6, 0);
   for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
     if (vertical_lifetime > 0) {
-      double normalized_vertical_lifetime =
-          (vertical_lifetime - min_vertical_lifetime) /
+      normalized_vertical_lifetimes[level] =
+          (vertical_lifetimes[level] - min_vertical_lifetime) /
           (max_vertical_lifetime - min_vertical_lifetime);
       std::cout << "Level: " << level << ", Original: " << vertical_lifetime
-                << ", Normalized: " << normalized_vertical_lifetime
+                << ", Normalized: " << normalized_vertical_lifetime[level]
                 << std::endl;
     }
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
       double horizontal_lifetime = file_pair.second;
+      double vertical_lifetime = normalized_vertical_lifetimes[level];
 
       double alpha_ = alpha_value, beta_ = 1 - alpha_;
       // 수직은 높을수록 hot, 수평은 높을수록 cold
-      double sst_lifetime_value = alpha_ * (1 - horizontal_lifetime) +
-                                  beta_ * (1 - normalized_vertical_lifetime);
+      double sst_lifetime_value =
+          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime);
+
+      std::cout << "Level: " << level
+                << ", vertical Lifetime: " << vertical_lifetime
+                << ", horizontal_lifetime: " << horizontal_lifetime
+                << ", sst_lifetime: " << sst_lifetime_value << std::endl;
 
       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
       if (zone_file != nullptr) {
