@@ -466,15 +466,15 @@ void ZenFS::ReCalculateLifetimes() {
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
       double horizontal_lifetime = file_pair.second;
-      double vertical_lifetime = normalized_vertical_lifetimes[level];
+      double vertical_lifetime_ = normalized_vertical_lifetimes[level];
 
       double alpha_ = alpha_value, beta_ = 1 - alpha_;
       // 수직은 높을수록 hot, 수평은 높을수록 cold
       double sst_lifetime_value =
-          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime);
+          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
       std::cout << "Level: " << level
-                << ", vertical Lifetime: " << vertical_lifetime
+                << ", vertical Lifetime: " << vertical_lifetime_
                 << ", horizontal_lifetime: " << horizontal_lifetime
                 << ", sst_lifetime: " << sst_lifetime_value << std::endl;
 
