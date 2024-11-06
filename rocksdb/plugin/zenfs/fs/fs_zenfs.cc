@@ -462,12 +462,19 @@ void ZenFS::ReCalculateLifetimes() {
 
           // 해당 존의 lifetime 합산 및 파일 수를 업데이트
           if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-            zone_lifetime_map_[zone_start] = {sst_lifetime_value,
-                                              1};  // 새로운 존이면 초기화
+            // zone_lifetime_map_[zone_start] = {sst_lifetime_value,
+            //                                   1};  // 새로운 존이면 초기화
+            zone_lifetime_map_[zone_start] = {
+                sst_lifetime_value, 1, {sst_lifetime_value}};
           } else {
-            zone_lifetime_map_[zone_start].first +=
-                sst_lifetime_value;                      // 수명 추가
-            zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
+            // zone_lifetime_map_[zone_start].first +=
+            //     sst_lifetime_value;                      // 수명 추가
+            // zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
+            auto& entry = zone_lifetime_map_[zone_start];
+            std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
+            std::get<1>(entry) += 1;                   // 파일 수 증가
+            std::get<2>(entry).push_back(
+                sst_lifetime_value);  // 각 파일의 lifetime 저장
           }
         }  // sstfilesize * sstlifetime value
       } else {
@@ -526,6 +533,7 @@ void ZenFS::ZoneCleaning(bool forced) {
     double score;
     uint64_t zone_start;
     uint64_t garbage_percent_approx;
+    double variance;
   };
   std::vector<ZoneInfo> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
@@ -617,13 +625,28 @@ void ZenFS::ZoneCleaning(bool forced) {
         uint64_t zone_start = zone.start;
         // std::cout << "zone.capacity: " << zone.capacity << std::endl; -> 0
         double average_lifetime = 0;
+        double variance = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
-          double total_lifetime = zone_lifetime_map_[zone_start].first;
-          int file_count = zone_lifetime_map_[zone_start].second;
+          // double total_lifetime = zone_lifetime_map_[zone_start].first;
+          // int file_count = zone_lifetime_map_[zone_start].second;
+          auto& entry = zone_lifetime_map_[zone_start];
+          double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
+          int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
+          const auto& lifetime_values =
+              std::get<2>(entry);  // 각 파일의 lifetime 값
 
-          average_lifetime =
-              total_lifetime / file_count;  // 존의 평균 lifetime 계산
+          // 존의 평균 lifetime 계산
+          average_lifetime = total_lifetime / file_count;
+
+          // 분산 계산: (각 파일의 lifetime - 평균)^2의 합을 구한 뒤 파일 수로
+          // 나눔
+          double sum_of_squares = 0.0;
+          for (const auto& file_lifetime : lifetime_values) {
+            double diff = file_lifetime - average_lifetime;
+            sum_of_squares += diff * diff;
+          }
+          variance = sum_of_squares / file_count;
 
           // std::cout << "Zonecleaning::zone starting at " << zone_start
           //           << " has average lifetime: " << average_lifetime
@@ -655,8 +678,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         // std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
           double cost_benefit_score = benefit / cost;
-          victim_candidate.push_back(
-              {cost_benefit_score, zone.start, garbage_percent_approx});
+          victim_candidate.push_back({cost_benefit_score, zone.start,
+                                      garbage_percent_approx, variance});
         }
       }
     } else {  // 유효 데이터가 없는 경우
@@ -687,7 +710,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       << std::endl;
   for (const auto& candidate : victim_candidate) {
     std::cout << "cost-benefit score: " << candidate.score
-              << ", Zone Start: " << candidate.zone_start
+              << ", variance: " << candidate.variance
               << ", Garbage Percentage: " << candidate.garbage_percent_approx
               << "%" << std::endl;
   }
