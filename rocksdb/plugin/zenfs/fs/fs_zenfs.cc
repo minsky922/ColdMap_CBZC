@@ -447,6 +447,8 @@ void ZenFS::ReCalculateLifetimes() {
           std::max(max_vertical_lifetime, vertical_lifetime);
       min_vertical_lifetime =
           std::min(min_vertical_lifetime, vertical_lifetime);
+    } else {
+      normalized_vertical_lifetimes[level] = 0;  // 0으로 설정
     }
   }
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
@@ -473,10 +475,10 @@ void ZenFS::ReCalculateLifetimes() {
       double sst_lifetime_value =
           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
-      std::cout << "Level: " << level
-                << ", vertical Lifetime: " << vertical_lifetime_
-                << ", horizontal_lifetime: " << horizontal_lifetime
-                << ", sst_lifetime: " << sst_lifetime_value << std::endl;
+      // std::cout << "Level: " << level
+      //           << ", vertical Lifetime: " << vertical_lifetime_
+      //           << ", horizontal_lifetime: " << horizontal_lifetime
+      //           << ", sst_lifetime: " << sst_lifetime_value << std::endl;
 
       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
       if (zone_file != nullptr) {
