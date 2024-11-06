@@ -498,20 +498,20 @@ void ZenFS::ReCalculateLifetimes() {
       }
     }
   }
-}
+  // }
 
-// 각 존의 평균 lifetime 계산 및 출력
-// for (const auto& zone_entry : zone_lifetime_map_) {
-//   uint64_t zone_start = zone_entry.first;
-//   double total_lifetime = zone_entry.second.first;
-//   int file_count = zone_entry.second.second;
+  // 각 존의 평균 lifetime 계산 및 출력
+  // for (const auto& zone_entry : zone_lifetime_map_) {
+  //   uint64_t zone_start = zone_entry.first;
+  //   double total_lifetime = zone_entry.second.first;
+  //   int file_count = zone_entry.second.second;
 
-//   double average_lifetime =
-//       total_lifetime / file_count;  // 존의 평균 lifetime 계산
+  //   double average_lifetime =
+  //       total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
-//   std::cout << "Zone starting at " << zone_start
-//             << " has average lifetime: " << average_lifetime << std::endl;
-// }
+  //   std::cout << "Zone starting at " << zone_start
+  //             << " has average lifetime: " << average_lifetime << std::endl;
+  // }
 }
 
 void ZenFS::ZoneCleaning(bool forced) {
@@ -2601,8 +2601,7 @@ FactoryFunc<FileSystem> zenfs_filesystem_reg =
           f->reset(fs);
           return f->get();
         });
-}
-;  // namespace ROCKSDB_NAMESPACE
+};  // namespace ROCKSDB_NAMESPACE
 
 #else
 
