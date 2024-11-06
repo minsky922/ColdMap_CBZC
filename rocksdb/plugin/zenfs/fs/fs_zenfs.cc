@@ -353,7 +353,7 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 
 void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
-  for (int level = 0; level < 6; level++) {
+  for (int level = 0; level < 8; level++) {
     std::vector<uint64_t> fno_list;
     std::set<uint64_t> compacting_files;
     if (db_ptr_ != nullptr) {
@@ -422,11 +422,11 @@ void ZenFS::ReCalculateLifetimes() {
   zone_lifetime_map_.clear();
 
   // 모든 level의 vertical_lifetime을 구하여 최소값과 최대값을 찾음
-  std::vector<double> vertical_lifetimes(6);
+  std::vector<double> vertical_lifetimes(8);
   double max_vertical_lifetime = 0.0;
   double min_vertical_lifetime = std::numeric_limits<double>::max();
 
-  for (int level = 0; level < 6; level++) {
+  for (int level = 0; level < 8; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
     vertical_lifetimes[level] = vertical_lifetime;
     max_vertical_lifetime = std::max(max_vertical_lifetime, vertical_lifetime);
@@ -435,7 +435,7 @@ void ZenFS::ReCalculateLifetimes() {
 
   std::vector<double> normalized_vertical_lifetimes(6);
   double range = max_vertical_lifetime - min_vertical_lifetime;
-  for (int level = 0; level < 6; level++) {
+  for (int level = 0; level < 8; level++) {
     normalized_vertical_lifetimes[level] =
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
