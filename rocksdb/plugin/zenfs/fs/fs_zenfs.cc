@@ -447,8 +447,6 @@ void ZenFS::ReCalculateLifetimes() {
           std::max(max_vertical_lifetime, vertical_lifetime);
       min_vertical_lifetime =
           std::min(min_vertical_lifetime, vertical_lifetime);
-    } else {
-      normalized_vertical_lifetimes[level] = 0;  // 0으로 설정
     }
   }
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
@@ -463,6 +461,8 @@ void ZenFS::ReCalculateLifetimes() {
       std::cout << "Level: " << level << ", Original: " << vertical_lifetime
                 << ", Normalized: " << normalized_vertical_lifetimes[level]
                 << std::endl;
+    } else {
+      normalized_vertical_lifetimes[level] = 0;  // 0으로 설정
     }
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
