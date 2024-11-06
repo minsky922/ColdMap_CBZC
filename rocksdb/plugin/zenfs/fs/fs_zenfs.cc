@@ -440,10 +440,10 @@ void ZenFS::ReCalculateLifetimes() {
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
-    std::cout << "Level: " << level
-              << ", Original: " << vertical_lifetimes[level]
-              << ", Normalized: " << normalized_vertical_lifetimes[level]
-              << std::endl;
+    // std::cout << "Level: " << level
+    //           << ", Original: " << vertical_lifetimes[level]
+    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
+    //           << std::endl;
   }
 
   double alpha_value = zbd_->GetAlphaValue();
@@ -462,10 +462,10 @@ void ZenFS::ReCalculateLifetimes() {
       double sst_lifetime_value =
           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
-      std::cout << "Level: " << level
-                << ", vertical Lifetime: " << vertical_lifetime_
-                << ", horizontal_lifetime: " << horizontal_lifetime
-                << ", sst_lifetime: " << sst_lifetime_value << std::endl;
+      // std::cout << "Level: " << level
+      //           << ", vertical Lifetime: " << vertical_lifetime_
+      //           << ", horizontal_lifetime: " << horizontal_lifetime
+      //           << ", sst_lifetime: " << sst_lifetime_value << std::endl;
 
       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
       if (zone_file != nullptr) {
