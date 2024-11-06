@@ -453,12 +453,14 @@ void ZenFS::ReCalculateLifetimes() {
   // 수직 levelscore - 높을수록 hot
   for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    double normalized_vertical_lifetime =
-        (vertical_lifetime - min_vertical_lifetime) /
-        (max_vertical_lifetime - min_vertical_lifetime);
-    std::cout << "Level: " << level << ", Original: " << vertical_lifetime
-              << ", Normalized: " << normalized_vertical_lifetime << std::endl;
-
+    if (vertical_lifetime > 0) {
+      double normalized_vertical_lifetime =
+          (vertical_lifetime - min_vertical_lifetime) /
+          (max_vertical_lifetime - min_vertical_lifetime);
+      std::cout << "Level: " << level << ", Original: " << vertical_lifetime
+                << ", Normalized: " << normalized_vertical_lifetime
+                << std::endl;
+    }
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
