@@ -434,25 +434,40 @@ void ZenFS::ReCalculateLifetimes() {
               << std::endl;
     return;
   }
+  // 모든 level의 vertical_lifetime을 구하여 최소값과 최대값을 찾음
+  std::vector<double> vertical_lifetimes;
+  double max_vertical_lifetime = 0.0;
+  double min_vertical_lifetime = std::numeric_limits<double>::max();
+
+  for (int level = 0; level < 6; level++) {
+    double vertical_lifetime = zbd_->PredictCompactionScore(level);
+    if (vertical_lifetime > 0) {
+      vertical_lifetimes.push_back(vertical_lifetime);
+      max_vertical_lifetime =
+          std::max(max_vertical_lifetime, vertical_lifetime);
+      min_vertical_lifetime =
+          std::min(min_vertical_lifetime, vertical_lifetime);
+    }
+  }
   // 2. 수직 lifetime predictcompactionscore로 level별 계산
   // 수직 levelscore - 높을수록 hot
   for (int level = 0; level < 6; level++) {
     double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    // std::cout << "Level : " << level
-    //           << ", vertical lifetime: " << vertical_lifetime << std::endl;
-    if (vertical_lifetime == 0) {
-      vertical_lifetime = 1;  // cold 상태를 나타내기 위해 1로 설정
-    }
+    double normalized_vertical_lifetime =
+        (vertical_lifetime - min_vertical_lifetime) /
+        (max_vertical_lifetime - min_vertical_lifetime);
+    std::cout << "Level: " << level << ", Original: " << vertical_lifetime
+              << ", Normalized: " << normalized_vertical_lifetime << std::endl;
+
     // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
     for (const auto& file_pair : level_file_map[level]) {
       uint64_t fno = file_pair.first;
       double horizontal_lifetime = file_pair.second;
 
-      // double alpha_ = 1, beta_ = 1;
       double alpha_ = alpha_value, beta_ = 1 - alpha_;
       // 수직은 높을수록 hot, 수평은 높을수록 cold
-      double sst_lifetime_value =
-          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 / vertical_lifetime);
+      double sst_lifetime_value = alpha_ * (1 - horizontal_lifetime) +
+                                  beta_ * (1 - normalized_vertical_lifetime);
 
       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
       if (zone_file != nullptr) {
@@ -656,15 +671,6 @@ void ZenFS::ZoneCleaning(bool forced) {
           //           "%"
           //           << std::endl;
         } else {
-          // std::cout << "Zone starting at " << zone_start
-          //           << " has no lifetime data. "
-          //           << "Total lifetime: "
-          //           << zone_lifetime_map_[zone_start].first
-          //           << ", File count: " <<
-          //           zone_lifetime_map_[zone_start].second
-          //           << ", Garbage percentage: " << garbage_percent_approx <<
-          //           "%"
-          //           << std::endl;
         }
 
         // uint64_t cost = (100 - garbage_percent_approx) * 2;
@@ -687,7 +693,6 @@ void ZenFS::ZoneCleaning(bool forced) {
       // std::cout << "all_inal_zone..." << std::endl;
     }
   }
-  // std::cout << "previous all_inval_zone: " << all_inval_zone_n << std::endl;
 
   // std::cout << "Sorting victim candidates..." << std::endl;
   // sort(victim_candidate.rbegin(), victim_candidate.rend());
