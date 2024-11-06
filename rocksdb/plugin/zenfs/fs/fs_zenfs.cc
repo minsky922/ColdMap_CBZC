@@ -436,8 +436,6 @@ void ZenFS::ReCalculateLifetimes() {
   std::vector<double> normalized_vertical_lifetimes(6);
   double range = max_vertical_lifetime - min_vertical_lifetime;
   for (int level = 0; level < 6; level++) {
-    double vertical_lifetime = vertical_lifetimes[level];
-
     normalized_vertical_lifetimes[level] =
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
