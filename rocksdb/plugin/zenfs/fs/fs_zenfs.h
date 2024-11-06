@@ -525,7 +525,8 @@ class ZenFS : public FileSystemWrapper {
 
  private:
   // std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
-  std::map<uint64_t, std::tuple<double, int, std::vector<double>>>;
+  std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
+      zone_lifetime_map_;
 
   const uint64_t GC_START_LEVEL =
       20;                      /* Enable GC when < 20% free space available */
