@@ -459,6 +459,7 @@ void ZenFS::ReCalculateLifetimes() {
     for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
       // double alpha_ = alpha_value, beta_ = 1 - alpha_;
       // 수직은 높을수록 hot, 수평은 높을수록 cold
+      // 0~100 - sst lifetime value
       double sst_lifetime_value =
           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
@@ -651,6 +652,7 @@ void ZenFS::ZoneCleaning(bool forced) {
               std::get<2>(entry);  // 각 파일의 lifetime 값
 
           // 존의 평균 lifetime 계산
+          // average_lifetime 0~100
           average_lifetime = total_lifetime / file_count;
 
           // 분산 계산: (각 파일의 lifetime - 평균)^2의 합을 구한 뒤 파일 수로
