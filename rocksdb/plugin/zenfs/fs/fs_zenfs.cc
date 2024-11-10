@@ -457,9 +457,6 @@ void ZenFS::ReCalculateLifetimes() {
   for (const auto& [level, file_lifetimes] : level_file_map) {
     double vertical_lifetime_ = normalized_vertical_lifetimes[level];
     for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
-      // double alpha_ = alpha_value, beta_ = 1 - alpha_;
-      // 수직은 높을수록 hot, 수평은 높을수록 cold
-      // 0~100 - sst lifetime value
       double sst_lifetime_value =
           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
@@ -476,19 +473,21 @@ void ZenFS::ReCalculateLifetimes() {
 
           // 해당 존의 lifetime 합산 및 파일 수를 업데이트
           if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-            // zone_lifetime_map_[zone_start] = {sst_lifetime_value,
-            //                                   1};  // 새로운 존이면 초기화
-            zone_lifetime_map_[zone_start] = {
-                sst_lifetime_value, 1, {sst_lifetime_value}};
+            zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
+
+            // zone_lifetime_map_[zone_start] = {
+            //     sst_lifetime_value, 1, {sst_lifetime_value}};
+
           } else {
-            // zone_lifetime_map_[zone_start].first +=
-            //     sst_lifetime_value;                      // 수명 추가
-            // zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
-            auto& entry = zone_lifetime_map_[zone_start];
-            std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
-            std::get<1>(entry) += 1;                   // 파일 수 증가
-            std::get<2>(entry).push_back(
-                sst_lifetime_value);  // 각 파일의 lifetime 저장
+            zone_lifetime_map_[zone_start].first +=
+                sst_lifetime_value;                      // 수명 추가
+            zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
+
+            // auto& entry = zone_lifetime_map_[zone_start];
+            // std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
+            // std::get<1>(entry) += 1;                   // 파일 수 증가
+            // std::get<2>(entry).push_back(
+            //     sst_lifetime_value);  // 각 파일의 lifetime 저장
           }
         }
       } else {
@@ -513,6 +512,47 @@ void ZenFS::ReCalculateLifetimes() {
   // }
 }
 
+void ZenFS::NormalizeZoneLifetimes() {
+  uint64_t min_lifetime = std::numeric_limits<uint64_t>::max();
+  uint64_t max_lifetime = 0;
+
+  for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+    uint64_t average_lifetime = entry.first / entry.second;
+    min_lifetime = std::min(min_lifetime, average_lifetime);
+    max_lifetime = std::max(max_lifetime, average_lifetime);
+  }
+
+  // 0~100 정규화
+  uint64_t range = max_lifetime - min_lifetime;
+  for (auto& [zone_start, entry] : zone_lifetime_map_) {
+    uint64_t average_lifetime = entry.first / entry.second;
+    uint64_t normalized_lifetime =
+        (range > 0) ? ((average_lifetime - min_lifetime) * 100) / range
+                    : 50;  // 모든 값이 같을 경우 50
+
+    entry.first = normalized_lifetime;  // 정규화된 Lifetime 저장
+  }
+}
+
+uint64_t ZenFS::CalculateZoneLifetimeVariance() {
+  // 모든 존의 Lifetime 값을 모아 분산 계산
+  std::vector<uint64_t> lifetimes;
+  for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+    lifetimes.push_back(entry.first);  // 정규화된 Lifetime 값
+  }
+
+  // 평균 계산
+  uint64_t sum = std::accumulate(lifetimes.begin(), lifetimes.end(), 0ULL);
+  uint64_t mean = sum / lifetimes.size();
+
+  // 분산 계산
+  uint64_t variance = 0;
+  for (const auto& lifetime : lifetimes) {
+    variance += (lifetime - mean) * (lifetime - mean);
+  }
+  return variance / lifetimes.size();
+}
+
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
   if (db_ptr_ == nullptr) {
@@ -524,6 +564,9 @@ void ZenFS::ZoneCleaning(bool forced) {
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
   // printf("CBZC3");
   ReCalculateLifetimes();
+  NormalizeZoneLifetimes();
+  uint64_t variance = CalculateZoneLifetimeVariance();
+  std::cout << "Zone Lifetime Variance: " << variance << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &end_ts);
   long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
                        (end_ts.tv_nsec - start_ts.tv_nsec);
@@ -548,7 +591,6 @@ void ZenFS::ZoneCleaning(bool forced) {
     double score;
     uint64_t zone_start;
     uint64_t garbage_percent_approx;
-    double variance;
   };
   std::vector<ZoneInfo> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
@@ -637,56 +679,62 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
       } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY) {
         // printf("CBZC3!!");
-        uint64_t zone_start = zone.start;
+        // uint64_t zone_start = zone.start;
         // std::cout << "zone.capacity: " << zone.capacity << std::endl; -> 0
-        double average_lifetime = 0;
-        double variance = 0;
+        // double average_lifetime = 0;
+        // double variance = 0;
+
+        // if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end())
+        // {
+        // // double total_lifetime = zone_lifetime_map_[zone_start].first;
+        // // int file_count = zone_lifetime_map_[zone_start].second;
+        // auto& entry = zone_lifetime_map_[zone_start];
+        // double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
+        // int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
+        // const auto& lifetime_values =
+        //     std::get<2>(entry);  // 각 파일의 lifetime 값
+
+        // // 존의 평균 lifetime 계산
+        // // average_lifetime 0~100
+        // average_lifetime = total_lifetime / file_count;
+
+        // // 분산 계산: (각 파일의 lifetime - 평균)^2의 합을 구한 뒤 파일
+        // 수로
+        // // 나눔
+        // double sum_of_squares = 0.0;
+        // for (const auto& file_lifetime : lifetime_values) {
+        //   double diff = file_lifetime - average_lifetime;
+        //   sum_of_squares += diff * diff;
+        // }
+        // variance = sum_of_squares / file_count;
+
+        uint64_t zone_start = zone.start;
+        uint64_t ZoneLifetimeValue = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
-          // double total_lifetime = zone_lifetime_map_[zone_start].first;
-          // int file_count = zone_lifetime_map_[zone_start].second;
-          auto& entry = zone_lifetime_map_[zone_start];
-          double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
-          int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
-          const auto& lifetime_values =
-              std::get<2>(entry);  // 각 파일의 lifetime 값
-
-          // 존의 평균 lifetime 계산
-          // average_lifetime 0~100
-          average_lifetime = total_lifetime / file_count;
-
-          // 분산 계산: (각 파일의 lifetime - 평균)^2의 합을 구한 뒤 파일 수로
-          // 나눔
-          double sum_of_squares = 0.0;
-          for (const auto& file_lifetime : lifetime_values) {
-            double diff = file_lifetime - average_lifetime;
-            sum_of_squares += diff * diff;
-          }
-          variance = sum_of_squares / file_count;
-
-          // std::cout << "Zonecleaning::zone starting at " << zone_start
-          //           << " has average lifetime: " << average_lifetime
-          //           << " Total lifetime: " << total_lifetime
-          //           << ", File count: " << file_count
-          //           << ", Garbage percentage: " << garbage_percent_approx <<
-          //           "%"
-          //           << std::endl;
-        } else {
+          ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
         }
+
+        uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
+        uint64_t freeSpace =
+            100 * (zone.max_capacity - zone.used_capacity) / zone.max_capacity;
+        uint64_t cost = 100 + u;
+        uint64_t benefit = freeSpace * ZoneLifetimeValue;
 
         // uint64_t cost = (100 - garbage_percent_approx) * 2;
         // uint64_t benefit = garbage_percent_approx * average_lifetime;
-        double cost = 2 * (static_cast<double>(zone.used_capacity) /
-                           static_cast<double>(zone.max_capacity));
-        // std::cout << "cost : " << cost << std::endl;
-        double benefit = (static_cast<double>(zone.max_capacity) -
-                          static_cast<double>(zone.used_capacity)) *
-                         average_lifetime;  // free space * lifetime
-        // std::cout << "benefit : " << benefit << std::endl;
+        // double cost = 2 * (static_cast<double>(zone.used_capacity) /
+        //                    static_cast<double>(zone.max_capacity));
+        std::cout << "cost : " << cost << std::endl;
+        // double benefit = (static_cast<double>(zone.max_capacity) -
+        //                   static_cast<double>(zone.used_capacity)) *
+        //                  average_lifetime;  // free space * lifetime
+        std::cout << : "ZLV : " << ZoneLifetimeValue << std::endl;
+        std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
-          double cost_benefit_score = benefit / cost;
-          victim_candidate.push_back({cost_benefit_score, zone.start,
-                                      garbage_percent_approx, variance});
+          double cost_benefit_score = static_cast<double> benefit / cost;
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx});
         }
       }
     } else {  // 유효 데이터가 없는 경우
@@ -716,7 +764,6 @@ void ZenFS::ZoneCleaning(bool forced) {
       << std::endl;
   for (const auto& candidate : victim_candidate) {
     std::cout << "cost-benefit score: " << candidate.score
-              << ", variance: " << candidate.variance
               << ", Garbage Percentage: " << candidate.garbage_percent_approx
               << "%" << std::endl;
   }

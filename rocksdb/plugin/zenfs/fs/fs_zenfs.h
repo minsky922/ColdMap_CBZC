@@ -504,6 +504,8 @@ class ZenFS : public FileSystemWrapper {
   // void ZoneCleaningWorker(bool run_once=false) override;
   void ZoneCleaning(bool forced);
   void ReCalculateLifetimes();
+  void NormalizeZoneLifetimes();
+  void CalculateZoneLifetimeVariance();
   void CalculateHorizontalLifetimes(
       std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map);
   int GetMountTime(void) override { return mount_time_.load(); }
@@ -524,9 +526,9 @@ class ZenFS : public FileSystemWrapper {
       const std::vector<ZoneExtentSnapshot*>& migrate_exts);
 
  private:
-  // std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
-  std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
-      zone_lifetime_map_;
+  std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
+  // std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
+  //     zone_lifetime_map_;
 
   const uint64_t GC_START_LEVEL =
       20;                      /* Enable GC when < 20% free space available */
