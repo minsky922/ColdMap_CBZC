@@ -13,6 +13,8 @@
 #include <chrono>
 #include <ctime>
 #include <iostream>
+#include <numeric>
+
 ///
 #include <dirent.h>
 #include <errno.h>
