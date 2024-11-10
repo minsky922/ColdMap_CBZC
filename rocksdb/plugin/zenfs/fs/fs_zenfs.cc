@@ -11,6 +11,7 @@
 #include "fs_zenfs.h"
 ///
 #include <chrono>
+#include <cmath>
 #include <ctime>
 #include <iostream>
 #include <numeric>
