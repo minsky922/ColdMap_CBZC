@@ -515,22 +515,28 @@ void ZenFS::ReCalculateLifetimes() {
 }
 
 void ZenFS::NormalizeZoneLifetimes() {
-  uint64_t min_lifetime = std::numeric_limits<uint64_t>::max();
-  uint64_t max_lifetime = 0;
+  double min_lifetime = std::numeric_limits<double>::max();
+  double max_lifetime = 0.0;
 
+  // 최소값과 최대값 계산
   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    uint64_t average_lifetime = entry.first / entry.second;
+    double average_lifetime = entry.first / entry.second;
     min_lifetime = std::min(min_lifetime, average_lifetime);
     max_lifetime = std::max(max_lifetime, average_lifetime);
   }
 
   // 0~100 정규화
-  uint64_t range = max_lifetime - min_lifetime;
+  double range = max_lifetime - min_lifetime;
   for (auto& [zone_start, entry] : zone_lifetime_map_) {
-    uint64_t average_lifetime = entry.first / entry.second;
-    uint64_t normalized_lifetime =
-        (range > 0) ? ((average_lifetime - min_lifetime) * 100) / range
-                    : 50;  // 모든 값이 같을 경우 50
+    double average_lifetime = entry.first / entry.second;
+
+    uint64_t normalized_lifetime;
+    if (range > 0) {
+      normalized_lifetime = static_cast<uint64_t>(
+          ((average_lifetime - min_lifetime) * 100) / range);
+    } else {
+      normalized_lifetime = 50;
+    }
 
     entry.first = normalized_lifetime;  // 정규화된 Lifetime 저장
   }
