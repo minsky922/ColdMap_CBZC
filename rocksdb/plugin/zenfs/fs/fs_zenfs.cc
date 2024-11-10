@@ -733,7 +733,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         std::cout << "ZLV : " << ZoneLifetimeValue << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
-          double cost_benefit_score = static_cast<double> benefit / cost;
+          double cost_benefit_score =
+              static_cast<double>(benefit) / static_cast<double>(cost);
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx});
         }
