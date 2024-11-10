@@ -573,8 +573,8 @@ void ZenFS::ZoneCleaning(bool forced) {
   // printf("CBZC3");
   ReCalculateLifetimes();
   NormalizeZoneLifetimes();
-  uint64_t variance = CalculateZoneLifetimeVariance();
-  std::cout << "Zone Lifetime Variance: " << variance << std::endl;
+  uint64_t cur_variance = CalculateZoneLifetimeVariance();
+  std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &end_ts);
   long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
                        (end_ts.tv_nsec - start_ts.tv_nsec);
@@ -723,11 +723,23 @@ void ZenFS::ZoneCleaning(bool forced) {
           ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
         }
 
+        uint64_t min_variance = 200;
+        uint64_t max_variance = 700;
+        double sigma_min = 0.5;
+        double sigma_max = 2.0;
+
+        double variance_weight =
+            (static_cast<double>(current_variance) - min_variance) /
+            (max_variance - min_variance);
+        double sigma = sigma_min + (sigma_max - sigma_min) * variance_weight;
+        double weighted_age = pow(ZoneLifetimeValue, sigma);
+
         uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
         uint64_t freeSpace =
             100 * (zone.max_capacity - zone.used_capacity) / zone.max_capacity;
         uint64_t cost = 100 + u;
-        uint64_t benefit = freeSpace * ZoneLifetimeValue;
+        // uint64_t benefit = freeSpace * ZoneLifetimeValue;
+        uint64_t benefit = freeSpace * weighted_age;
 
         // uint64_t cost = (100 - garbage_percent_approx) * 2;
         // uint64_t benefit = garbage_percent_approx * average_lifetime;
@@ -739,6 +751,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         //                  average_lifetime;  // free space * lifetime
         std::cout << "freespace generated : " << freeSpace << std::endl;
         std::cout << "ZLV : " << ZoneLifetimeValue << std::endl;
+        std::cout << "Weighted_ZLV : " << weighted_age << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
           double cost_benefit_score =
