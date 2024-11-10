@@ -752,6 +752,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         //                  average_lifetime;  // free space * lifetime
         std::cout << "freespace generated : " << freeSpace << std::endl;
         std::cout << "ZLV : " << ZoneLifetimeValue << std::endl;
+        std::cout << "sigma : " << sigma << std::endl;
         std::cout << "Weighted_ZLV : " << weighted_age << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
