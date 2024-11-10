@@ -737,7 +737,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         // double benefit = (static_cast<double>(zone.max_capacity) -
         //                   static_cast<double>(zone.used_capacity)) *
         //                  average_lifetime;  // free space * lifetime
-        std::cout << " freespace generated : " << freeSpace << std::endl;
+        std::cout << "freespace generated : " << freeSpace << std::endl;
         std::cout << "ZLV : " << ZoneLifetimeValue << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
         if (cost != 0) {
