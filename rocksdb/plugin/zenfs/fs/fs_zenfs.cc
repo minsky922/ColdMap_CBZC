@@ -729,7 +729,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         double sigma_max = 2.0;
 
         double variance_weight =
-            (static_cast<double>(current_variance) - min_variance) /
+            (static_cast<double>(cur_variance) - min_variance) /
             (max_variance - min_variance);
         double sigma = sigma_min + (sigma_max - sigma_min) * variance_weight;
         double weighted_age = pow(ZoneLifetimeValue, sigma);
