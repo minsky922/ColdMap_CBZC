@@ -362,27 +362,11 @@ void ZenFS::CalculateHorizontalLifetimes(
     if (db_ptr_ != nullptr) {
       zbd_->SameLevelFileList(level, fno_list, compacting_files);
     }
-
     std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
-    // size_t num_files = fno_list.size();
     // 컴팩션 중이 아닌 파일 수 계산
     size_t num_non_compacting_files = fno_list.size() - compacting_files.size();
 
-    // // 인덱스를 정규화하여 저장
-    // if (level == 0) {
-    //   // Level 0일 경우 모든 파일의 정규화된 인덱스 값은 1로 설정
-    //   for (size_t i = 0; i < num_files; ++i) {
-    //     file_with_normalized_index.emplace_back(fno_list[i], 1.0);  // 인덱스
-    //     1
-    //   }
-    // } else {
-    //   // Level 0이 아닌 경우, 인덱스를 정규화하여 저장
-    // for (size_t i = 0; i < num_files; ++i) {
     for (size_t i = 0, non_compacting_index = 0; i < fno_list.size(); ++i) {
-      // double normalized_index =
-      //     static_cast<double>(i) / static_cast<double>(num_files - 1);
-      // file_with_normalized_index.emplace_back(
-      //     fno_list[i], normalized_index);  // 정규화된 인덱스 저장
       uint64_t fno = fno_list[i];
       double normalized_index;
 
@@ -401,7 +385,6 @@ void ZenFS::CalculateHorizontalLifetimes(
     }
     // 각 레벨의 파일 리스트를 map에 저장
     level_file_map[level] = file_with_normalized_index;
-    // }
   }
 
   // for (const auto& level : level_file_map) {
@@ -746,15 +729,17 @@ void ZenFS::ZoneCleaning(bool forced) {
         // uint64_t benefit = garbage_percent_approx * average_lifetime;
         // double cost = 2 * (static_cast<double>(zone.used_capacity) /
         //                    static_cast<double>(zone.max_capacity));
-        std::cout << "cost : " << cost << std::endl;
         // double benefit = (static_cast<double>(zone.max_capacity) -
         //                   static_cast<double>(zone.used_capacity)) *
         //                  average_lifetime;  // free space * lifetime
+
+        std::cout << "cost : " << cost << std::endl;
         std::cout << "freespace generated : " << freeSpace << std::endl;
         std::cout << "ZLV : " << ZoneLifetimeValue << std::endl;
         std::cout << "sigma : " << sigma << std::endl;
         std::cout << "Weighted_ZLV : " << weighted_age << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
+
         if (cost != 0) {
           double cost_benefit_score =
               static_cast<double>(benefit) / static_cast<double>(cost);
