@@ -705,34 +705,6 @@ void ZenFS::ZoneCleaning(bool forced) {
         }
       } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY) {
         // printf("CBZC3!!");
-        // uint64_t zone_start = zone.start;
-        // std::cout << "zone.capacity: " << zone.capacity << std::endl; -> 0
-        // double average_lifetime = 0;
-
-        // if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end())
-        // {
-        // // double total_lifetime = zone_lifetime_map_[zone_start].first;
-        // // int file_count = zone_lifetime_map_[zone_start].second;
-        // auto& entry = zone_lifetime_map_[zone_start];
-        // double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
-        // int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
-        // const auto& lifetime_values =
-        //     std::get<2>(entry);  // 각 파일의 lifetime 값
-
-        // // 존의 평균 lifetime 계산
-        // // average_lifetime 0~100
-        // average_lifetime = total_lifetime / file_count;
-
-        // // 분산 계산: (각 파일의 lifetime - 평균)^2의 합을 구한 뒤 파일
-        // 수로
-        // // 나눔
-        // double sum_of_squares = 0.0;
-        // for (const auto& file_lifetime : lifetime_values) {
-        //   double diff = file_lifetime - average_lifetime;
-        //   sum_of_squares += diff * diff;
-        // }
-        // variance = sum_of_squares / file_count;
-
         uint64_t zone_start = zone.start;
         // uint64_t ZoneLifetimeValue = 0;
         double average_lifetime = 0;
