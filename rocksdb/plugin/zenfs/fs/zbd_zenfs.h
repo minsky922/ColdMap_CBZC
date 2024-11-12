@@ -771,6 +771,8 @@ class ZonedBlockDevice {
                                    Zone **zone_out, uint64_t min_capacity);
   void AdjacentFileList(Slice &smallest, Slice &largest, int level,
                         std::vector<uint64_t> &fno_list);
+  void UpperLevelFileList(Slice &smallest, Slice &largest, int level,
+                          std::vector<uint64_t> &fno_list);
   void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
                                 std::vector<uint64_t> &fno_list);
   uint64_t MostLargeUpperAdjacentFile(Slice &s, Slice &l, int level);

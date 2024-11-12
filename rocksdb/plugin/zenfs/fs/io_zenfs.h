@@ -274,6 +274,8 @@ class ZonedWritableFile : public FSWritableFile {
 
   void SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
                             const int output_level) override;
+  bool GetMinMaxKey(const uint64_t fno, const Slice& smallest,
+                    const Slice& largest) override;
   virtual Env::WriteLifeTimeHint GetWriteLifeTimeHint() override {
     return zoneFile_->GetWriteLifeTimeHint();
   }

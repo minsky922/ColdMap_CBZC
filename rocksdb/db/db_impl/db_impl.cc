@@ -3003,6 +3003,33 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
 
   return;
 }
+
+void DBImpl::UpperLevelFileList(Slice& s, Slice& l, int level,
+                                std::vector<uint64_t>& fno_list) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  CompactionInputFiles upper_level_inputs;
+  InternalKey largest;
+  InternalKey smallest;
+  largest.DecodeFrom(l);
+  smallest.DecodeFrom(s);
+
+  if (level == 0) {
+    return;
+  }
+
+  vstorage->GetOverlappingInputs(level - 1, &smallest, &largest,
+                                 &upper_level_inputs.files);
+
+  for (const auto& f : upper_level_inputs.files) {
+    if (!f->being_compacted) {
+      fno_list.push_back(f->fd.GetNumber());
+    }
+  }
+
+  return;
+}
+
 // 상위 레벨과 하위 레벨에서 겹치는 파일들을 찾아 fno_list에 추가
 void DBImpl::AdjacentFileList(Slice& s, Slice& l, int level,
                               std::vector<uint64_t>& fno_list) {
@@ -4597,6 +4624,9 @@ void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
 }
 void DB::DownwardAdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::DownwardAdjacentFileList not Supported\n";
+}
+void DB::UpperLevelFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
+  std::cout << "DB::UpperLevelFileList not Supported\n";
 }
 void DB::ZenFSInstallSuperVersionAndScheduleWork(void) { return; }
 uint64_t DB::NowMicros(void) { return 0; }

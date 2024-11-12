@@ -1543,6 +1543,18 @@ void ZonedBlockDevice::SameLevelFileList(int level,
   db_ptr_->SameLevelFileList(level, fno_list, compacting_files);
 }
 
+void ZonedBlockDevice::UpperLevelFileList(Slice &smallest, Slice &largest,
+                                          int level,
+                                          std::vector<uint64_t> &fno_list) {
+  assert(db_ptr_ != nullptr);
+  fno_list.clear();
+  if (db_ptr_ == nullptr) {
+    return;
+  }
+
+  db_ptr_->UpperLevelFileList(smallest, largest, level, fno_list);
+}
+
 IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
     Slice &smallest, Slice &largest, int level,
     Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,

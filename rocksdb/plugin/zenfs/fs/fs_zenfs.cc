@@ -359,10 +359,14 @@ void ZenFS::CalculateHorizontalLifetimes(
   for (int level = 0; level < 6; level++) {
     std::vector<uint64_t> fno_list;
     std::set<uint64_t> compacting_files;
+    std::vector<uint64_t> upper_fno_list;
+
     if (db_ptr_ != nullptr) {
       zbd_->SameLevelFileList(level, fno_list, compacting_files);
     }
+
     std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
+
     // 컴팩션 중이 아닌 파일 수 계산
     size_t num_non_compacting_files = fno_list.size() - compacting_files.size();
 
@@ -381,8 +385,35 @@ void ZenFS::CalculateHorizontalLifetimes(
                              static_cast<double>(num_non_compacting_files - 1);
         non_compacting_index++;
       }
+      // 상위 레벨과 겹치는 파일은 최대 Lifetime 계산
+      if (level > 0) {
+        Slice smallest, largest;
+        if (GetMinMaxKey(fno, smallest, largest)) {
+          std::vector<uint64_t> upper_fno_list;
+          db_impl_->UpperLevelFileList(smallest, largest, level,
+                                       upper_fno_list);
+
+          double max_upper_lifetime = normalized_index;
+
+          for (uint64_t upper_fno : upper_fno_list) {
+            auto it = level_file_map[level - 1].find(upper_fno);
+            if (it != level_file_map[level - 1].end()) {
+              std::cout << "Comparing Lifetime: Current Max: "
+                        << max_upper_lifetime << ", Upper File: " << upper_fno
+                        << ", Lifetime: " << it->second << std::endl;
+              max_upper_lifetime = std::max(max_upper_lifetime, it->second);
+            }
+          }
+          std::cout << "File: " << fno
+                    << " - Final Max Upper Lifetime: " << max_upper_lifetime
+                    << std::endl;
+          normalized_index = max_upper_lifetime;
+        }
+      }
+
       file_with_normalized_index.emplace_back(fno, normalized_index);
     }
+
     // 각 레벨의 파일 리스트를 map에 저장
     level_file_map[level] = file_with_normalized_index;
   }

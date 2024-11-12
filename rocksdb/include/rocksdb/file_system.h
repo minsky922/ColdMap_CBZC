@@ -1177,6 +1177,7 @@ class FSWritableFile {
   // If you're adding methods here, remember to add them to
   // WritableFileWrapper too.
   virtual void SetMinMaxKeyAndLevel(const Slice&, const Slice&, const int) {}
+  virtual bool GetMinMaxKey(const uint64_t, const Slice&, const Slice&) {}
   virtual IOStatus CAZAFlushSST(void) { return IOStatus::OK(); }
 
  protected:
@@ -1788,6 +1789,10 @@ class FSWritableFileWrapper : public FSWritableFile {
   void SetMinMaxKeyAndLevel(const Slice& smallest, const Slice& largest,
                             const int level) override {
     target_->SetMinMaxKeyAndLevel(smallest, largest, level);
+  }
+  bool GetMinMaxKey(const uint64_t fno, const Slice& smallest,
+                    const Slice& largest) override {
+    target_->GetMinMaxKey(fno, smallest, largest);
   }
   IOStatus CAZAFlushSST(void) { return target_->CAZAFlushSST(); }
 

@@ -334,6 +334,8 @@ class DBImpl : public DB {
                                 std::vector<uint64_t>& fno_list) override;
   virtual void DownwardAdjacentFileList(
       Slice& s, Slice& l, int level, std::vector<uint64_t>& fno_list) override;
+  virtual void UpperLevelFileList(Slice& s, Slice& l, int level,
+                                  std::vector<uint64_t>& fno_list) override;
 
   // using DB::SameLevelFileList;
   virtual std::set<uint64_t> GetAlreadyBeingCompactedSSTFileNo(void) override;

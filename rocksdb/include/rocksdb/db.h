@@ -390,6 +390,8 @@ class DB {
                                 std::vector<uint64_t>& fno_list);
   virtual void DownwardAdjacentFileList(Slice& s, Slice& l, int level,
                                         std::vector<uint64_t>& fno_list);
+  virtual void UpperLevelFileList(Slice& s, Slice& l, int level,
+                                  std::vector<uint64_t>& fno_list);
   virtual void ZenFSInstallSuperVersionAndScheduleWork(void);
   virtual uint64_t NowMicros(void);
   // virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
