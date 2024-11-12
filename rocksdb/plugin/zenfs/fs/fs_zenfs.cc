@@ -401,15 +401,14 @@ void ZenFS::CalculateHorizontalLifetimes(
                                return pair.first == upper_fno;
                              });
             if (it != level_file_map[level - 1].end()) {
-              std::cout << "Comparing Lifetime: Current Max: "
+              std::cout << "Level : " << level
+                        << "Comparing Lifetime: Current Max: "
                         << max_upper_lifetime << ", Upper File: " << upper_fno
-                        << ", Lifetime: " << it->second << std::endl;
+                        << ",fno : " << fno << ", Lifetime: " << it->second
+                        << std::endl;
               max_upper_lifetime = std::max(max_upper_lifetime, it->second);
             }
           }
-          std::cout << "File: " << fno
-                    << " - Final Max Upper Lifetime: " << max_upper_lifetime
-                    << std::endl;
           normalized_index = max_upper_lifetime;
         }
       }
@@ -421,17 +420,17 @@ void ZenFS::CalculateHorizontalLifetimes(
     level_file_map[level] = file_with_normalized_index;
   }
 
-  // for (const auto& level : level_file_map) {
-  //   std::cout << "Level " << level.first << ": [";
-  //   for (size_t i = 0; i < level.second.size(); ++i) {
-  //     std::cout << "(" << level.second[i].first << ", "
-  //               << level.second[i].second << ")";
-  //     if (i < level.second.size() - 1) {
-  //       std::cout << ", ";
-  //     }
-  //   }
-  //   std::cout << "]" << std::endl;
-  // }
+  for (const auto& level : level_file_map) {
+    std::cout << "Level " << level.first << ": [";
+    for (size_t i = 0; i < level.second.size(); ++i) {
+      std::cout << "(" << level.second[i].first << ", "
+                << level.second[i].second << ")";
+      if (i < level.second.size() - 1) {
+        std::cout << ", ";
+      }
+    }
+    std::cout << "]" << std::endl;
+  }
 }
 
 void ZenFS::ReCalculateLifetimes() {
