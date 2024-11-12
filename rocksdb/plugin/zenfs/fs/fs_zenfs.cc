@@ -459,10 +459,10 @@ void ZenFS::ReCalculateLifetimes() {
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
-    std::cout << "Level: " << level
-              << ", Original: " << vertical_lifetimes[level]
-              << ", Normalized: " << normalized_vertical_lifetimes[level]
-              << std::endl;
+    // std::cout << "Level: " << level
+    //           << ", Original: " << vertical_lifetimes[level]
+    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
+    //           << std::endl;
   }
 
   double alpha_value = zbd_->GetAlphaValue();
