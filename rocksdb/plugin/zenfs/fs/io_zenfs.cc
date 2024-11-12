@@ -984,12 +984,12 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
 }
 bool ZonedWritableFile::GetMinMaxKey(const uint64_t fno, const Slice& smallest,
                                      const Slice& largest) {
-  if (zoneFile_ == nullptr || zoneFile_->fno_ != fno) {
-    return false;  // 파일 번호가 맞지 않거나 zoneFile_이 유효하지 않음
+  ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
+  if (zone_file == nullptr) {
+    return false;
   }
-
-  smallest = zoneFile_->smallest_;
-  largest = zoneFile_->largest_;
+  smallest = zone_file->smallest_;
+  largest = zone_file->largest_;
   return true;
 }
 void ZoneFile::ReleaseActiveZone() {
