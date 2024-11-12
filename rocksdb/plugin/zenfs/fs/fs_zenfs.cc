@@ -385,34 +385,35 @@ void ZenFS::CalculateHorizontalLifetimes(
         non_compacting_index++;
       }
       // 상위 레벨과 겹치는 파일은 최대 Lifetime 계산
-      if (level > 0) {
-        Slice smallest, largest;
-        if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
-          std::vector<uint64_t> upper_fno_list;
-          zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
+      // if (level > 0) {
+      //   Slice smallest, largest;
+      //   if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
+      //     std::vector<uint64_t> upper_fno_list;
+      //     zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
 
-          double max_upper_lifetime = normalized_index;
+      //     double max_upper_lifetime = normalized_index;
 
-          for (uint64_t upper_fno : upper_fno_list) {
-            auto it =
-                std::find_if(level_file_map[level - 1].begin(),
-                             level_file_map[level - 1].end(),
-                             [&](const std::pair<uint64_t, double>& pair) {
-                               return pair.first == upper_fno;
-                             });
-            if (it != level_file_map[level - 1].end()) {
-              // std::cout << "Level : " << level
-              //           << "Comparing Lifetime: Current Max: "
-              //           << max_upper_lifetime << ", Upper File: " <<
-              //           upper_fno
-              //           << ",fno : " << fno << ", Lifetime: " << it->second
-              //           << std::endl;
-              max_upper_lifetime = std::max(max_upper_lifetime, it->second);
-            }
-          }
-          normalized_index = max_upper_lifetime;
-        }
-      }
+      //     for (uint64_t upper_fno : upper_fno_list) {
+      //       auto it =
+      //           std::find_if(level_file_map[level - 1].begin(),
+      //                        level_file_map[level - 1].end(),
+      //                        [&](const std::pair<uint64_t, double>& pair) {
+      //                          return pair.first == upper_fno;
+      //                        });
+      //       if (it != level_file_map[level - 1].end()) {
+      //         // std::cout << "Level : " << level
+      //         //           << "Comparing Lifetime: Current Max: "
+      //         //           << max_upper_lifetime << ", Upper File: " <<
+      //         //           upper_fno
+      //         //           << ",fno : " << fno << ", Lifetime: " <<
+      //         it->second
+      //         //           << std::endl;
+      //         max_upper_lifetime = std::max(max_upper_lifetime, it->second);
+      //       }
+      // }
+      //   normalized_index = max_upper_lifetime;
+      //   // }
+      // }
 
       file_with_normalized_index.emplace_back(fno, normalized_index);
     }
