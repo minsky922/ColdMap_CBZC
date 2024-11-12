@@ -1177,9 +1177,9 @@ class FSWritableFile {
   // If you're adding methods here, remember to add them to
   // WritableFileWrapper too.
   virtual void SetMinMaxKeyAndLevel(const Slice&, const Slice&, const int) {}
-  virtual bool GetMinMaxKey(const uint64_t, const Slice&, const Slice&) {
-    return false;
-  }
+  // virtual bool GetMinMaxKey(const uint64_t, const Slice&, const Slice&) {
+  //   return false;
+  // }
   virtual IOStatus CAZAFlushSST(void) { return IOStatus::OK(); }
 
  protected:

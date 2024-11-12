@@ -137,10 +137,6 @@ class ZoneFile {
   std::vector<SSTBuffer*>* GetSSTBuffers(void) { return &sst_buffers_; }
   //
   IOStatus SetWriteLifeTimeHint(Env::WriteLifeTimeHint lifetime, int level = 0);
-  bool GetMinMaxKey(const uint64_t fno, const Slice& smallest,
-                    const Slice& largest) override {
-    return false;
-  };
   void SetIOType(IOType io_type);
   std::string GetFilename();
   time_t GetFileModificationTime();

@@ -1530,6 +1530,17 @@ ZoneFile *ZonedBlockDevice::GetSSTZoneFileInZBDNoLock(uint64_t fno) {
   return ret;
 }
 
+bool ZonedBlockDevice::GetMinMaxKey(uint64_t fno, Slice &smallest,
+                                    Slice &largest) {
+  ZoneFile *zone_file = GetSSTZoneFileInZBDNoLock(fno);
+  if (zone_file == nullptr) {
+    return false;
+  }
+  smallest = zone_file->smallest_;
+  largest = zone_file->largest_;
+  return true;
+}
+
 void ZonedBlockDevice::SameLevelFileList(int level,
                                          std::vector<uint64_t> &fno_list,
                                          std::set<uint64_t> &compacting_files) {
