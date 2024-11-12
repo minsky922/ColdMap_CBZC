@@ -385,35 +385,35 @@ void ZenFS::CalculateHorizontalLifetimes(
         non_compacting_index++;
       }
       // 상위 레벨과 겹치는 파일은 최대 Lifetime 계산
-      // if (level > 0) {
-      //   Slice smallest, largest;
-      //   if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
-      //     std::vector<uint64_t> upper_fno_list;
-      //     zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
+      if (level > 0) {
+        Slice smallest, largest;
+        if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
+          std::vector<uint64_t> upper_fno_list;
+          zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
 
-      //     double max_upper_lifetime = normalized_index;
+          double max_upper_lifetime = normalized_index;
 
-      //     for (uint64_t upper_fno : upper_fno_list) {
-      //       auto it =
-      //           std::find_if(level_file_map[level - 1].begin(),
-      //                        level_file_map[level - 1].end(),
-      //                        [&](const std::pair<uint64_t, double>& pair) {
-      //                          return pair.first == upper_fno;
-      //                        });
-      //       if (it != level_file_map[level - 1].end()) {
-      //         // std::cout << "Level : " << level
-      //         //           << "Comparing Lifetime: Current Max: "
-      //         //           << max_upper_lifetime << ", Upper File: " <<
-      //         //           upper_fno
-      //         //           << ",fno : " << fno << ", Lifetime: " <<
-      //         it->second
-      //         //           << std::endl;
-      //         max_upper_lifetime = std::max(max_upper_lifetime, it->second);
-      //       }
-      // }
-      //   normalized_index = max_upper_lifetime;
-      //   // }
-      // }
+          for (uint64_t upper_fno : upper_fno_list) {
+            auto it =
+                std::find_if(level_file_map[level - 1].begin(),
+                             level_file_map[level - 1].end(),
+                             [&](const std::pair<uint64_t, double>& pair) {
+                               return pair.first == upper_fno;
+                             });
+            if (it != level_file_map[level - 1].end()) {
+              // std::cout << "Level : " << level
+              //           << "Comparing Lifetime: Current Max: "
+              //           << max_upper_lifetime << ", Upper File: " <<
+              //           upper_fno
+              //           << ",fno : " << fno << ", Lifetime: " <<
+              it->second
+                  //           << std::endl;
+                  max_upper_lifetime = std::max(max_upper_lifetime, it->second);
+            }
+          }
+          normalized_index = max_upper_lifetime;
+        }
+      }
 
       file_with_normalized_index.emplace_back(fno, normalized_index);
     }
@@ -529,7 +529,8 @@ void ZenFS::ReCalculateLifetimes() {
   //       total_lifetime / file_count;  // 존의 평균 lifetime 계산
 
   //   std::cout << "Zone starting at " << zone_start
-  //             << " has average lifetime: " << average_lifetime << std::endl;
+  //             << " has average lifetime: " << average_lifetime <<
+  //             std::endl;
   // }
 }
 
@@ -635,7 +636,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
       // if (zc_scheme == GREEDY) {
       //   // printf("GREEDY!!!!\n");
-      //   // victim_candidate.push_back({garbage_percent_approx, zone.start});
+      //   // victim_candidate.push_back({garbage_percent_approx,
+      //   zone.start});
       // } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
       if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
@@ -688,8 +690,9 @@ void ZenFS::ZoneCleaning(bool forced) {
                         = (1-u) * age / (1+u) */
         /* cost = u(유효데이터(zone.used_capacity)(비율)를 읽는 비용)
                 + u(valid data copy) = 2u */
-        /* age = 세그먼트 내 가장 최근에 수정된 블록의 시간을 공간이 여유 상태를
-          유지할 시간의 추정치로 사용(즉, 가장 최근에 수정된 블록의 나이)
+        /* age = 세그먼트 내 가장 최근에 수정된 블록의 시간을 공간이 여유
+          상태를 유지할 시간의 추정치로 사용(즉, 가장 최근에 수정된 블록의
+          나이)
          */
         /* u = valid * garbage_percent_approx(free space+invalid)
              = 1 - valid = 1-u  ex) 80 %
@@ -725,8 +728,9 @@ void ZenFS::ZoneCleaning(bool forced) {
         // double variance_weight =
         //     (static_cast<double>(cur_variance) - min_variance) /
         //     (max_variance - min_variance);
-        // double sigma = sigma_min + (sigma_max - sigma_min) * variance_weight;
-        // double weighted_age = pow(ZoneLifetimeValue, sigma);
+        // double sigma = sigma_min + (sigma_max - sigma_min) *
+        // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
+        // sigma);
 
         // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
         // uint64_t freeSpace =
