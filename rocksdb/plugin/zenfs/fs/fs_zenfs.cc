@@ -384,21 +384,13 @@ void ZenFS::CalculateHorizontalLifetimes(
                              static_cast<double>(num_non_compacting_files - 1);
         non_compacting_index++;
       }
-      // 먼저 현재 레벨 데이터를 저장
-      file_with_normalized_index.emplace_back(fno, normalized_index);
-    }
-    // 현재 레벨 데이터를 먼저 map에 저장
-    level_file_map[level] = file_with_normalized_index;
 
-    // 상위 레벨과 겹치는 파일은 최대 Lifetime으로 계산
-    if (level > 0) {
-      for (auto& [fno, normalized_index] : file_with_normalized_index) {
+      // 상위 레벨과 겹치는 파일은 최대 Lifetime으로 계산
+      if (level > 0) {
         Slice smallest, largest;
         if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
           std::vector<uint64_t> upper_fno_list;
           zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
-
-          double max_upper_lifetime = normalized_index;
 
           for (uint64_t upper_fno : upper_fno_list) {
             auto it =
@@ -415,24 +407,16 @@ void ZenFS::CalculateHorizontalLifetimes(
               //           << ",fno : " << fno << ", Lifetime: " <<
               // it->second
               //           << std::endl;
-              max_upper_lifetime = std::max(max_upper_lifetime, it->second);
+              normalized_index = std::max(normalized_index, it->second);
             }
           }
-
-          // 상위 레벨의 최대 Lifetime으로 갱신
-          normalized_index = max_upper_lifetime;
-        }
-        // **갱신된 값 다시 level_file_map[level]에 반영**
-        auto it = std::find_if(level_file_map[level].begin(),
-                               level_file_map[level].end(),
-                               [&](std::pair<uint64_t, double>& pair) {
-                                 return pair.first == fno;
-                               });
-        if (it != level_file_map[level].end()) {
-          it->second = normalized_index;  // 갱신된 Lifetime 반영
         }
       }
+      // 결과 저장
+      file_with_normalized_index.emplace_back(fno, normalized_index);
     }
+    // 최종적으로 map에 저장
+    level_file_map[level] = std::move(file_with_normalized_index);
   }
 
   // for (const auto& level : level_file_map) {
