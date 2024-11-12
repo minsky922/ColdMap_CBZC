@@ -390,8 +390,7 @@ void ZenFS::CalculateHorizontalLifetimes(
         Slice smallest, largest;
         if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
           std::vector<uint64_t> upper_fno_list;
-          db_impl_->UpperLevelFileList(smallest, largest, level,
-                                       upper_fno_list);
+          zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
 
           double max_upper_lifetime = normalized_index;
 
