@@ -592,7 +592,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   ReCalculateLifetimes();
   NormalizeZoneLifetimes();
   // uint64_t cur_variance = CalculateZoneLifetimeVariance();
-  std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
+  // std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &end_ts);
   long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
                        (end_ts.tv_nsec - start_ts.tv_nsec);
