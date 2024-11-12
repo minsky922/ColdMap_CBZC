@@ -406,9 +406,9 @@ void ZenFS::CalculateHorizontalLifetimes(
               //           << max_upper_lifetime << ", Upper File: " <<
               //           upper_fno
               //           << ",fno : " << fno << ", Lifetime: " <<
-              it->second
-                  //           << std::endl;
-                  max_upper_lifetime = std::max(max_upper_lifetime, it->second);
+              // it->second
+              //           << std::endl;
+              max_upper_lifetime = std::max(max_upper_lifetime, it->second);
             }
           }
           normalized_index = max_upper_lifetime;
