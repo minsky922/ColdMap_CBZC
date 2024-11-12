@@ -734,7 +734,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         // variance = sum_of_squares / file_count;
 
         uint64_t zone_start = zone.start;
-        uint64_t ZoneLifetimeValue = 0;
+        // uint64_t ZoneLifetimeValue = 0;
         double average_lifetime = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
