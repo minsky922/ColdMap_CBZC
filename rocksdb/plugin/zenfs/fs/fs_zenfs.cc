@@ -388,7 +388,7 @@ void ZenFS::CalculateHorizontalLifetimes(
       // 상위 레벨과 겹치는 파일은 최대 Lifetime 계산
       if (level > 0) {
         Slice smallest, largest;
-        if (GetMinMaxKey(fno, smallest, largest)) {
+        if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
           std::vector<uint64_t> upper_fno_list;
           db_impl_->UpperLevelFileList(smallest, largest, level,
                                        upper_fno_list);
