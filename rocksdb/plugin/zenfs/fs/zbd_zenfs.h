@@ -725,9 +725,7 @@ class ZonedBlockDevice {
   //                        bool exclude_being_compacted = true);
   void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
                          std::set<uint64_t> &compacting_files);
-  bool GetMinMaxKey(uint64_t fno, Slice &smallest, Slice &largest) {
-    return false;
-  }
+  bool GetMinMaxKey(uint64_t fno, Slice &smallest, Slice &largest);
 
   void SetZCRunning(bool v) { zc_running_.store(v); }
   bool GetZCRunning(void) { return zc_running_.load(); }
