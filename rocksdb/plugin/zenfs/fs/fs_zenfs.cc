@@ -394,7 +394,12 @@ void ZenFS::CalculateHorizontalLifetimes(
           double max_upper_lifetime = normalized_index;
 
           for (uint64_t upper_fno : upper_fno_list) {
-            auto it = level_file_map[level - 1].find(upper_fno);
+            auto it =
+                std::find_if(level_file_map[level - 1].begin(),
+                             level_file_map[level - 1].end(),
+                             [&](const std::pair<uint64_t, double>& pair) {
+                               return pair.first == upper_fno;
+                             });
             if (it != level_file_map[level - 1].end()) {
               std::cout << "Comparing Lifetime: Current Max: "
                         << max_upper_lifetime << ", Upper File: " << upper_fno
