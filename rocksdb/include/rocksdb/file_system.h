@@ -1792,10 +1792,10 @@ class FSWritableFileWrapper : public FSWritableFile {
                             const int level) override {
     target_->SetMinMaxKeyAndLevel(smallest, largest, level);
   }
-  bool GetMinMaxKey(const uint64_t fno, const Slice& smallest,
-                    const Slice& largest) override {
-    return target_->GetMinMaxKey(fno, smallest, largest);
-  }
+  // bool GetMinMaxKey(const uint64_t fno, const Slice& smallest,
+  //                   const Slice& largest) override {
+  //   return target_->GetMinMaxKey(fno, smallest, largest);
+  // }
 
   IOStatus CAZAFlushSST(void) { return target_->CAZAFlushSST(); }
 

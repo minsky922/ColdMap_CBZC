@@ -982,8 +982,8 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
 
   return;
 }
-bool ZonedWritableFile::GetMinMaxKey(const uint64_t fno, const Slice& smallest,
-                                     const Slice& largest) {
+bool ZonedFile::GetMinMaxKey(const uint64_t fno, const Slice& smallest,
+                             const Slice& largest) {
   ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
   if (zone_file == nullptr) {
     return false;
