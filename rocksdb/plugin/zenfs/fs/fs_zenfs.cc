@@ -621,8 +621,8 @@ void ZenFS::Adv_ReCalculateLifetimes() {
       double sst_lifetime_value =
           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
-      std::cout << "Initial Lifetime (Level " << level << ", SSTable " << fno
-                << "): " << sst_lifetime_value << std::endl;
+      // std::cout << "Initial Lifetime (Level " << level << ", SSTable " << fno
+      //           << "): " << sst_lifetime_value << std::endl;
 
       /*첫순회는 level0이라 upper 로직 패스 후 zone_lifetime_map에 Initial
        lifetime저장하고 previous_level_map에 Initial lifetime들 저장*/
@@ -649,8 +649,8 @@ void ZenFS::Adv_ReCalculateLifetimes() {
         }
       }
 
-      std::cout << "Final Lifetime (Level " << level << ", SSTable " << fno
-                << "): " << sst_lifetime_value << std::endl;
+      // std::cout << "Final Lifetime (Level " << level << ", SSTable " << fno
+      //           << "): " << sst_lifetime_value << std::endl;
 
       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
       if (zone_file != nullptr) {
