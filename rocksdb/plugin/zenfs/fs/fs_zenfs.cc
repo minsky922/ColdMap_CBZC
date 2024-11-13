@@ -808,7 +808,8 @@ void ZenFS::ZoneCleaning(bool forced) {
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx});
         }
-      } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY) {
+        // } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY ) {
+      } else {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
         // uint64_t ZoneLifetimeValue = 0;
