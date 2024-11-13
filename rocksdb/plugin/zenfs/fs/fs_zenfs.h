@@ -504,6 +504,7 @@ class ZenFS : public FileSystemWrapper {
   // void ZoneCleaningWorker(bool run_once=false) override;
   void ZoneCleaning(bool forced);
   void ReCalculateLifetimes();
+  void Adv_ReCalculateLifetimes();
   void NormalizeZoneLifetimes();
   uint64_t CalculateZoneLifetimeVariance();
   void CalculateHorizontalLifetimes(

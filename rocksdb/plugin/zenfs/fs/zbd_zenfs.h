@@ -85,6 +85,7 @@ class ZoneFile;
 #define CBZC1 1
 #define CBZC2 2
 #define CBZC3 3
+#define CBZC3 4
 
 #define PARTIAL_RESET_KICKED_THRESHOLD 40
 // | zone-reset | partial-reset |
