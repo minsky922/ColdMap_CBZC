@@ -401,25 +401,25 @@ void ZenFS::NormalizeZoneLifetimes() {
 //   return variance / lifetimes.size();
 // }
 
-double ZenFS::CalculateZoneLifetimeVariance() {
-  // 존의 Lifetime 값 초기화
+uint64_t ZenFS::CalculateZoneLifetimeVariance() {
   size_t n = zone_lifetime_map_.size();
   if (n == 0) {
-    return 0.0;
+    return 0;
   }
 
-  double sum = 0.0;
-  double sum_of_squares = 0.0;
+  uint64_t sum = 0;
+  uint64_t sum_of_squares = 0;
 
   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    double mean_lifetime = static_cast<double>(entry.first) / entry.second;
+    uint64_t mean_lifetime = static_cast<uint64_t>(
+        static_cast<double>(entry.first) / entry.second * 100);
     sum += mean_lifetime;
     sum_of_squares += mean_lifetime * mean_lifetime;
   }
 
-  double mean = sum / n;
+  uint64_t mean = sum / n;
 
-  double variance = (sum_of_squares / n) - (mean * mean);
+  uint64_t variance = (sum_of_squares / n) - (mean * mean);
 
   return variance;
 }
