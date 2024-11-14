@@ -412,9 +412,9 @@ double ZenFS::CalculateZoneLifetimeVariance() {
   double sum_of_squares = 0.0;
 
   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    double lifetime = static_cast<double>(entry.first);
-    sum += lifetime;
-    sum_of_squares += lifetime * lifetime;
+    double mean_lifetime = static_cast<double>(entry.first) / entry.second;
+    sum += mean_lifetime;
+    sum_of_squares += mean_lifetime * mean_lifetime;
   }
 
   double mean = sum / n;
