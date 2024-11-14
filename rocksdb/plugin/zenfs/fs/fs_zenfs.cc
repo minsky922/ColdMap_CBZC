@@ -382,23 +382,46 @@ void ZenFS::NormalizeZoneLifetimes() {
   }
 }
 
-uint64_t ZenFS::CalculateZoneLifetimeVariance() {
-  // 모든 존의 Lifetime 값을 모아 분산 계산
-  std::vector<uint64_t> lifetimes;
+// uint64_t ZenFS::CalculateZoneLifetimeVariance() {
+//   // 모든 존의 Lifetime 값을 모아 분산 계산
+//   std::vector<uint64_t> lifetimes;
+//   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+//     lifetimes.push_back(entry.first);  // 정규화된 Lifetime 값
+//   }
+
+//   // 평균 계산
+//   uint64_t sum = std::accumulate(lifetimes.begin(), lifetimes.end(), 0ULL);
+//   uint64_t mean = sum / lifetimes.size();
+
+//   // 분산 계산
+//   uint64_t variance = 0;
+//   for (const auto& lifetime : lifetimes) {
+//     variance += (lifetime - mean) * (lifetime - mean);
+//   }
+//   return variance / lifetimes.size();
+// }
+
+double ZenFS::CalculateZoneLifetimeVariance() {
+  // 존의 Lifetime 값 초기화
+  size_t n = zone_lifetime_map_.size();
+  if (n == 0) {
+    return 0.0;
+  }
+
+  double sum = 0.0;
+  double sum_of_squares = 0.0;
+
   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    lifetimes.push_back(entry.first);  // 정규화된 Lifetime 값
+    double lifetime = static_cast<double>(entry.first);
+    sum += lifetime;
+    sum_of_squares += lifetime * lifetime;
   }
 
-  // 평균 계산
-  uint64_t sum = std::accumulate(lifetimes.begin(), lifetimes.end(), 0ULL);
-  uint64_t mean = sum / lifetimes.size();
+  double mean = sum / n;
 
-  // 분산 계산
-  uint64_t variance = 0;
-  for (const auto& lifetime : lifetimes) {
-    variance += (lifetime - mean) * (lifetime - mean);
-  }
-  return variance / lifetimes.size();
+  double variance = (sum_of_squares / n) - (mean * mean);
+
+  return variance;
 }
 
 void ZenFS::CalculateHorizontalLifetimes(
@@ -694,8 +717,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     ReCalculateLifetimes();
   }
   // NormalizeZoneLifetimes();
-  // uint64_t cur_variance = CalculateZoneLifetimeVariance();
-  // std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
+  double cur_variance = CalculateZoneLifetimeVariance();
+  std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &end_ts);
   long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
                        (end_ts.tv_nsec - start_ts.tv_nsec);
@@ -812,7 +835,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       } else {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
-        // uint64_t ZoneLifetimeValue = 0;
+
         double average_lifetime = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
@@ -822,40 +845,57 @@ void ZenFS::ZoneCleaning(bool forced) {
           // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
         }
 
-        // uint64_t min_variance = 200;
-        // uint64_t max_variance = 700;
-        // double sigma_min = 0.5;
-        // double sigma_max = 2.0;
+        if (zc_scheme == CBZC5) {
+          /* benefit = sigma^ZLV * (1-simga)^(free space)
+            0<ZLV<1, 0<free space<1
+            0<sigma<1 */
+          // uint64_t ZoneLifetimeValue = 0;
 
-        // double variance_weight =
-        //     (static_cast<double>(cur_variance) - min_variance) /
-        //     (max_variance - min_variance);
-        // double sigma = sigma_min + (sigma_max - sigma_min) *
-        // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
-        // sigma);
+          // uint64_t min_variance = 20;
+          // uint64_t max_variance = 700;
+          // double sigma_min = 0.5;
+          // double sigma_max = 2.0;
 
-        // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
-        // uint64_t freeSpace =
-        //     100 * (zone.max_capacity - zone.used_capacity) /
-        //     zone.max_capacity;
-        // uint64_t cost = 100 + u;
-        // uint64_t benefit = freeSpace * ZoneLifetimeValue;
-        // uint64_t benefit = freeSpace * weighted_age;
+          // double variance_weight =
+          //     (static_cast<double>(cur_variance) - min_variance) /
+          //     (max_variance - min_variance);
+          // double sigma = sigma_min + (sigma_max - sigma_min) *
+          // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
+          // sigma);
+          // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
+          // uint64_t freeSpace = 100 * (zone.max_capacity - zone.used_capacity)
+          // /
+          //                      zone.max_capacity;
+          // uint64_t cost = 100 + u;
+          // uint64_t benefit = freeSpace * ZoneLifetimeValue;
+          // uint64_t benefit = freeSpace * weighted_age;
 
-        // uint64_t cost = (100 - garbage_percent_approx) * 2;
-        // uint64_t benefit = garbage_percent_approx * average_lifetime;
-        double cost = 2 * (static_cast<double>(zone.used_capacity) /
-                           static_cast<double>(zone.max_capacity));
-        double benefit = (static_cast<double>(zone.max_capacity) -
-                          static_cast<double>(zone.used_capacity)) *
-                         average_lifetime;  // free space * lifetime
+          double sigma = cur_variance;
 
-        // std::cout << "cost : " << cost << std::endl;
-        // std::cout << "freespace generated : " << freeSpace << std::endl;
-        // std::cout << "ZLV : " << ZoneLifetimeValue << std::endl;
-        // // std::cout << "sigma : " << sigma << std::endl;
-        // // std::cout << "Weighted_ZLV : " << weighted_age << std::endl;
-        // std::cout << "benefit : " << benefit << std::endl;
+          double u = zone.used_capacity / zone.max_capacity;
+
+          double freeSpace = zone.max_capacity - zone.used_capacity;
+          double weighted_age = pow(sigma, average_lifetime);
+          double weighted_freeSpace = pow(1 - sigma, freeSpace);
+
+          double cost = 2 * u;
+          double benefit = weighted_freeSpace * weighted_age;
+
+        } else {
+          double cost = 2 * (static_cast<double>(zone.used_capacity) /
+                             static_cast<double>(zone.max_capacity));
+          double benefit = (static_cast<double>(zone.max_capacity) -
+                            static_cast<double>(zone.used_capacity)) *
+                           average_lifetime;  // free space * lifetime
+        }
+
+        std::cout << "cost : " << cost << std::endl;
+        std::cout << "freespace : " << freeSpace << std::endl;
+        std::cout << "weighted freespace : " << weighted_freeSpace << std::endl;
+        std::cout << "age : " << average_lifetime << std::endl;
+        std::cout << "weighted age : " << weighted_age << std::endl;
+        std::cout << "sigma : " << sigma << std::endl;
+        std::cout << "benefit : " << benefit << std::endl;
 
         if (cost != 0) {
           double cost_benefit_score =
