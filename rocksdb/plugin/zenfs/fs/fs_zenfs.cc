@@ -844,57 +844,47 @@ void ZenFS::ZoneCleaning(bool forced) {
           average_lifetime = total_lifetime / file_count;
           // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
         }
-        double sigma;
-        double u;
-        double freeSpace;
-        double weighted_age;
-        double weighted_freeSpace;
-        double cost;
-        double benefit;
 
-        if (zc_scheme == CBZC5) {
-          /* benefit = sigma^ZLV * (1-simga)^(free space)
-            0<ZLV<1, 0<free space<1
-            0<sigma<1 */
-          // uint64_t ZoneLifetimeValue = 0;
+        /* benefit = sigma^ZLV * (1-simga)^(free space)
+          0<ZLV<1, 0<free space<1
+          0<sigma<1 */
+        // uint64_t ZoneLifetimeValue = 0;
 
-          // uint64_t min_variance = 20;
-          // uint64_t max_variance = 700;
-          // double sigma_min = 0.5;
-          // double sigma_max = 2.0;
+        // uint64_t min_variance = 20;
+        // uint64_t max_variance = 700;
+        // double sigma_min = 0.5;
+        // double sigma_max = 2.0;
 
-          // double variance_weight =
-          //     (static_cast<double>(cur_variance) - min_variance) /
-          //     (max_variance - min_variance);
-          // double sigma = sigma_min + (sigma_max - sigma_min) *
-          // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
-          // sigma);
-          // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
-          // uint64_t freeSpace = 100 * (zone.max_capacity - zone.used_capacity)
-          // /
-          //                      zone.max_capacity;
-          // uint64_t cost = 100 + u;
-          // uint64_t benefit = freeSpace * ZoneLifetimeValue;
-          // uint64_t benefit = freeSpace * weighted_age;
+        // double variance_weight =
+        //     (static_cast<double>(cur_variance) - min_variance) /
+        //     (max_variance - min_variance);
+        // double sigma = sigma_min + (sigma_max - sigma_min) *
+        // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
+        // sigma);
+        // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
+        // uint64_t freeSpace = 100 * (zone.max_capacity - zone.used_capacity)
+        // /
+        //                      zone.max_capacity;
+        // uint64_t cost = 100 + u;
+        // uint64_t benefit = freeSpace * ZoneLifetimeValue;
+        // uint64_t benefit = freeSpace * weighted_age;
 
-          double sigma = cur_variance;
+        double sigma = cur_variance;
 
-          double u = zone.used_capacity / zone.max_capacity;
+        double u = zone.used_capacity / zone.max_capacity;
 
-          double freeSpace = zone.max_capacity - zone.used_capacity;
-          double weighted_age = pow(sigma, average_lifetime);
-          double weighted_freeSpace = pow(1 - sigma, freeSpace);
+        double freeSpace = zone.max_capacity - zone.used_capacity;
+        double weighted_age = pow(sigma, average_lifetime);
+        double weighted_freeSpace = pow(1 - sigma, freeSpace);
 
-          double cost = 2 * u;
-          double benefit = weighted_freeSpace * weighted_age;
+        double cost = 2 * u;
+        double benefit = weighted_freeSpace * weighted_age;
 
-        } else {
-          double cost = 2 * (static_cast<double>(zone.used_capacity) /
-                             static_cast<double>(zone.max_capacity));
-          double benefit = (static_cast<double>(zone.max_capacity) -
-                            static_cast<double>(zone.used_capacity)) *
-                           average_lifetime;  // free space * lifetime
-        }
+        // double cost = 2 * (static_cast<double>(zone.used_capacity) /
+        //                    static_cast<double>(zone.max_capacity));
+        // double benefit = (static_cast<double>(zone.max_capacity) -
+        //                   static_cast<double>(zone.used_capacity)) *
+        //                  average_lifetime;  // free space * lifetime
 
         std::cout << "cost : " << cost << std::endl;
         std::cout << "freespace : " << freeSpace << std::endl;
