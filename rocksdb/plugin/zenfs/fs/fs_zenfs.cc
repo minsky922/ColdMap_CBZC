@@ -506,10 +506,10 @@ void ZenFS::ReCalculateLifetimes() {
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
-    // std::cout << "Level: " << level
-    //           << ", Original: " << vertical_lifetimes[level]
-    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
-    //           << std::endl;
+    std::cout << "Level: " << level
+              << ", Original: " << vertical_lifetimes[level]
+              << ", Normalized: " << normalized_vertical_lifetimes[level]
+              << std::endl;
   }
 
   double alpha_value = zbd_->GetAlphaValue();
@@ -631,7 +631,7 @@ void ZenFS::Adv_ReCalculateLifetimes() {
        저장된 level i-1의 Initial lifetime과 level i의 changable lifetime을
        비교해 Hottest value로 치환, 전파된 값은 zone_lifetime_map에 저장.*/
 
-      /* orignial lifetime 저장구조를 둠으로써 독립적인 전파를 시행*/
+      /* Initial lifetime 저장구조를 둠으로써 독립적인 전파를 시행*/
 
       if (level > 0) {
         Slice smallest, largest;
