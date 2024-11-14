@@ -844,6 +844,13 @@ void ZenFS::ZoneCleaning(bool forced) {
           average_lifetime = total_lifetime / file_count;
           // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
         }
+        double sigma;
+        double u;
+        double freeSpace;
+        double weighted_age;
+        double weighted_freeSpace;
+        double cost;
+        double benefit;
 
         if (zc_scheme == CBZC5) {
           /* benefit = sigma^ZLV * (1-simga)^(free space)
