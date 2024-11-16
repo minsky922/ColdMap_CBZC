@@ -900,7 +900,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         std::cout << "freespace : " << freeSpace << std::endl;
         std::cout << "weighted freespace : " << weighted_freeSpace << std::endl;
         std::cout << "age : " << average_lifetime << std::endl;
-        // std::cout << "weighted age : " << weighted_age << std::endl;
+        std::cout << "weighted age : " << weighted_age << std::endl;
         std::cout << "sigma : " << sigma << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
 
