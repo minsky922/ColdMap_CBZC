@@ -536,8 +536,11 @@ void ZenFS::ReCalculateLifetimes() {
   }
 
   double alpha_value = zbd_->GetAlphaValue();
-  double alpha_ = alpha_value;
-  double beta_ = 1 - alpha_;
+  // double alpha_ = alpha_value;
+  // double beta_ = 1 - alpha_;
+
+  double alpha_ = alpha_value * 2;
+  double beta_ = 1;
 
   // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
   // for (const auto& file_pair : level_file_map[level]) {
@@ -547,7 +550,7 @@ void ZenFS::ReCalculateLifetimes() {
     double vertical_lifetime_ = normalized_vertical_lifetimes[level];
     for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
       double sst_lifetime_value =
-          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
+          alpha_ * (1 - horizontal_lifetime) * beta_ * (1 - vertical_lifetime_);
 
       // std::cout << "Level: " << level
       //           << ", vertical Lifetime: " << vertical_lifetime_
