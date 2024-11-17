@@ -1309,7 +1309,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
   (void)(level);
   std::vector<uint64_t> none;
 
-  WaitForOpenIOZoneToken(false, ZC);
+  WaitForOpenIOZoneToken(false);
 
   while (CalculateCapacityRemain() > min_capacity) {
     if ((*run_gc_worker_) == false) {
@@ -1593,7 +1593,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         break;
     }
   }
-  WaitForOpenIOZoneToken(io_type == IOType::kWAL, open_class);
+  WaitForOpenIOZoneToken(io_type == IOType::kWAL);
 
   if (is_sst && level >= 0 && allocation_scheme_ == CAZA) {
     s = AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
