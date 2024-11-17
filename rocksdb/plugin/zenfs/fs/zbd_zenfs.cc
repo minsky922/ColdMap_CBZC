@@ -1352,15 +1352,14 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
     }
 
-    s = GetBestOpenZoneMatch(file_lifetime, &best_diff, std::vector<uint64_t>(),
-                             out_zone, min_capacity);
+    s = GetBestOpenZoneMatch(file_lifetime, &best_diff, out_zone, min_capacity);
 
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
     }
 
-    s = GetAnyLargestRemainingZone(out_zone, false, min_capacity);
+    s = GetAnyLargestRemainingZone(out_zone, min_capacity);
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
