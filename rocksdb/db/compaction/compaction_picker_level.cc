@@ -138,36 +138,36 @@ class LevelCompactionBuilder {
   static const int kMinFilesForIntraL0Compaction = 4;
 };
 
-// void LevelCompactionBuilder::PickFileToCompact(
-//     const autovector<std::pair<int, FileMetaData*>>& level_files,
-//     bool compact_to_next_level) {
-//   for (auto& level_file : level_files) {
-//     // If it's being compacted it has nothing to do here.
-//     // If this assert() fails that means that some function marked some
-//     // files as being_compacted, but didn't call ComputeCompactionScore()
-//     assert(!level_file.second->being_compacted);
-//     start_level_ = level_file.first;
-//     if ((compact_to_next_level &&
-//          start_level_ == vstorage_->num_non_empty_levels() - 1) ||
-//         (start_level_ == 0 &&
-//          !compaction_picker_->level0_compactions_in_progress()->empty())) {
-//       continue;
-//     }
-//     if (compact_to_next_level) {
-//       output_level_ =
-//           (start_level_ == 0) ? vstorage_->base_level() : start_level_ + 1;
-//     } else {
-//       output_level_ = start_level_;
-//     }
-//     start_level_inputs_.files = {level_file.second};
-//     start_level_inputs_.level = start_level_;
-//     if (compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
-//                                                    &start_level_inputs_)) {
-//       return;
-//     }
-//   }
-//   start_level_inputs_.files.clear();
-// }
+void LevelCompactionBuilder::PickFileToCompact(
+    const autovector<std::pair<int, FileMetaData*>>& level_files,
+    bool compact_to_next_level) {
+  for (auto& level_file : level_files) {
+    // If it's being compacted it has nothing to do here.
+    // If this assert() fails that means that some function marked some
+    // files as being_compacted, but didn't call ComputeCompactionScore()
+    assert(!level_file.second->being_compacted);
+    start_level_ = level_file.first;
+    if ((compact_to_next_level &&
+         start_level_ == vstorage_->num_non_empty_levels() - 1) ||
+        (start_level_ == 0 &&
+         !compaction_picker_->level0_compactions_in_progress()->empty())) {
+      continue;
+    }
+    if (compact_to_next_level) {
+      output_level_ =
+          (start_level_ == 0) ? vstorage_->base_level() : start_level_ + 1;
+    } else {
+      output_level_ = start_level_;
+    }
+    start_level_inputs_.files = {level_file.second};
+    start_level_inputs_.level = start_level_;
+    if (compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
+                                                   &start_level_inputs_)) {
+      return;
+    }
+  }
+  start_level_inputs_.files.clear();
+}
 
 bool LevelCompactionBuilder::PickFileToCompact() {
   // level 0 files are overlapping. So we cannot pick more
