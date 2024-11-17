@@ -1538,6 +1538,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   int new_zone = 0;
   IOStatus s;
   (void)(input_fno);
+  (void)(fname);
 
   auto tag = ZENFS_WAL_IO_ALLOC_LATENCY;
   if (io_type != IOType::kWAL) {
