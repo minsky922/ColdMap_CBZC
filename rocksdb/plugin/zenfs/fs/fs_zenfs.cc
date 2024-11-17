@@ -2671,7 +2671,6 @@ IOStatus ZenFS::MigrateFileExtents(
     const std::vector<ZoneExtentSnapshot*>& migrate_exts) {
   IOStatus s = IOStatus::OK();
   uint64_t copied = 0;
-  uint64_t ret = 0;
   // 파일 이름과 익스텐트 개수를 로깅
   Info(logger_, "MigrateFileExtents, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());

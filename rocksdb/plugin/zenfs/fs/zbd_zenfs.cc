@@ -1601,7 +1601,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
                                      &allocated_zone, min_capacity);
 
     if (!s.ok()) {
-      PutOpenIOZoneToken(open_class);
+      PutOpenIOZoneToken();
       return s;
     }
   } else if (is_sst && level >= 0 && allocation_scheme_ == CAZA_ADV) {
@@ -1610,7 +1610,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
                                        &allocated_zone, min_capacity);
     // printf("AllocateCompactionAwaredZoneV2\n");
     if (!s.ok()) {
-      PutOpenIOZoneToken(open_class);
+      PutOpenIOZoneToken();
       return s;
     }
 
@@ -1619,7 +1619,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     }
 
     if (!GetActiveIOZoneTokenIfAvailable()) {
-      FinishCheapestIOZone(false);
+      FinishCheapestIOZone();
     }
     s = AllocateEmptyZone(&allocated_zone);
     if (allocated_zone == nullptr) {
@@ -1632,10 +1632,10 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
 
   /* Try to fill an already open zone(with the best life time diff) */
-  s = GetBestOpenZoneMatch(file_lifetime, &best_diff, input_fno,
-                           &allocated_zone, min_capacity);
+  s = GetBestOpenZoneMatch(file_lifetime, &best_diff, &allocated_zone,
+                           min_capacity);
   if (!s.ok()) {
-    PutOpenIOZoneToken(open_class);
+    PutOpenIOZoneToken();
     return s;
   }
 
@@ -1652,7 +1652,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     }
   }
   if (s.ok() && allocated_zone == nullptr) {
-    s = GetAnyLargestRemainingZone(&allocated_zone, false, min_capacity);
+    s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
     if (allocated_zone) {
       allocated_zone->lifetime_ = file_lifetime;
     }
@@ -1664,7 +1664,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           new_zone, allocated_zone->start_, allocated_zone->wp_,
           allocated_zone->lifetime_, file_lifetime);
   } else {
-    PutOpenIOZoneToken(open_class);
+    PutOpenIOZoneToken();
   }
   // if(allocated_zone==nullptr){
   //   s=GetAnyLargestRemainingZone(&allocated_zone,false);
