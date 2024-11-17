@@ -1537,6 +1537,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
   int new_zone = 0;
   IOStatus s;
+  (void)(input_fno);
 
   auto tag = ZENFS_WAL_IO_ALLOC_LATENCY;
   if (io_type != IOType::kWAL) {
@@ -1557,41 +1558,6 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     return s;
   }
 
-  WaitForOpenZoneClass open_class;
-  if (io_type == IOType::kWAL) {
-    open_class = WAL;
-  } else {
-    switch (level) {
-      case 0:
-        open_class = L0;
-        break;
-      case 1:
-        open_class = L1;
-        break;
-      case 2:
-        open_class = L2;
-        break;
-      case 3:
-        open_class = L3;
-        break;
-      case 4:
-        open_class = L4;
-        break;
-      case 5:
-        open_class = L5;
-        break;
-      case 6:
-        open_class = L6;
-        break;
-      case 7:
-        open_class = L7;
-        break;
-      default:
-        printf("fname ?? %s level ?? %d\n", fname.c_str(), level);
-        open_class = L7;
-        break;
-    }
-  }
   WaitForOpenIOZoneToken(io_type == IOType::kWAL);
 
   if (is_sst && level >= 0 && allocation_scheme_ == CAZA) {
