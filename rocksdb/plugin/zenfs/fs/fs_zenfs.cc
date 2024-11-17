@@ -1791,6 +1791,12 @@ void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
   // }
 }
 
+double ZenFS::GetMaxInvalidateCompactionScore(
+    std::vector<uint64_t>& file_candidates, uint64_t* candidate_size) {
+  return zbd_->GetMaxInvalidateCompactionScore(file_candidates, candidate_size,
+                                               false);
+}
+
 /* Must hold files_mtx_ */
 IOStatus ZenFS::RenameChildNoLock(std::string const& source_dir,
                                   std::string const& dest_dir,
@@ -2665,6 +2671,7 @@ IOStatus ZenFS::MigrateFileExtents(
     const std::vector<ZoneExtentSnapshot*>& migrate_exts) {
   IOStatus s = IOStatus::OK();
   uint64_t copied = 0;
+  uint64_t ret = 0;
   // 파일 이름과 익스텐트 개수를 로깅
   Info(logger_, "MigrateFileExtents, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
@@ -2707,8 +2714,15 @@ IOStatus ZenFS::MigrateFileExtents(
     Zone* target_zone = nullptr;
 
     // Allocate a new migration zone.
-    s = zbd_->TakeMigrateZone(&target_zone, zfile->GetWriteLifeTimeHint(),
-                              ext->length_);
+    // s = zbd_->TakeMigrateZone(&target_zone, zfile->GetWriteLifeTimeHint(),
+    //                           ext->length_);
+    s = zbd_->TakeMigrateZone(zfile->smallest_, zfile->largest_, zfile->level_,
+                              &target_zone, zfile->GetWriteLifeTimeHint(),
+                              zfile->predicted_size_, ext->length_,
+                              &run_gc_worker_, zfile->IsSST());
+    if (!run_gc_worker_) {
+      return ret;
+    }
     if (!s.ok()) {
       continue;
     }

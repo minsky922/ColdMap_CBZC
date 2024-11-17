@@ -138,35 +138,259 @@ class LevelCompactionBuilder {
   static const int kMinFilesForIntraL0Compaction = 4;
 };
 
-void LevelCompactionBuilder::PickFileToCompact(
-    const autovector<std::pair<int, FileMetaData*>>& level_files,
-    bool compact_to_next_level) {
-  for (auto& level_file : level_files) {
-    // If it's being compacted it has nothing to do here.
-    // If this assert() fails that means that some function marked some
-    // files as being_compacted, but didn't call ComputeCompactionScore()
-    assert(!level_file.second->being_compacted);
-    start_level_ = level_file.first;
-    if ((compact_to_next_level &&
-         start_level_ == vstorage_->num_non_empty_levels() - 1) ||
-        (start_level_ == 0 &&
-         !compaction_picker_->level0_compactions_in_progress()->empty())) {
+// void LevelCompactionBuilder::PickFileToCompact(
+//     const autovector<std::pair<int, FileMetaData*>>& level_files,
+//     bool compact_to_next_level) {
+//   for (auto& level_file : level_files) {
+//     // If it's being compacted it has nothing to do here.
+//     // If this assert() fails that means that some function marked some
+//     // files as being_compacted, but didn't call ComputeCompactionScore()
+//     assert(!level_file.second->being_compacted);
+//     start_level_ = level_file.first;
+//     if ((compact_to_next_level &&
+//          start_level_ == vstorage_->num_non_empty_levels() - 1) ||
+//         (start_level_ == 0 &&
+//          !compaction_picker_->level0_compactions_in_progress()->empty())) {
+//       continue;
+//     }
+//     if (compact_to_next_level) {
+//       output_level_ =
+//           (start_level_ == 0) ? vstorage_->base_level() : start_level_ + 1;
+//     } else {
+//       output_level_ = start_level_;
+//     }
+//     start_level_inputs_.files = {level_file.second};
+//     start_level_inputs_.level = start_level_;
+//     if (compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
+//                                                    &start_level_inputs_)) {
+//       return;
+//     }
+//   }
+//   start_level_inputs_.files.clear();
+// }
+
+bool LevelCompactionBuilder::PickFileToCompact() {
+  // level 0 files are overlapping. So we cannot pick more
+  // than one concurrent compactions at this level. This
+  // could be made better by looking at key-ranges that are
+  // being compacted at level 0.
+  if (start_level_ == 0 &&
+      !compaction_picker_->level0_compactions_in_progress()->empty()) {
+    TEST_SYNC_POINT("LevelCompactionPicker::PickCompactionBySize:0");
+    return false;
+  }
+
+  start_level_inputs_.clear();
+
+  assert(start_level_ >= 0);
+
+  // Pick the largest file in this level that is not already
+  // being compacted
+  const std::vector<int>& file_size =
+      vstorage_->FilesByCompactionPri(start_level_);
+  const std::vector<FileMetaData*>& level_files =
+      vstorage_->LevelFiles(start_level_);
+  unsigned int cmp_idx;
+
+  // MAX
+  double max_score = 0;
+  uint64_t max_file_size_score = 0;
+  uint64_t max_invalidation_ratio_score = 0;
+
+  uint64_t file_size_score;
+  double invalidation_ratio_score;
+  double score;
+  bool selected = false;
+  unsigned int max_cmp_idx = vstorage_->NextCompactionIndex(start_level_);
+  int max_index = 0;
+  std::vector<FileMetaData*> max_file_candiates;
+  uint64_t max_candidate_compensate_size = 0;
+  uint64_t normalized_candidate_compensate_size;
+
+  uint64_t candidate_size;
+
+  uint64_t zns_free_percent = 100;
+  ioptions_.fs->GetFreeSpace(std::string(), IOOptions(), nullptr,
+                             &zns_free_percent, nullptr);
+  // auto start_chrono = std::chrono::high_resolution_clock::now();
+
+  max_file_candiates.clear();
+  if (ioptions_.compaction_scheme == BASELINE_COMPACTION ||
+      zns_free_percent >= ioptions_.max_compaction_kick ||
+      start_level_ < ioptions_.max_compaction_start_level) {
+    goto baseline;
+  }
+
+  for (cmp_idx = 0; cmp_idx < file_size.size(); cmp_idx++) {
+    std::vector<uint64_t> file_candidates;
+    file_candidates.clear();
+
+    int index = file_size[cmp_idx];
+    auto* candidate = level_files[index];
+    CompactionInputFiles start_i;
+
+    start_i.clear();
+
+    if (candidate->being_compacted) {
       continue;
     }
-    if (compact_to_next_level) {
-      output_level_ =
-          (start_level_ == 0) ? vstorage_->base_level() : start_level_ + 1;
-    } else {
-      output_level_ = start_level_;
+    start_i.files.push_back(candidate);
+    start_i.level = start_level_;
+    if (!compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
+                                                    &start_i) ||
+        compaction_picker_->FilesRangeOverlapWithCompaction({start_i},
+                                                            output_level_)) {
+      continue;
     }
-    start_level_inputs_.files = {level_file.second};
-    start_level_inputs_.level = start_level_;
-    if (compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
-                                                   &start_level_inputs_)) {
-      return;
+
+    InternalKey smallest, largest;
+    compaction_picker_->GetRange(start_i, &smallest, &largest);
+
+    CompactionInputFiles output_i;
+    output_i.level = output_level_;
+    vstorage_->GetOverlappingInputs(output_level_, &smallest, &largest,
+                                    &output_i.files);
+
+    if (!output_i.empty() && !compaction_picker_->ExpandInputsToCleanCut(
+                                 cf_name_, vstorage_, &output_i)) {
+      continue;
+    }
+
+    for (auto f : start_i.files) {
+      file_candidates.push_back(f->fd.GetNumber());
+    }
+    for (auto f : output_i.files) {
+      file_candidates.push_back(f->fd.GetNumber());
+    }
+
+    // printf("[%u,%d] start fno :
+    // %lu.sst\n",cmp_idx,index,candidate->fd.GetNumber());
+
+    if (file_candidates.size() == 1) {
+      goto baseline;
+    }
+
+    candidate_size = 0;
+    invalidation_ratio_score = ioptions_.fs->GetMaxInvalidateCompactionScore(
+        file_candidates, &candidate_size);
+
+    if (max_candidate_compensate_size == 0) {
+      max_candidate_compensate_size = candidate->compensated_file_size;
+    }
+
+    normalized_candidate_compensate_size =
+        (candidate->compensated_file_size * 100) /
+        max_candidate_compensate_size;
+    (void)(max_candidate_compensate_size);
+    (void)(normalized_candidate_compensate_size);
+    (void)(max_invalidation_ratio_score);
+    // (void)(file_size_score);
+    file_size_score =
+        (normalized_candidate_compensate_size * zns_free_percent) / 100;
+
+    score = invalidation_ratio_score;
+
+    if (score > max_score ||
+        (score == max_score && file_size_score > max_file_size_score)) {
+      max_file_candiates.clear();
+      max_file_candiates = start_i.files;
+      selected = true;
+      max_cmp_idx = cmp_idx;
+      max_index = index;
+      max_file_size_score = file_size_score;
+      max_invalidation_ratio_score = invalidation_ratio_score;
+      max_score = score;
     }
   }
-  start_level_inputs_.files.clear();
+
+  if (selected == true) {
+    start_level_inputs_.clear();
+    start_level_inputs_.files = max_file_candiates;
+    start_level_inputs_.level = start_level_;
+    (void)(max_cmp_idx);
+    base_index_ = max_index;
+
+    // if(start_level_inputs_.size()){
+    //   printf("-----------------SELECTED--------------\n");
+    //   printf("[%d]start fno :
+    //   %lu.sst\n",start_level_,max_file_candiates[0]->fd.GetNumber());
+    //   printf("score : %lf\n",max_score);
+    //   printf("-----------------END-------------------\n");
+    // }
+
+    // auto elapsed = std::chrono::high_resolution_clock::now() - start_chrono;
+    // long long nanoseconds =
+    //     std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
+    // (void)(nanoseconds);
+    // printf("zaca\t\t%llu\n",nanoseconds);
+    return start_level_inputs_.size() > 0;
+  }
+baseline:
+  start_level_inputs_.clear();
+  //////////////////////////////////////////////////////////////////////////////////////////
+  for (cmp_idx = vstorage_->NextCompactionIndex(start_level_);
+       cmp_idx < file_size.size(); cmp_idx++) {
+    int index = file_size[cmp_idx];
+    auto* f = level_files[index];
+    // f->fd.GetNumber();
+    // do not pick a file to compact if it is being compacted
+    // from n-1 level.
+    if (f->being_compacted) {
+      continue;
+    }
+
+    start_level_inputs_.files.push_back(f);
+    start_level_inputs_.level = start_level_;
+    if (!compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
+                                                    &start_level_inputs_) ||
+        compaction_picker_->FilesRangeOverlapWithCompaction(
+            {start_level_inputs_}, output_level_)) {
+      // A locked (pending compaction) input-level file was pulled in due to
+      // user-key overlap.
+      start_level_inputs_.clear();
+      continue;
+    }
+
+    // Now that input level is fully expanded, we check whether any output files
+    // are locked due to pending compaction.
+    //
+    // Note we rely on ExpandInputsToCleanCut() to tell us whether any output-
+    // level files are locked, not just the extra ones pulled in for user-key
+    // overlap.
+    InternalKey smallest, largest;
+    compaction_picker_->GetRange(start_level_inputs_, &smallest, &largest);
+    CompactionInputFiles output_level_inputs;
+    output_level_inputs.level = output_level_;
+    vstorage_->GetOverlappingInputs(output_level_, &smallest, &largest,
+                                    &output_level_inputs.files);
+    if (!output_level_inputs.empty() &&
+        !compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
+                                                    &output_level_inputs)) {
+      start_level_inputs_.clear();
+      continue;
+    }
+    // printf("-----------------SELECTED--------------\n");
+    // printf("[%u,%d] start fno : %lu.sst\n",cmp_idx,index,f->fd.GetNumber());
+
+    // printf("[start] ");
+    // for(auto s : start_level_inputs_.files){
+    //   printf("%lu.sst ",s->fd.GetNumber());
+    // }
+    // printf("\n");
+    // printf("[out] ");
+    // for(auto o : output_level_inputs.files){
+    //   printf("%lu.sst ",o->fd.GetNumber());
+    // }
+    // printf("\n");
+    // printf("-----------------END-------------------\n");
+    base_index_ = index;
+    break;
+  }
+
+  // store where to start the iteration in the next call to PickCompaction
+  vstorage_->SetNextCompactionIndex(start_level_, cmp_idx);
+
+  return start_level_inputs_.size() > 0;
 }
 
 void LevelCompactionBuilder::SetupInitialFiles() {

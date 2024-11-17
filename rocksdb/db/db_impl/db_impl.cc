@@ -3111,6 +3111,24 @@ void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
   }
 }
 
+void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
+                               bool exclude_being_compacted) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+  const std::vector<int>& files_by_compactio_pri =
+      vstorage->FilesByCompactionPri(level);
+
+  auto files = vstorage->LevelFiles(level);
+  for (size_t i = 0; i < files_by_compactio_pri.size(); i++) {
+    int index = files_by_compactio_pri[i];
+    auto file = files[index];
+    if (file->being_compacted && exclude_being_compacted) {
+      continue;
+    }
+    fno_list.push_back(file->fd.GetNumber());
+  }
+}
+
 std::vector<int> DBImpl::NumLevelsFiles(void) {
   std::vector<int> ret;
   auto vstorage =
@@ -4617,6 +4635,9 @@ Status DB::DropColumnFamilies(
 uint64_t DB::MostLargeUpperAdjacentFile(Slice&, Slice&, int) { return 0; }
 uint64_t DB::MostSmallDownwardAdjacentFile(Slice&, Slice&, int) { return 0; }
 void DB::SameLevelFileList(int, std::vector<uint64_t>&, std::set<uint64_t>&) {
+  std::cout << "DB::SameLevelFileList not Supported\n";
+}
+void DB::SameLevelFileList(int, std::vector<uint64_t>&, bool) {
   std::cout << "DB::SameLevelFileList not Supported\n";
 }
 void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {

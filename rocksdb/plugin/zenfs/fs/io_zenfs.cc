@@ -481,32 +481,22 @@ void ZoneFile::PushExtent() {
   extent_filepos_ = file_size_;
 }
 
-IOStatus ZoneFile::AllocateNewZone() {
+IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
   Zone* zone;
-  IOStatus s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
-  // std::cout << "AllocateNewZone->zone: " << zone << "\n";
+  // IOStatus s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
+  int try_n = 0;
+  IOStatus s = zbd_->AllocateIOZone(linkfiles_[0], IsSST(), smallest_, largest_,
+                                    level_, lifetime_, io_type_, input_fno_,
+                                    predicted_size_, &zone, min_capacity);
+  input_fno_.clear();
   if (zone == nullptr) {
-    // auto start_time = std::chrono::system_clock::now();  // 시작 시간 기록
-    // auto start_time_t = std::chrono::system_clock::to_time_t(start_time);
-    // std::cout << "Zone allocation started at: " << std::ctime(&start_time_t);
-    // for (int try_n = 0; try_n < 16; try_n++) {
     int start = zenfs_->GetMountTime();
     while (zbd_->CalculateCapacityRemain() > (1 << 20) * 128) {
-      // if (zbd_->IsZoneAllocationFailed()) {
-      //   return IOStatus::NoSpace("Zone allocation failed\n");
-      // }
-      // zenfs_->ZCLock();
-      // std::cout << "##### ZCLock" << "\n";
-      // zbd_->ResetUnusedIOZones();
-      // std::cout << "#### AllocateNewZone-ResetUnusedIoZones" << "\n";
-      // usleep(1000 * 1000);  // 1초 대기
-      s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
-      // uint64_t z = zbd_->CalculateCapacityRemain std::cout
-      //              << "AllocateNewZone: CalculateCapacityRemain: " << z <<
-      //              "\n";
-      // std::cout << "@@@@ io_zf::AllocateIOZone: " << zone << "\n";
-      // zenfs_->ZCUnLock();
-      // std::cout << "###### ZCUnLock" << "\n";
+      // s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
+      s = zbd_->AllocateIOZone(linkfiles_[0], IsSST(), smallest_, largest_,
+                               level_, lifetime_, io_type_, input_fno_,
+                               predicted_size_, &zone, min_capacity);
+      try_n++;
       if (zone != nullptr) {
         break;
       }
@@ -515,18 +505,6 @@ IOStatus ZoneFile::AllocateNewZone() {
     }
     int end = zenfs_->GetMountTime();
 
-    // auto end_time = std::chrono::system_clock::now();  // 종료 시간 기록
-    // auto end_time_t = std::chrono::system_clock::to_time_t(end_time);
-    // std::cout << "Zone allocation ended at: " << std::ctime(&end_time_t);
-
-    // auto start = std::chrono::duration_cast<std::chrono::seconds>(
-    //                  start_time.time_since_epoch())
-    //                  .count();
-    // auto end = std::chrono::duration_cast<std::chrono::seconds>(
-    //                end_time.time_since_epoch())
-    //                .count();
-    // std::cout << "IO Blocked Time Start: " << start << " End: " << end
-    //           << std::endl;
     zbd_->AddIOBlockedTimeLapse(start, end);
   }
   if (!s.ok()) {

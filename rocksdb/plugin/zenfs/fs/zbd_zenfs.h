@@ -152,6 +152,8 @@ class Zone {
   uint64_t erase_unit_size_ = 0;
   uint64_t block_sz_;
   uint64_t reset_count_ = 0;
+  enum State { EMPTY, OPEN, CLOSE, FINISH, RO, OFFLINE };
+  State state_ = EMPTY;
   //
   std::atomic<uint64_t> used_capacity_;
 
@@ -358,8 +360,8 @@ class ZonedBlockDevice {
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
   uint64_t cbzc_enabled_;
-  uint64_t cumulative_io_blocking_ = 0;  // ms
-  uint64_t calculate_lapse = 0;          // ms
+  // uint64_t cumulative_io_blocking_ = 0;  // ms
+  uint64_t calculate_lapse = 0;  // ms
 
   uint64_t default_extent_size_ = 256 << 20;
   enum {
@@ -386,6 +388,23 @@ class ZonedBlockDevice {
     int T_;
     uint64_t R_wp_;  // (%)
     uint64_t RT_;
+    size_t candidate_ratio_;
+
+    std::vector<int> num_files_levels_;
+
+    std::vector<double> compaction_scores_;
+
+    std::vector<uint64_t> levels_size_;
+    uint64_t compaction_triggered_[10];
+    double avg_same_zone_score_[10];
+    double avg_inval_score_[10];
+    double avg_invalid_ratio_;
+    std::vector<uint64_t> invalid_percent_per_zone_;
+    uint64_t cur_ops_;
+    uint64_t cur_gc_written_;
+    uint64_t valid_data_size_;
+    uint64_t invalid_data_size_;
+    uint64_t cumulative_io_blocking_;
     FARStat(uint64_t fr, size_t rc, uint64_t wwp, int T, uint64_t rt)
         : free_percent_(fr), RC_(rc), T_(T), RT_(rt) {
       if (RC_ == 0) {
@@ -400,6 +419,16 @@ class ZonedBlockDevice {
   //            R_wp_, (RT_ >> 20));
   //   }
   std::vector<FARStat> far_stats_;
+  std::mutex same_zone_score_mutex_;
+  std::vector<double> same_zone_score_[10];
+  std::vector<double> same_zone_score_for_timelapse_[10];
+
+  std::vector<double> invalidate_score_[10];
+  std::vector<double> invalidate_score_for_timelapse_[10];
+
+  std::atomic<uint64_t> same_zone_score_atomic_[10];
+  std::atomic<uint64_t> invalidate_score_atomic_[10];
+  std::atomic<uint64_t> compaction_triggered_[10];
 
  public:
   uint64_t GetZCScheme() const { return zc_scheme_; }
@@ -430,20 +459,23 @@ class ZonedBlockDevice {
     if (db_ptr_ == nullptr) {
       return 0.0;
     }
-    // if (level == 0) {
-    //   if (db_ptr_ == nullptr) {
-    //     return 0.0;
-    //   }
-    //   return db_ptr_->ReCalculateCompactionScore(0);
-    // }
+    if (allocation_scheme_ == CAZA_ADV) {
+      if (level == 0) {
+        if (db_ptr_ == nullptr) {
+          return 0.0;
+        }
+        return db_ptr_->ReCalculateCompactionScore(0);
+      }
 
-    // if (level == 1) {
-    //   return (double)((double)(lsm_tree_[level].load()) /
-    //                   (double)(max_bytes_for_level_base_));
-    // }
+      if (level == 1) {
+        return (double)((double)(lsm_tree_[level].load()) /
+                        (double)(max_bytes_for_level_base_));
+      }
 
-    // return (double)((double)(lsm_tree_[level].load()) /
-    //                 (double)GetLevelSizeLimit(level));
+      return (double)((double)(lsm_tree_[level].load()) /
+                      (double)GetLevelSizeLimit(level));
+    }
+
     return db_ptr_->ReCalculateCompactionScore(level);
   }
   inline uint64_t GetAllocationScheme() { return allocation_scheme_; }
@@ -473,6 +505,12 @@ class ZonedBlockDevice {
 
   IOStatus AllocateIOZone(Env::WriteLifeTimeHint file_lifetime, IOType io_type,
                           Zone **out_zone);
+  IOStatus AllocateIOZone(std::string fname, bool is_sst, Slice &smallest,
+                          Slice &largest, int level,
+                          Env::WriteLifeTimeHint file_lifetime, IOType io_type,
+                          std::vector<uint64_t> &input_fno,
+                          uint64_t predicted_size, Zone **out_zone,
+                          uint64_t min_capacity);
   void SetZoneAllocationFailed() { zone_allocation_state_ = false; }
   bool IsZoneAllocationFailed() { return zone_allocation_state_ == false; }
   IOStatus AllocateMetaZone(Zone **out_meta_zone);
@@ -616,6 +654,11 @@ class ZonedBlockDevice {
 
   IOStatus TakeMigrateZone(Zone **out_zone, Env::WriteLifeTimeHint lifetime,
                            uint32_t min_capacity);
+  IOStatus TakeMigrateZone(Slice &smallest, Slice &largest, int level,
+                           Zone **out_zone,
+                           Env::WriteLifeTimeHint file_lifetime,
+                           uint64_t file_size, uint64_t min_capacity,
+                           bool *run_gc_worker_, bool is_sst);
 
   // void AddBytesWritten(uint64_t written) { bytes_written_ += written; };
   // void AddGCBytesWritten(uint64_t written) { gc_bytes_written_ += written;
@@ -687,11 +730,11 @@ class ZonedBlockDevice {
 
   ZoneFile *GetSSTZoneFileInZBDNoLock(uint64_t fno);
 
-  // void GiveZenFStoLSMTreeHint(
-  //     std::vector<uint64_t> &compaction_inputs_input_level_fno,
-  //     std::vector<uint64_t> &compaction_inputs_output_level_fno,
-  //     int output_level, bool trivial_move);
-  //
+  void GiveZenFStoLSMTreeHint(
+      std::vector<uint64_t> &compaction_inputs_input_level_fno,
+      std::vector<uint64_t> &compaction_inputs_output_level_fno,
+      int output_level, bool trivial_move);
+
   IOStatus RuntimeReset(void);
   double GetMaxInvalidateCompactionScore(std::vector<uint64_t> &file_candidates,
                                          uint64_t *candidate_size, bool stats);
@@ -723,8 +766,8 @@ class ZonedBlockDevice {
 
   void PrintZoneToFileStatus(void);
 
-  // void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
-  //                        bool exclude_being_compacted = true);
+  void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
+                         bool exclude_being_compacted = true);
   void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
                          std::set<uint64_t> &compacting_files);
   void UpperLevelFileList(Slice &smallest, Slice &largest, int level,
@@ -767,6 +810,10 @@ class ZonedBlockDevice {
       std::vector<std::pair<uint64_t, uint64_t>> &sorted, Zone **allocated_zone,
       uint64_t min_capacity);
   IOStatus AllocateCompactionAwaredZone(
+      Slice &smallest, Slice &largest, int level,
+      Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
+      uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity = 0);
+  IOStatus AllocateCompactionAwaredZoneV2(
       Slice &smallest, Slice &largest, int level,
       Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
       uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity = 0);

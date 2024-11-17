@@ -35,6 +35,8 @@
 #undef max
 #endif
 
+#define BASELINE_COMPACTION 0
+#define MAX_INVALIDATION_COMPACTION 1
 namespace ROCKSDB_NAMESPACE {
 
 class Cache;
