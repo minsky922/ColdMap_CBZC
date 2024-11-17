@@ -360,8 +360,8 @@ class ZonedBlockDevice {
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
   uint64_t cbzc_enabled_;
-  // uint64_t cumulative_io_blocking_ = 0;  // ms
-  uint64_t calculate_lapse = 0;  // ms
+  uint64_t cumulative_io_blocking_ = 0;  // ms
+  uint64_t calculate_lapse = 0;          // ms
 
   uint64_t default_extent_size_ = 256 << 20;
   enum {
