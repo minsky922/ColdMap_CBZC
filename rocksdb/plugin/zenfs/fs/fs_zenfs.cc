@@ -2721,7 +2721,7 @@ IOStatus ZenFS::MigrateFileExtents(
                               zfile->predicted_size_, ext->length_,
                               &run_gc_worker_, zfile->IsSST());
     if (!run_gc_worker_) {
-      return ret;
+      return IOStatus::OK();
     }
     if (!s.ok()) {
       continue;
