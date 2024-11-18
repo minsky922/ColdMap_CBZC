@@ -1295,6 +1295,97 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
                                            bool *run_gc_worker_, bool is_sst) {
   std::unique_lock<std::mutex> lock(migrate_zone_mtx_);
   migrate_resource_.wait(lock, [this] { return !migrating_; });
+  IOStatus s;
+  migrating_ = true;
+
+  unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
+
+  while (CalculateCapacityRemain() > min_capacity) {
+    if (is_sst) {
+      if (allocation_scheme_ == CAZA) {
+        AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
+                                     std::vector<uint64_t>(0), file_size,
+                                     out_zone, min_capacity);
+      } else if (allocation_scheme_ == CAZA_ADV) {
+        printf("AllocateCompactionAwaredZoneV2\n");
+        AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
+                                       std::vector<uint64_t>(0), file_size,
+                                       out_zone, min_capacity);
+        if (s.ok() && (*out_zone) != nullptr) {
+          break;
+        }
+
+        if (GetActiveIOZoneTokenIfAvailable()) {
+          s = AllocateEmptyZone(out_zone);
+          if (s.ok() && (*out_zone) != nullptr) {
+            Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+            (*out_zone)->lifetime_ = file_lifetime;
+            break;
+          } else {
+            PutActiveIOZoneToken();
+          }
+        } else {
+          AllocateAllInvalidZone(out_zone);
+        }
+
+      } else {
+        printf("I am LIZA!\n");
+      }
+
+      if (s.ok() && (*out_zone) != nullptr) {
+        break;
+      }
+    }
+
+    s = GetBestOpenZoneMatch(file_lifetime, &best_diff, out_zone, min_capacity);
+
+    if (s.ok() && (*out_zone) != nullptr) {
+      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+      break;
+    } else {
+      s = GetAnyLargestRemainingZone(out_zone, min_capacity);
+    }
+
+    if (s.ok() && (*out_zone) != nullptr) {
+      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+      break;
+    }
+    s = AllocateEmptyZone(out_zone);
+    if (s.ok() && (*out_zone) != nullptr) {
+      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+      break;
+    }
+
+    s = GetAnyLargestRemainingZone(out_zone, min_capacity);
+    if (s.ok() && (*out_zone) != nullptr) {
+      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+
+      break;
+    }
+
+    s = ResetUnusedIOZones();
+    if (!s.ok()) {
+      return s;
+    }
+  }
+
+  if (s.ok() && (*out_zone) != nullptr) {
+    Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+  } else {
+    migrating_ = false;
+  }
+
+  return s;
+}
+
+IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
+                                           int level, Zone **out_zone,
+                                           Env::WriteLifeTimeHint file_lifetime,
+                                           uint64_t file_size,
+                                           uint64_t min_capacity,
+                                           bool *run_gc_worker_, bool is_sst) {
+  std::unique_lock<std::mutex> lock(migrate_zone_mtx_);
+  migrate_resource_.wait(lock, [this] { return !migrating_; });
   // printf("#############TakeMigateZone!!!\n");
 
   IOStatus s;
