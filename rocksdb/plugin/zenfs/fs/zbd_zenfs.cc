@@ -2689,6 +2689,10 @@ bool ZonedBlockDevice::CalculateZoneScore(std::vector<uint64_t> &fno_list,
   bool there_is_near_level_files = false;
 
   {
+    for (const auto &fno : fno_list) {
+      std::cout << "calculatezs - fno: " << fno << std::endl;
+    }
+
     for (auto fno : fno_list) {
       ZoneFile *zFile = GetSSTZoneFileInZBDNoLock(fno);
       if (zFile == nullptr) {
