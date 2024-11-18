@@ -510,7 +510,7 @@ IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
   int try_n = 0;
   // (void)(min_capacity);  // 활성화할땐 지우기
   IOStatus s = zbd_->AllocateIOZone(linkfiles_[0], IsSST(), smallest_, largest_,
-                                    level_, lifetime_, io_type_, input_fno_,
+                                    level_, lifetime_, io_type_,
                                     predicted_size_, &zone, min_capacity);
   input_fno_.clear();
   if (zone == nullptr) {
@@ -518,8 +518,8 @@ IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
     while (zbd_->CalculateCapacityRemain() > (1 << 20) * 128) {
       // s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
       s = zbd_->AllocateIOZone(linkfiles_[0], IsSST(), smallest_, largest_,
-                               level_, lifetime_, io_type_, input_fno_,
-                               predicted_size_, &zone, min_capacity);
+                               level_, lifetime_, io_type_, predicted_size_,
+                               &zone, min_capacity);
       try_n++;
       if (zone != nullptr) {
         break;

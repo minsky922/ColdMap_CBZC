@@ -1628,14 +1628,13 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
 IOStatus ZonedBlockDevice::AllocateIOZone(
     std::string fname, bool is_sst, Slice &smallest, Slice &largest, int level,
     Env::WriteLifeTimeHint file_lifetime, IOType io_type,
-    std::vector<uint64_t> &input_fno, uint64_t predicted_size, Zone **out_zone,
-    uint64_t min_capacity) {
+    uint64_t predicted_size, Zone **out_zone, uint64_t min_capacity) {
   Zone *allocated_zone = nullptr;
   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;  // 수명차이
   int new_zone = 0;  // 새로운 영역인지 여부
   IOStatus s;
 
-  (void)(input_fno);
+  // (void)(input_fno);
   (void)(fname);
 
   // I/O 유형에 따라 적절한 추적 태그 설정
