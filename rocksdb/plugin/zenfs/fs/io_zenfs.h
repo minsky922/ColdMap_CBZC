@@ -50,6 +50,8 @@ class ZoneExtent {
   Zone* zone_;
 
   explicit ZoneExtent(uint64_t start, uint64_t length, Zone* zone);
+  explicit ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
+                      std::string fname, ZoneFile* zfile);
   Status DecodeFrom(Slice* input);
   void EncodeTo(std::string* output);
   void EncodeJson(std::ostream& json_stream);
