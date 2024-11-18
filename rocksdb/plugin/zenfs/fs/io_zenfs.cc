@@ -49,7 +49,7 @@ ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
     return;
   }
 
-  zone->PushExtent(this);
+  // zone->PushExtent(this);
 
   // uint64_t align = (length_ + header_size_) % block_sz;
   // if (align) {
