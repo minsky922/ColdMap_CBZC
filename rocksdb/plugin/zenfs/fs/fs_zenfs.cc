@@ -985,10 +985,12 @@ void ZenFS::ZoneCleaning(bool forced) {
   if (migrate_zones_start.size() > 0) {
     IOStatus s;
     Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
+    printf("Garbage collecting %d extents \n", (int)migrate_exts.size());
     clock_gettime(CLOCK_MONOTONIC, &start_timespec);
     s = MigrateExtents(migrate_exts);
     clock_gettime(CLOCK_MONOTONIC, &end_timespec);
     if (!s.ok()) {
+      printf("Garbage collection failed\n");
       Error(logger_, "Garbage collection failed");
     }
     // 종료 시간 기록
@@ -2720,14 +2722,17 @@ IOStatus ZenFS::MigrateFileExtents(
                               zfile->predicted_size_, ext->length_,
                               &run_gc_worker_, zfile->IsSST());
     if (!run_gc_worker_) {
+      printf("MigrateFileExtents - !run_gc_worker\n");
       return IOStatus::OK();
     }
     if (!s.ok()) {
+      printf("MigrateFileExtents - !s.ok\n");
       continue;
     }
 
     if (target_zone == nullptr) {
       zbd_->ReleaseMigrateZone(target_zone);
+      printf("MigrateFileExtents - Migrate Zone Acquire Failed, Ignore Task\n");
       Info(logger_, "Migrate Zone Acquire Failed, Ignore Task.");
       continue;
     }
@@ -2765,6 +2770,8 @@ IOStatus ZenFS::MigrateFileExtents(
   SyncFileExtents(zfile.get(), new_extent_list);
   zfile->ReleaseWRLock();
 
+  printf("MigrateFileExtents Finished, fname: %s, extent count: %lu",
+         fname.data(), migrate_exts.size());
   Info(logger_, "MigrateFileExtents Finished, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
   return IOStatus::OK();
