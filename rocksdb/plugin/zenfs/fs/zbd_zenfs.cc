@@ -1305,6 +1305,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
   while (CalculateCapacityRemain() > min_capacity) {
     if (is_sst) {
       if (allocation_scheme_ == CAZA) {
+        printf("AllocateCompactionAwaredZone\n");
         AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
                                      std::vector<uint64_t>(0), file_size,
                                      out_zone, min_capacity);
