@@ -1536,6 +1536,9 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   int new_zone = 0;  // 새로운 영역인지 여부
   IOStatus s;
 
+  (void)(input_fno);
+  (void)(fname);
+
   // I/O 유형에 따라 적절한 추적 태그 설정
   auto tag = ZENFS_WAL_IO_ALLOC_LATENCY;
   if (io_type != IOType::kWAL) {
