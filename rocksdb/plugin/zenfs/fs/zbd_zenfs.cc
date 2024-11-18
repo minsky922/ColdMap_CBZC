@@ -1332,7 +1332,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         }
 
       } else {
-        printf("I am LIZA!\n");
+        // printf("I am LIZA!\n");
       }
 
       if (s.ok() && (*out_zone) != nullptr) {
