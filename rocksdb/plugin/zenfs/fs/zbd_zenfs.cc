@@ -1300,6 +1300,8 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
 
   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
 
+  (void)(run_gc_worker_);
+
   while (CalculateCapacityRemain() > min_capacity) {
     if (is_sst) {
       if (allocation_scheme_ == CAZA) {
