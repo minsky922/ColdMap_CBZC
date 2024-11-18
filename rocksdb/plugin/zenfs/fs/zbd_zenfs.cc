@@ -2352,6 +2352,8 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
   bool no_same_level_files = true;
   (void)(is_input_in_zone);
 
+  printf("AllocateMostL0FilesZone start!!\n");
+
   {
     // std::lock_guard<std::mutex> lg(sst_file_map_lock_);
     for (auto fno : fno_list) {
@@ -2378,6 +2380,7 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
 
   //////////////////////////////
   auto sorted = SortedByZoneScore(zone_score);
+  printf("AllocateMostL0FilesZone sorted!!\n");
 
   for (auto zidx : sorted) {
     cur_score = zidx.first;
