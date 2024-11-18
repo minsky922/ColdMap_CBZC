@@ -2288,11 +2288,11 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
 l0:
   if (level == 0 || level == 1 || level == 100) {
     fno_list.clear();
-    // zone_score.assign(0,zone_score.size());
+    // zone_score.assign(0, zone_score.size());
     zone_score.clear();
     zone_score.assign(io_zones.size(), 0);
-    // SameLevelFileList(0, fno_list);
-    // SameLevelFileList(1, fno_list);
+    SameLevelFileList(0, fno_list);
+    SameLevelFileList(1, fno_list);
     s = AllocateMostL0FilesZone(zone_score, fno_list, is_input_in_zone,
                                 &allocated_zone, min_capacity);
     if (allocated_zone != nullptr) {
