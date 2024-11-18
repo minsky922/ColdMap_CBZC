@@ -1697,6 +1697,10 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       PutActiveIOZoneToken();
     }
   }
+
+  if (allocated_zone != nullptr) {
+    goto end;
+  }
   //////////////////////////////////////////////////////////////////////
 
   /* Try to fill an already open zone(with the best life time diff) */
