@@ -459,22 +459,22 @@ class ZonedBlockDevice {
     if (db_ptr_ == nullptr) {
       return 0.0;
     }
-    if (allocation_scheme_ == CAZA_ADV) {
-      if (level == 0) {
-        if (db_ptr_ == nullptr) {
-          return 0.0;
-        }
-        return db_ptr_->ReCalculateCompactionScore(0);
-      }
+    // if (allocation_scheme_ == CAZA_ADV) {
+    //   if (level == 0) {
+    //     if (db_ptr_ == nullptr) {
+    //       return 0.0;
+    //     }
+    //     return db_ptr_->ReCalculateCompactionScore(0);
+    //   }
 
-      if (level == 1) {
-        return (double)((double)(lsm_tree_[level].load()) /
-                        (double)(max_bytes_for_level_base_));
-      }
+    //   if (level == 1) {
+    //     return (double)((double)(lsm_tree_[level].load()) /
+    //                     (double)(max_bytes_for_level_base_));
+    //   }
 
-      return (double)((double)(lsm_tree_[level].load()) /
-                      (double)GetLevelSizeLimit(level));
-    }
+    //   return (double)((double)(lsm_tree_[level].load()) /
+    //                   (double)GetLevelSizeLimit(level));
+    // }
 
     return db_ptr_->ReCalculateCompactionScore(level);
   }
@@ -730,10 +730,10 @@ class ZonedBlockDevice {
 
   ZoneFile *GetSSTZoneFileInZBDNoLock(uint64_t fno);
 
-  void GiveZenFStoLSMTreeHint(
-      std::vector<uint64_t> &compaction_inputs_input_level_fno,
-      std::vector<uint64_t> &compaction_inputs_output_level_fno,
-      int output_level, bool trivial_move);
+  // void GiveZenFStoLSMTreeHint(
+  //     std::vector<uint64_t> &compaction_inputs_input_level_fno,
+  //     std::vector<uint64_t> &compaction_inputs_output_level_fno,
+  //     int output_level, bool trivial_move);
 
   IOStatus RuntimeReset(void);
   double GetMaxInvalidateCompactionScore(std::vector<uint64_t> &file_candidates,
