@@ -1983,7 +1983,7 @@ bool ZonedBlockDevice::SetSSTFileforZBDNoLock(uint64_t fno,
   if (sst != nullptr) {  // already set
     return false;
   }
-  printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
+  // printf("zonedBlockDevice::SetSSTFileforZBDNoLock->fno: %lu\n", fno);
   zoneFile->fno_ = fno;
   sst_file_bitmap_[fno] = zoneFile;
   return true;
@@ -1991,7 +1991,7 @@ bool ZonedBlockDevice::SetSSTFileforZBDNoLock(uint64_t fno,
 
 ZoneFile *ZonedBlockDevice::GetSSTZoneFileInZBDNoLock(uint64_t fno) {
   auto ret = sst_file_bitmap_[fno];
-  printf("zonedBlockDevice::GetSSTFileforZBDNoLock->fno: %lu\n", fno);
+  // printf("zonedBlockDevice::GetSSTFileforZBDNoLock->fno: %lu\n", fno);
   if (ret == nullptr) {
     return nullptr;
   }
@@ -2077,6 +2077,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
 
     if (level == 1) {
       // append to downward
+      printf("CAZA - Level 1!!\n");
       fno_list.clear();
       zone_score.clear();
       zone_score.assign(io_zones.size(), 0);
@@ -2087,6 +2088,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
       }
     } else if (level == 2 && (l0_score > this_level_score) &&
                (l0_score > upper_level_score)) {
+      printf("CAZA - Level 2!!\n");
       fno_list.clear();
       zone_score.clear();
       zone_score.assign(io_zones.size(), 0);
@@ -2099,6 +2101,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
     }
     // if upper level occur first == false
     else if (this_level_score > upper_level_score) {
+      printf("this_level_score > upper_level_score!!\n");
       fno_list.clear();
       zone_score.clear();
       zone_score.assign(io_zones.size(), 0);
@@ -2110,6 +2113,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
       }
 
     } else {  // upper_level_score>this_level_score
+      printf("upper_level_score>this_level_score!!\n");
       uint64_t upper_level_sst_fno =
           MostLargeUpperAdjacentFile(smallest, largest, level);
 
@@ -2170,6 +2174,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
 l0:
   // if level 0, most level 0 zone
   if (level == 0 || level == 100) {
+    printf("CAZA - Level 0!!\n");
     fno_list.clear();
     zone_score.clear();
     zone_score.assign(io_zones.size(), 0);
@@ -2183,7 +2188,7 @@ l0:
     return s;
   }
   if (allocated_zone != nullptr) {
-    // printf("CAZA 3\n");
+    printf("CAZA 3\n");
     *zone_out = allocated_zone;
     return s;
   }
