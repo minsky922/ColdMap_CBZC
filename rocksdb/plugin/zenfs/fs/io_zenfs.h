@@ -47,7 +47,14 @@ class ZoneExtent {
   */
   uint64_t start_;
   uint64_t length_;
-  Zone* zone_;
+  uint64_t pad_size_ = 0;
+  Zone* zone_ = nullptr;
+  std::mutex lock_;
+  bool is_invalid_;
+  bool position_pulled_ = false;
+  std::string fname_;
+  uint64_t header_size_;
+  ZoneFile* zfile_;
 
   explicit ZoneExtent(uint64_t start, uint64_t length, Zone* zone);
   explicit ZoneExtent(uint64_t start, uint64_t length, Zone* zone,

@@ -51,10 +51,10 @@ ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
 
   zone->PushExtent(this);
 
-  uint64_t align = (length_ + header_size_) % block_sz;
-  if (align) {
-    pad_size_ = block_sz - align;
-  }
+  // uint64_t align = (length_ + header_size_) % block_sz;
+  // if (align) {
+  //   pad_size_ = block_sz - align;
+  // }
 }
 
 Status ZoneExtent::DecodeFrom(Slice* input) {
@@ -496,6 +496,8 @@ void ZoneFile::PushExtent() {
 
   assert(length <= (active_zone_->wp_ - extent_start_));
   extents_.push_back(new ZoneExtent(extent_start_, length, active_zone_));
+  // extents_.push_back(
+  //     new ZoneExtent(extent_start_, length, active_zone_, filename, this));
 
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
@@ -586,13 +588,13 @@ IOStatus ZoneFile::BufferedAppend(char* buffer, uint32_t data_size) {
     s = active_zone_->Append(buffer, wr_size + pad_sz);
     if (!s.ok()) return s;
 
-    ZoneExtent* new_ext = new ZoneExtent(extent_start_, extent_length,
-                                         active_zone_, filename, this);
+    // ZoneExtent* new_ext = new ZoneExtent(extent_start_, extent_length,
+    //                                      active_zone_, filename, this);
 
-    extents_.push_back(new_ext);
+    // extents_.push_back(new_ext);
 
-    // extents_.push_back(
-    //     new ZoneExtent(extent_start_, extent_length, active_zone_));
+    extents_.push_back(
+        new ZoneExtent(extent_start_, extent_length, active_zone_));
 
     extent_start_ = active_zone_->wp_;
     active_zone_->used_capacity_ += extent_length;
