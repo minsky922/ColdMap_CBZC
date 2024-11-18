@@ -36,6 +36,27 @@ namespace ROCKSDB_NAMESPACE {
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone)
     : start_(start), length_(length), zone_(zone) {}
 
+ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
+                       std::string fname, ZoneFile* zfile)
+    : start_(start),
+      length_(length),
+      zone_(zone),
+      is_invalid_(false),
+      fname_(fname),
+      header_size_(0),
+      zfile_(zfile) {
+  if (zone == nullptr) {
+    return;
+  }
+
+  zone->PushExtent(this);
+
+  uint64_t align = (length_ + header_size_) % block_sz;
+  if (align) {
+    pad_size_ = block_sz - align;
+  }
+}
+
 Status ZoneExtent::DecodeFrom(Slice* input) {
   if (input->size() != (sizeof(start_) + sizeof(length_)))
     return Status::Corruption("ZoneExtent", "Error: length missmatch");
@@ -540,6 +561,13 @@ IOStatus ZoneFile::BufferedAppend(char* buffer, uint32_t data_size) {
     if (!s.ok()) return s;
   }
 
+  std::string filename;
+  if (linkfiles_.size()) {
+    filename = linkfiles_[0];
+  } else {
+    filename = "NONE(BufferedAppend)";
+  }
+
   while (left) {
     wr_size = left;
     if (wr_size > active_zone_->capacity_) wr_size = active_zone_->capacity_;
@@ -558,8 +586,13 @@ IOStatus ZoneFile::BufferedAppend(char* buffer, uint32_t data_size) {
     s = active_zone_->Append(buffer, wr_size + pad_sz);
     if (!s.ok()) return s;
 
-    extents_.push_back(
-        new ZoneExtent(extent_start_, extent_length, active_zone_));
+    ZoneExtent* new_ext = new ZoneExtent(extent_start_, extent_length,
+                                         active_zone_, filename, this);
+
+    extents_.push_back(new_ext);
+
+    // extents_.push_back(
+    //     new ZoneExtent(extent_start_, extent_length, active_zone_));
 
     extent_start_ = active_zone_->wp_;
     active_zone_->used_capacity_ += extent_length;
