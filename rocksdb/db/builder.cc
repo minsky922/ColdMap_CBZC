@@ -174,7 +174,7 @@ Status BuildTable(
         file->level_ = tboptions.level_at_creation;
         // builder->SetFileNumber(meta->fd.GetNumber());
         file->fno_ = meta->fd.GetNumber();  // 파일 번호 설정
-        file->input_fno_.clear();  // 입력 파일 번호 목록 초기화
+        // file->input_fno_.clear();  // 입력 파일 번호 목록 초기화
       }
       //
       file->SetWriteLifeTimeHint(write_hint);

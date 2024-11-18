@@ -512,7 +512,7 @@ IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
   IOStatus s = zbd_->AllocateIOZone(linkfiles_[0], IsSST(), smallest_, largest_,
                                     level_, lifetime_, io_type_,
                                     predicted_size_, &zone, min_capacity);
-  input_fno_.clear();
+  // input_fno_.clear();
   if (zone == nullptr) {
     int start = zenfs_->GetMountTime();
     while (zbd_->CalculateCapacityRemain() > (1 << 20) * 128) {
@@ -756,7 +756,7 @@ IOStatus ZonedWritableFile::CAZAFlushSST() {
   zoneFile_->GetZbd()->lsm_tree_[zoneFile_->level_].fetch_add(
       zoneFile_->predicted_size_);
   // }
-  input_fno_.clear();
+  // input_fno_.clear();
   return s;
 }
 
@@ -1314,7 +1314,7 @@ void ZonedWritableFile::SetWriteLifeTimeHint(Env::WriteLifeTimeHint hint) {
   // printf("ZonedWritableFile::SetWriteLifeTimeHint: level_ = %d\n", level_);
   if (zoneFile_->is_sst_) {
     zoneFile_->fno_ = fno_;
-    zoneFile_->input_fno_ = input_fno_;
+    // zoneFile_->input_fno_ = input_fno_;
     zoneFile_->GetZbd()->SetSSTFileforZBDNoLock(fno_, zoneFile_.get());
     zoneFile_->level_ = level_;
   }
