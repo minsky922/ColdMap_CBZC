@@ -2185,6 +2185,7 @@ l0:
   }
 
   if (!s.ok()) {
+    printf("AllocateMostL0FilesZone - !s.ok()\n");
     return s;
   }
   if (allocated_zone != nullptr) {
@@ -2395,7 +2396,7 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
     allocated_zone = target_zone;
     break;
   }
-
+  printf("AllocateMostL0FilesZone\n");
   *zone_out = allocated_zone;
   return IOStatus::OK();
 }
