@@ -1309,13 +1309,11 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       if (allocation_scheme_ == CAZA) {
         printf("AllocateCompactionAwaredZone\n");
         AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
-                                     std::vector<uint64_t>(0), file_size,
-                                     out_zone, min_capacity);
+                                     file_size, out_zone, min_capacity);
       } else if (allocation_scheme_ == CAZA_ADV) {
         printf("AllocateCompactionAwaredZoneV2\n");
         AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
-                                       std::vector<uint64_t>(0), file_size,
-                                       out_zone, min_capacity);
+                                       file_size, out_zone, min_capacity);
         if (s.ok() && (*out_zone) != nullptr) {
           break;
         }
@@ -1669,8 +1667,8 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   //////////////////// allocatecompactionawaredzone ///////////////////
   if (is_sst && level >= 0 && allocation_scheme_ == CAZA) {
     s = AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
-                                     std::vector<uint64_t>(0), predicted_size,
-                                     &allocated_zone, min_capacity);
+                                     predicted_size, &allocated_zone,
+                                     min_capacity);
 
     if (!s.ok()) {
       PutOpenIOZoneToken();
@@ -1678,8 +1676,8 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     }
   } else if (is_sst && level >= 0 && allocation_scheme_ == CAZA_ADV) {
     s = AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
-                                       std::vector<uint64_t>(0), predicted_size,
-                                       &allocated_zone, min_capacity);
+                                       predicted_size, &allocated_zone,
+                                       min_capacity);
     printf("AllocateCompactionAwaredZoneV2\n");
     if (!s.ok()) {
       PutOpenIOZoneToken();
@@ -2044,8 +2042,8 @@ void ZonedBlockDevice::UpperLevelFileList(Slice &smallest, Slice &largest,
 
 IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
     Slice &smallest, Slice &largest, int level,
-    Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
-    uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity) {
+    Env::WriteLifeTimeHint file_lifetime, uint64_t predicted_size,
+    Zone **zone_out, uint64_t min_capacity) {
   if (allocation_scheme_ == LIZA) {
     return IOStatus::OK();
   }
@@ -2188,8 +2186,8 @@ l0:
 
 IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
     Slice &smallest, Slice &largest, int level,
-    Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
-    uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity) {
+    Env::WriteLifeTimeHint file_lifetime, uint64_t predicted_size,
+    Zone **zone_out, uint64_t min_capacity) {
   ////////CAZA/////////
   if (allocation_scheme_ == LIZA) {
     return IOStatus::OK();
@@ -2206,7 +2204,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
   uint64_t max_score = 0;
   uint64_t max_invalid_data = 0;
   std::vector<bool> is_input_in_zone(io_zones.size(), false);
-  (void)(input_fno);
+  // (void)(input_fno);
   (void)(predicted_size);
   (void)(cur_invalid_data);
   (void)(max_invalid_data);

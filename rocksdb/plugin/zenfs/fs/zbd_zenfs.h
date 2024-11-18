@@ -808,14 +808,18 @@ class ZonedBlockDevice {
   void AllocateZoneBySortedScore(
       std::vector<std::pair<uint64_t, uint64_t>> &sorted, Zone **allocated_zone,
       uint64_t min_capacity);
-  IOStatus AllocateCompactionAwaredZone(
-      Slice &smallest, Slice &largest, int level,
-      Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
-      uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity = 0);
-  IOStatus AllocateCompactionAwaredZoneV2(
-      Slice &smallest, Slice &largest, int level,
-      Env::WriteLifeTimeHint file_lifetime, std::vector<uint64_t> input_fno,
-      uint64_t predicted_size, Zone **zone_out, uint64_t min_capacity = 0);
+  IOStatus AllocateCompactionAwaredZone(Slice &smallest, Slice &largest,
+                                        int level,
+                                        Env::WriteLifeTimeHint file_lifetime,
+                                        uint64_t predicted_size,
+                                        Zone **zone_out,
+                                        uint64_t min_capacity = 0);
+  IOStatus AllocateCompactionAwaredZoneV2(Slice &smallest, Slice &largest,
+                                          int level,
+                                          Env::WriteLifeTimeHint file_lifetime,
+                                          uint64_t predicted_size,
+                                          Zone **zone_out,
+                                          uint64_t min_capacity = 0);
   IOStatus AllocateMostL0FilesZone(std::vector<uint64_t> &zone_score,
                                    std::vector<uint64_t> &fno_list,
                                    std::vector<bool> &is_input_in_zone,
