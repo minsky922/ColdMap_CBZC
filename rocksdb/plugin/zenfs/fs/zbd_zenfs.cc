@@ -2149,9 +2149,9 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
     }
 
   } else {
-    uint64_t upper_level_sst_fno =
+        uint64_t upper_level_sst_fno =
         MostLargeUpperAdjacentFile(smallest, largest, level);
-
+    printf("MostLargeUpperAdjacentFile!!\n");
     ZoneFile *zfile = GetSSTZoneFileInZBDNoLock(upper_level_sst_fno);
     if (level == 1) {
       fno_list.clear();
