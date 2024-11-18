@@ -1684,21 +1684,26 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     s = AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
                                        predicted_size, &allocated_zone,
                                        min_capacity);
-    printf("AllocateCompactionAwaredZoneV2\n");
+    printf("allocateiozone-AllocateCompactionAwaredZoneV2\n");
     if (!s.ok()) {
+      printf("allocateiozone-putopen!!\n");
       PutOpenIOZoneToken();
       return s;
     }
 
     if (allocated_zone != nullptr) {
+      printf("allocateiozone-go to end\n");
       goto end;
     }
 
     if (!GetActiveIOZoneTokenIfAvailable()) {
+      printf("allocateiozone-finishchepest!!\n");
       FinishCheapestIOZone();
     }
     s = AllocateEmptyZone(&allocated_zone);
+    printf("allocateiozone-allocate emptyzone!!\n");
     if (allocated_zone == nullptr) {
+      printf("allocateiozone-allocate emptyzone - putactive!!\n");
       PutActiveIOZoneToken();
     }
   }
@@ -1789,6 +1794,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     LogZoneStats();  // WAL이 아닐 경우 영역 통계 로깅
   }
 end:
+  printf("allocateiozone - end!!\n");
   *out_zone = allocated_zone;
 
   metrics_->ReportGeneral(ZENFS_OPEN_ZONES_COUNT, open_io_zones_);
