@@ -1297,7 +1297,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     migrating_ = false;
     return IOStatus::OK();
   }
-  printf("#############TakeMigateZone!!!\n");
+  // printf("#############TakeMigateZone!!!\n");
 
   IOStatus s;
   migrating_ = true;
@@ -1345,7 +1345,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         }
 
       } else {
-        printf("I am LIZA!\n");
+        // printf("I am LIZA!\n");
       }
 
       if (s.ok() && (*out_zone) != nullptr) {
@@ -1391,7 +1391,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
   } else {
     migrating_ = false;
   }
-  (*out_zone)->state_ = Zone::State::OPEN;
+  // (*out_zone)->state_ = Zone::State::OPEN;
   return s;
 }
 
