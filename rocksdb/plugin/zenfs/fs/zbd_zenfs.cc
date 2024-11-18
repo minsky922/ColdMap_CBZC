@@ -2368,6 +2368,10 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
   printf("AllocateMostL0FilesZone start!!\n");
 
   {
+    for (const auto &fno : fno_list) {
+      std::cout << "fno: " << fno << std::endl;
+    }
+
     // std::lock_guard<std::mutex> lg(sst_file_map_lock_);
     for (auto fno : fno_list) {
       ZoneFile *zFile = GetSSTZoneFileInZBDNoLock(fno);
