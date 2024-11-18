@@ -1293,10 +1293,8 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
                                            uint64_t file_size,
                                            uint64_t min_capacity,
                                            bool *run_gc_worker_, bool is_sst) {
-  if ((*run_gc_worker_) == false) {
-    migrating_ = false;
-    return IOStatus::OK();
-  }
+  std::unique_lock<std::mutex> lock(migrate_zone_mtx_);
+  migrate_resource_.wait(lock, [this] { return !migrating_; });
   // printf("#############TakeMigateZone!!!\n");
 
   IOStatus s;
@@ -1315,6 +1313,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
   while (CalculateCapacityRemain() > min_capacity) {
     if ((*run_gc_worker_) == false) {
       migrating_ = false;
+      printf("migrating_ false\n");
       return IOStatus::OK();
     }
     if (is_sst) {
@@ -1626,10 +1625,10 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
 
   if (allocated_zone) {
-    printf(
-        "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt: %d\n",
-        new_zone, allocated_zone->start_, allocated_zone->wp_,
-        allocated_zone->lifetime_, file_lifetime);
+    // printf(
+    //     "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt:
+    //     %d\n", new_zone, allocated_zone->start_, allocated_zone->wp_,
+    //     allocated_zone->lifetime_, file_lifetime);
     Debug(logger_,
           "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt: %d\n",
           new_zone, allocated_zone->start_, allocated_zone->wp_,
