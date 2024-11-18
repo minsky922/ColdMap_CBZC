@@ -1579,7 +1579,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     s = AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
                                        std::vector<uint64_t>(0), predicted_size,
                                        &allocated_zone, min_capacity);
-    // printf("AllocateCompactionAwaredZoneV2\n");
+    printf("AllocateCompactionAwaredZoneV2\n");
     if (!s.ok()) {
       PutOpenIOZoneToken();
       return s;
@@ -1679,7 +1679,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   if (io_type != IOType::kWAL) {
     LogZoneStats();  // WAL이 아닐 경우 영역 통계 로깅
   }
-
+end:
   *out_zone = allocated_zone;
 
   metrics_->ReportGeneral(ZENFS_OPEN_ZONES_COUNT, open_io_zones_);
