@@ -2716,12 +2716,13 @@ IOStatus ZenFS::MigrateFileExtents(
     Zone* target_zone = nullptr;
 
     // Allocate a new migration zone.
-    // s = zbd_->TakeMigrateZone(&target_zone, zfile->GetWriteLifeTimeHint(),
-    //                           ext->length_);
-    s = zbd_->TakeMigrateZone(zfile->smallest_, zfile->largest_, zfile->level_,
-                              &target_zone, zfile->GetWriteLifeTimeHint(),
-                              zfile->predicted_size_, ext->length_,
-                              &run_gc_worker_, zfile->IsSST());
+    s = zbd_->TakeMigrateZone(&target_zone, zfile->GetWriteLifeTimeHint(),
+                              ext->length_);
+    // s = zbd_->TakeMigrateZone(zfile->smallest_, zfile->largest_,
+    // zfile->level_,
+    //                           &target_zone, zfile->GetWriteLifeTimeHint(),
+    //                           zfile->predicted_size_, ext->length_,
+    //                           &run_gc_worker_, zfile->IsSST());
     if (!run_gc_worker_) {
       printf("MigrateFileExtents - !run_gc_worker\n");
       return IOStatus::OK();
