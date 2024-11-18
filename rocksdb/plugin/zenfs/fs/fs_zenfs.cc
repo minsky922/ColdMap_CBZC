@@ -899,13 +899,13 @@ void ZenFS::ZoneCleaning(bool forced) {
         //                   static_cast<double>(zone.used_capacity)) *
         //                  average_lifetime;  // free space * lifetime
 
-        std::cout << "cost : " << cost << std::endl;
-        std::cout << "freespace : " << freeSpace << std::endl;
-        std::cout << "weighted freespace : " << weighted_freeSpace << std::endl;
-        std::cout << "age : " << average_lifetime << std::endl;
-        std::cout << "weighted age : " << weighted_age << std::endl;
-        std::cout << "sigma : " << sigma << std::endl;
-        std::cout << "benefit : " << benefit << std::endl;
+        // std::cout << "cost : " << cost << std::endl;
+        // std::cout << "freespace : " << freeSpace << std::endl;
+        // std::cout << "weighted freespace : " << weighted_freeSpace <<
+        // std::endl; std::cout << "age : " << average_lifetime << std::endl;
+        // std::cout << "weighted age : " << weighted_age << std::endl;
+        // std::cout << "sigma : " << sigma << std::endl;
+        // std::cout << "benefit : " << benefit << std::endl;
 
         if (cost != 0) {
           double cost_benefit_score =
@@ -930,20 +930,21 @@ void ZenFS::ZoneCleaning(bool forced) {
               });
   } else {
     // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
-    std::cout << "zc_scheme: " << zc_scheme << std::endl;
+    // std::cout << "zc_scheme: " << zc_scheme << std::endl;
     std::sort(
         victim_candidate.begin(), victim_candidate.end(),
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
   }
 
-  std::cout
-      << "==================================================================="
-      << std::endl;
-  for (const auto& candidate : victim_candidate) {
-    std::cout << "cost-benefit score: " << candidate.score
-              << ", Garbage Percentage: " << candidate.garbage_percent_approx
-              << "%" << std::endl;
-  }
+  // std::cout
+  //     <<
+  //     "==================================================================="
+  //     << std::endl;
+  // for (const auto& candidate : victim_candidate) {
+  //   std::cout << "cost-benefit score: " << candidate.score
+  //             << ", Garbage Percentage: " << candidate.garbage_percent_approx
+  //             << "%" << std::endl;
+  // }
 
   // uint64_t threshold = 0;
   uint64_t reclaimed_zone_n = 1;
@@ -2770,7 +2771,7 @@ IOStatus ZenFS::MigrateFileExtents(
   SyncFileExtents(zfile.get(), new_extent_list);
   zfile->ReleaseWRLock();
 
-  printf("MigrateFileExtents Finished, fname: %s, extent count: %lu",
+  printf("MigrateFileExtents Finished, fname: %s, extent count: %lu\n",
          fname.data(), migrate_exts.size());
   Info(logger_, "MigrateFileExtents Finished, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
