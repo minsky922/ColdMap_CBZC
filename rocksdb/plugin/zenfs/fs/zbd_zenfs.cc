@@ -1669,6 +1669,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     s = AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
                                      predicted_size, &allocated_zone,
                                      min_capacity);
+    printf("allocateiozone-AllocateCompactionAwaredZone\n");
 
     if (!s.ok()) {
       PutOpenIOZoneToken();

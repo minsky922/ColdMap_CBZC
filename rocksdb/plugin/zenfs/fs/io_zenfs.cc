@@ -722,7 +722,7 @@ IOStatus ZonedWritableFile::CAZAFlushSST() {
   if (zoneFile_->GetZbd()->GetAllocationScheme() == LIZA) {
     return IOStatus::OK();
   }
-  printf("CAZAFlushSST - CAZA!!\n");
+  // printf("CAZAFlushSST - CAZA!!\n");
   std::vector<SSTBuffer*>* sst_buffers = zoneFile_->GetSSTBuffers();
   zoneFile_->predicted_size_ = 0;
   for (auto it : *sst_buffers) {
@@ -1258,7 +1258,7 @@ IOStatus ZonedWritableFile::Append(const Slice& data,
                                                data.size());
   //
   if (zoneFile_->IsSST() && zoneFile_->GetAllocationScheme() != LIZA) {
-    printf("append->CAZAAppend!!\n");
+    // printf("append->CAZAAppend!!\n");
     return zoneFile_->CAZAAppend(data.data(), data.size(), true, 0);
   }
   //
@@ -1288,7 +1288,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
                                                data.size());
   //
   if (zoneFile_->IsSST() && zoneFile_->GetAllocationScheme() != LIZA) {
-    printf("append->CAZAAppend!!\n");
+    // printf("append->CAZAAppend!!\n");
     s = zoneFile_->CAZAAppend(data.data(), data.size(), true, offset);
     return s;
   }
