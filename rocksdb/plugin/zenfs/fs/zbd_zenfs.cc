@@ -2094,6 +2094,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
       zone_score.assign(io_zones.size(), 0);
       DownwardAdjacentFileList(smallest, largest, level, fno_list);
       if (CalculateZoneScore(fno_list, zone_score)) {
+        printf("CAZA - Level 1 - calculated!!\n");
         sorted = SortedByZoneScore(zone_score);
         AllocateZoneBySortedScore(sorted, &allocated_zone, min_capacity);
       }
@@ -2250,9 +2251,9 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
       if (zFile == nullptr) {
         continue;
       }
-      if (zFile->selected_as_input_) {
-        continue;
-      }
+      // if (zFile->selected_as_input_) {
+      //   continue;
+      // }
       auto extents = zFile->GetExtents();
       for (auto extent : extents) {
         if (!extent->zone_->IsFull()) {
@@ -2368,9 +2369,9 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
       if (zFile == nullptr) {
         continue;
       }
-      if (zFile->selected_as_input_) {
-        continue;
-      }
+      // if (zFile->selected_as_input_) {
+      //   continue;
+      // }
       auto extents = zFile->GetExtents();
       for (auto e : extents) {
         if (!e->zone_->IsFull()) {
@@ -2453,9 +2454,9 @@ IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
       if (zFile == nullptr) {
         continue;
       }
-      if (zFile->selected_as_input_) {
-        continue;
-      }
+      // if (zFile->selected_as_input_) {
+      //   continue;
+      // }
       int res = icmp->Compare(largest, zFile->smallest_);
       if (res <= 0) {
         res = icmp->Compare(smallest, zFile->largest_);
@@ -2474,9 +2475,9 @@ IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
         if (zFile == nullptr) {
           continue;
         }
-        if (zFile->selected_as_input_) {
-          continue;
-        }
+        // if (zFile->selected_as_input_) {
+        //   continue;
+        // }
         s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone, &allocated_zone,
                                        min_capacity);
         if (!s.ok()) {
@@ -2494,9 +2495,9 @@ IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
         if (zFile == nullptr) {
           continue;
         }
-        if (zFile->selected_as_input_) {
-          continue;
-        }
+        // if (zFile->selected_as_input_) {
+        //   continue;
+        // }
         s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone, &allocated_zone,
                                        min_capacity);
         if (!s.ok()) {
@@ -2518,10 +2519,10 @@ IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
               l_idx--;
               continue;
             }
-            if (zFile->selected_as_input_) {
-              l_idx--;
-              continue;
-            }
+            // if (zFile->selected_as_input_) {
+            //   l_idx--;
+            //   continue;
+            // }
             s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone,
                                            &allocated_zone, min_capacity);
             if (!s.ok()) {
@@ -2539,10 +2540,10 @@ IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
               r_idx++;
               continue;
             }
-            if (zFile->selected_as_input_) {
-              r_idx--;
-              continue;
-            }
+            // if (zFile->selected_as_input_) {
+            //   r_idx--;
+            //   continue;
+            // }
             s = GetNearestZoneFromZoneFile(zFile, is_input_in_zone,
                                            &allocated_zone, min_capacity);
             if (!s.ok()) {
@@ -2684,9 +2685,9 @@ bool ZonedBlockDevice::CalculateZoneScore(std::vector<uint64_t> &fno_list,
       if (zFile == nullptr) {
         continue;
       }
-      if (zFile->selected_as_input_) {
-        continue;
-      }
+      // if (zFile->selected_as_input_) {
+      //   continue;
+      // }
       auto extents = zFile->GetExtents();
       for (auto extent : extents) {
         if (!extent->zone_->IsFull()) {
