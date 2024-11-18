@@ -69,10 +69,13 @@ Zone::Zone(ZonedBlockDevice *zbd, ZonedBlockDeviceBackend *zbd_be,
       start_(zbd_be->ZoneStart(zones, idx)),  // 존의 시작 위치 초기화
       max_capacity_(
           zbd_be->ZoneMaxCapacity(zones, idx)),  // 존의 최대 용량 초기화
+      zidx_(idx),
       wp_(zbd_be->ZoneWp(zones, idx)) {  // 존의 현재 쓰기 포인터 초기화
   lifetime_ = Env::WLTH_NOT_SET;         // 존의 수명 초기화
   used_capacity_ = 0;                    // 사용된 용량 초기화
   capacity_ = 0;                         // 현재 용량 초기화
+  zone_sz_ = zbd_be_->GetZoneSize();
+  block_sz_ = zbd_be_->GetBlockSize();
   if (zbd_be->ZoneIsWritable(zones, idx))  // 존이 쓰기 가능한 상태인지 확인
     capacity_ =
         max_capacity_ - (wp_ - start_);  // 쓰기 가능한 경우 현재 용량 설정
@@ -2384,6 +2387,9 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
       auto extents = zFile->GetExtents();
       for (auto e : extents) {
         if (!e->zone_->IsFull()) {
+          std::cout << "zidx : "
+                    << e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES
+                    << std::endl;
           zone_score[e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES] +=
               e->length_;
           no_same_level_files = false;
@@ -2688,30 +2694,29 @@ bool ZonedBlockDevice::CalculateZoneScore(std::vector<uint64_t> &fno_list,
                                           std::vector<uint64_t> &zone_score) {
   bool there_is_near_level_files = false;
 
-  {
-    for (const auto &fno : fno_list) {
-      std::cout << "calculatezs - fno: " << fno << std::endl;
-    }
+  for (const auto &fno : fno_list) {
+    std::cout << "calculatezs - fno: " << fno << std::endl;
+  }
 
-    for (auto fno : fno_list) {
-      ZoneFile *zFile = GetSSTZoneFileInZBDNoLock(fno);
-      if (zFile == nullptr) {
-        continue;
-      }
-      // if (zFile->selected_as_input_) {
-      //   continue;
-      // }
-      auto extents = zFile->GetExtents();
-      for (auto extent : extents) {
-        if (!extent->zone_->IsFull()) {
-          // zone_->index do not skip meta,spare zone
-          zone_score[extent->zone_->zidx_ - ZENFS_META_ZONES -
-                     ZENFS_SPARE_ZONES] += extent->length_;
-          there_is_near_level_files = true;
-        }
+  for (auto fno : fno_list) {
+    ZoneFile *zFile = GetSSTZoneFileInZBDNoLock(fno);
+    if (zFile == nullptr) {
+      continue;
+    }
+    // if (zFile->selected_as_input_) {
+    //   continue;
+    // }
+    auto extents = zFile->GetExtents();
+    for (auto extent : extents) {
+      if (!extent->zone_->IsFull()) {
+        // zone_->index do not skip meta,spare zone
+        zone_score[extent->zone_->zidx_ - ZENFS_META_ZONES -
+                   ZENFS_SPARE_ZONES] += extent->length_;
+        there_is_near_level_files = true;
       }
     }
   }
+
   return there_is_near_level_files;
 }
 
