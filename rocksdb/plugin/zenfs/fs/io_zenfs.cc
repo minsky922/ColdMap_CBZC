@@ -485,6 +485,7 @@ IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
   Zone* zone;
   IOStatus s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
   int try_n = 0;
+  (void)(min_capacity);  // 활성화할땐 지우기
   // IOStatus s = zbd_->AllocateIOZone(linkfiles_[0], IsSST(), smallest_,
   // largest_,
   //                                   level_, lifetime_, io_type_, input_fno_,
