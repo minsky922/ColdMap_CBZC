@@ -2077,6 +2077,11 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
   (void)(predicted_size);
   (void)(max_invalid_data);
 
+  if (db_ptr_ == nullptr) {
+    printf("AllocateCompactionAwaredZoneV2 - db_ptr is nullptr!!");
+    return IOStatus::OK();
+  }
+
   if (level == 0) {
     goto l0;
   }
@@ -2149,7 +2154,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
     }
 
   } else {
-        uint64_t upper_level_sst_fno =
+    uint64_t upper_level_sst_fno =
         MostLargeUpperAdjacentFile(smallest, largest, level);
     printf("MostLargeUpperAdjacentFile!!\n");
     ZoneFile *zfile = GetSSTZoneFileInZBDNoLock(upper_level_sst_fno);
