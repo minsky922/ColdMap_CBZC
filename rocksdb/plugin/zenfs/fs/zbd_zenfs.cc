@@ -2056,7 +2056,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZoneV2(
   std::vector<uint64_t> zone_score(io_zones.size(), 0);
   std::vector<std::pair<uint64_t, uint64_t>> sorted;
   std::vector<bool> is_input_in_zone(io_zones.size(), false);
-  (void)(input_fno);
+  // (void)(input_fno);
   (void)(predicted_size);
   (void)(max_invalid_data);
 
