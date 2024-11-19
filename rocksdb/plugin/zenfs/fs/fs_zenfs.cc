@@ -2771,8 +2771,10 @@ IOStatus ZenFS::MigrateFileExtents(
   SyncFileExtents(zfile.get(), new_extent_list);
   zfile->ReleaseWRLock();
 
-  printf("MigrateFileExtents Finished, fname: %s, extent count: %lu\n",
-         fname.data(), migrate_exts.size());
+  printf(
+      "MigrateFileExtents Finished, fname: %s, extent count: %lu, copied : "
+      "%lu\n",
+      fname.data(), migrate_exts.size(), copied);
   Info(logger_, "MigrateFileExtents Finished, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
   return IOStatus::OK();
