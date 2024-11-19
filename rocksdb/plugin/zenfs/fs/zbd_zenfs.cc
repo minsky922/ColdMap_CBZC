@@ -1344,6 +1344,9 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
 
       if (s.ok() && (*out_zone) != nullptr) {
+        printf(
+            "AllocateCompactionAwaredZone - successed!! : min_capacity : %lu\n",
+            min_capacity);
         break;
       }
     }
@@ -1352,25 +1355,28 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
 
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+      printf("GetBest : min_capacity : %lu\n", min_capacity);
       break;
     } else {
       s = GetAnyLargestRemainingZone(out_zone, min_capacity);
     }
 
     if (s.ok() && (*out_zone) != nullptr) {
+      printf("GetAny : min_capacity : %lu\n", min_capacity);
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
     }
     s = AllocateEmptyZone(out_zone);
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+      printf("Empty: min_capacity : %lu\n", min_capacity);
       break;
     }
 
     s = GetAnyLargestRemainingZone(out_zone, min_capacity);
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-
+      printf("2Getany: min_capacity : %lu\n", min_capacity);
       break;
     }
 
@@ -1381,6 +1387,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
   }
 
   if (s.ok() && (*out_zone) != nullptr) {
+    printf("LAST: min_capacity : %lu\n", min_capacity);
     Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
   } else {
     migrating_ = false;
@@ -2224,6 +2231,11 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
   if (allocation_scheme_ == LIZA) {
     return IOStatus::OK();
   }
+  if (db_ptr_ == nullptr) {
+    printf("AllocateCompactionAwaredZone - db_ptr is nullptr!!");
+    return IOStatus::OK();
+  }
+
   // printf("AllocateCompactionAwaredZone!!\n");
   (void)(file_lifetime);
   IOStatus s;

@@ -529,10 +529,10 @@ void ZenFS::ReCalculateLifetimes() {
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
-    std::cout << "Level: " << level
-              << ", Original: " << vertical_lifetimes[level]
-              << ", Normalized: " << normalized_vertical_lifetimes[level]
-              << std::endl;
+    // std::cout << "Level: " << level
+    //           << ", Original: " << vertical_lifetimes[level]
+    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
+    //           << std::endl;
   }
 
   double alpha_value = zbd_->GetAlphaValue();
@@ -2774,7 +2774,7 @@ IOStatus ZenFS::MigrateFileExtents(
   printf(
       "MigrateFileExtents Finished, fname: %s, extent count: %lu, copied : "
       "%lu\n",
-      fname.data(), migrate_exts.size(), copied);
+      fname.data(), migrate_exts.size(), (copied) >> 20);
   Info(logger_, "MigrateFileExtents Finished, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
   return IOStatus::OK();
