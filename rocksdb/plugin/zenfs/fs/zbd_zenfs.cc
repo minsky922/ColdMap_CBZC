@@ -1346,9 +1346,9 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
 
       if (s.ok() && (*out_zone) != nullptr) {
-        printf(
-            "AllocateCompactionAwaredZone - successed!! : min_capacity :
-            %lu\n", min_capacity);
+        // printf(
+        //     "AllocateCompactionAwaredZone - successed!! : min_capacity :
+        //     %lu\n", min_capacity);
         break;
       }
     }
@@ -1744,7 +1744,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     }
   }
   if (s.ok() && allocated_zone == nullptr) {
-    s = GetAnyLargestRemainingZone(&allocated_zone, false, min_capacity);
+    s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
     if (allocated_zone) {
       allocated_zone->lifetime_ = file_lifetime;
     }
@@ -1756,7 +1756,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           new_zone, allocated_zone->start_, allocated_zone->wp_,
           allocated_zone->lifetime_, file_lifetime);
   } else {
-    PutOpenIOZoneToken(open_class);
+    PutOpenIOZoneToken();
   }
 
   if (io_type != IOType::kWAL) {
