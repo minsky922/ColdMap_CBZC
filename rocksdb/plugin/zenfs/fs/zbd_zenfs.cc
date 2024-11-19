@@ -1321,24 +1321,24 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
                                            min_capacity);
         // printf("AllocateCompactionAwaredZoneV2 - finished!!\n");
         if (s.ok() && (*out_zone) != nullptr) {
-          // printf("AllocateCompactionAwaredZoneV2 - successed!!\n");
+          printf("AllocateCompactionAwaredZoneV2 - successed!!\n");
           break;
         }
 
         if (GetActiveIOZoneTokenIfAvailable()) {
           s = AllocateEmptyZone(out_zone);
           if (s.ok() && (*out_zone) != nullptr) {
-            // printf("CAZA2-AllocateEmptyZone\n");
+            printf("CAZA2-AllocateEmptyZone\n");
             Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
             (*out_zone)->lifetime_ = file_lifetime;
             break;
           } else {
             PutActiveIOZoneToken();
-            // printf("CAZA2-PutActiveIOZoneToken\n");
+            printf("CAZA2-PutActiveIOZoneToken\n");
           }
         } else {
           AllocateAllInvalidZone(out_zone);
-          // printf("CAZA2-AllocateAllInvalidZone\n");
+          printf("CAZA2-AllocateAllInvalidZone\n");
         }
 
       } else {
@@ -1346,9 +1346,9 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
 
       if (s.ok() && (*out_zone) != nullptr) {
-        // printf(
-        //     "AllocateCompactionAwaredZone - successed!! : min_capacity :
-        //     %lu\n", min_capacity);
+        printf(
+            "AllocateCompactionAwaredZone - successed!! : min_capacity :
+            %lu\n", min_capacity);
         break;
       }
     }
@@ -1357,7 +1357,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
 
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      // printf("GetBest : min_capacity : %lu\n", min_capacity);
+      printf("GetBest : min_capacity : %lu\n", min_capacity);
       break;
     } else {
       s = GetAnyLargestRemainingZone(out_zone, min_capacity);
@@ -1733,78 +1733,36 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     return s;
   }
 
-  // Holding allocated_zone if != nullptr
-  // 최적 영역이 없으면 새로 할당
-  if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
-    bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
-
-    /* If we did not get a token, try to use the best match, even if the life
-     * time diff not good but a better choice than to finish an existing zone
-     * and open a new one
-     */
-    // 이미 할당된 영역이 없으면 새 영역을 할당
-    if (allocated_zone != nullptr) {
-      if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
-        Debug(logger_,
-              "Allocator: avoided a finish by relaxing lifetime diff "
-              "requirement\n");
-      } else {
-        s = allocated_zone->CheckRelease();
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-          if (got_token) PutActiveIOZoneToken();
-          return s;
-        }
-        allocated_zone = nullptr;
-      }
-    }
-
-    /* If we haven't found an open zone to fill, open a new zone */
-    if (allocated_zone == nullptr) {
-      /* We have to make sure we can open an empty zone */
-      while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-        s = FinishCheapestIOZone();  // 가장 저렴한 I/O 영역 마무리
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-          return s;
-        }
-      }
-
-      s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
-      //
-      if (s.ok() && allocated_zone == nullptr) {
-        s = GetAnyLargestRemainingZone(&allocated_zone);
-      }
-      //
-      if (!s.ok()) {
-        PutActiveIOZoneToken();
-        PutOpenIOZoneToken();
-        return s;
-      }
-
-      if (allocated_zone != nullptr) {
-        assert(allocated_zone->IsBusy());
-        allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
-        new_zone = true;
-      } else {
-        PutActiveIOZoneToken();
-      }
+  if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
+    s = AllocateEmptyZone(&allocated_zone);
+    if (allocated_zone != nullptr && s.ok()) {
+      // assert(allocated_zone->IsBusy());
+      allocated_zone->lifetime_ = file_lifetime;
+      new_zone = true;
+    } else {
+      PutActiveIOZoneToken();
     }
   }
-  // 할당된 영역 정보 출력
+  if (s.ok() && allocated_zone == nullptr) {
+    s = GetAnyLargestRemainingZone(&allocated_zone, false, min_capacity);
+    if (allocated_zone) {
+      allocated_zone->lifetime_ = file_lifetime;
+    }
+  }
+
   if (allocated_zone) {
-    assert(allocated_zone->IsBusy());
     Debug(logger_,
           "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt: %d\n",
           new_zone, allocated_zone->start_, allocated_zone->wp_,
           allocated_zone->lifetime_, file_lifetime);
   } else {
-    PutOpenIOZoneToken();  // 할당 실패 시 토큰 반환
+    PutOpenIOZoneToken(open_class);
   }
 
   if (io_type != IOType::kWAL) {
-    LogZoneStats();  // WAL이 아닐 경우 영역 통계 로깅
+    LogZoneStats();
   }
+
 end:
   // printf("allocateiozone - end!!\n");
   *out_zone = allocated_zone;
@@ -1814,140 +1772,6 @@ end:
 
   return IOStatus::OK();
 }
-
-// IOStatus ZonedBlockDevice::AllocateIOZone(
-//     std::string fname, bool is_sst, Slice &smallest, Slice &largest, int
-//     level, Env::WriteLifeTimeHint file_lifetime, IOType io_type,
-//     std::vector<uint64_t> &input_fno, uint64_t predicted_size, Zone
-//     **out_zone, uint64_t min_capacity) {
-//   auto start_chrono = std::chrono::high_resolution_clock::now();
-//   // RuntimeReset();
-//   Zone *allocated_zone = nullptr;
-//   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
-//   int new_zone = 0;
-//   IOStatus s;
-//   (void)(input_fno);
-//   (void)(fname);
-
-//   auto tag = ZENFS_WAL_IO_ALLOC_LATENCY;
-//   if (io_type != IOType::kWAL) {
-//     // L0 flushes have lifetime MEDIUM
-//     if (file_lifetime == Env::WLTH_MEDIUM) {
-//       tag = ZENFS_L0_IO_ALLOC_LATENCY;
-//     } else {
-//       tag = ZENFS_NON_WAL_IO_ALLOC_LATENCY;
-//     }
-//   }
-
-//   ZenFSMetricsLatencyGuard guard(metrics_, tag, Env::Default());
-//   metrics_->ReportQPS(ZENFS_IO_ALLOC_QPS, 1);
-
-//   // Check if a deferred IO error was set
-//   s = GetZoneDeferredStatus();
-//   if (!s.ok()) {
-//     return s;
-//   }
-
-//   WaitForOpenIOZoneToken(io_type == IOType::kWAL);
-
-//   if (is_sst && level >= 0 && allocation_scheme_ == CAZA) {
-//     s = AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
-//                                      std::vector<uint64_t>(0),
-//                                      predicted_size, &allocated_zone,
-//                                      min_capacity);
-
-//     if (!s.ok()) {
-//       PutOpenIOZoneToken();
-//       return s;
-//     }
-//   } else if (is_sst && level >= 0 && allocation_scheme_ == CAZA_ADV) {
-//     s = AllocateCompactionAwaredZoneV2(smallest, largest, level,
-//     file_lifetime,
-//                                        std::vector<uint64_t>(0),
-//                                        predicted_size, &allocated_zone,
-//                                        min_capacity);
-//     // printf("AllocateCompactionAwaredZoneV2\n");
-//     if (!s.ok()) {
-//       PutOpenIOZoneToken();
-//       return s;
-//     }
-
-//     if (allocated_zone != nullptr) {
-//       goto end;
-//     }
-
-//     if (!GetActiveIOZoneTokenIfAvailable()) {
-//       FinishCheapestIOZone();
-//     }
-//     s = AllocateEmptyZone(&allocated_zone);
-//     if (allocated_zone == nullptr) {
-//       PutActiveIOZoneToken();
-//     }
-//   }
-
-//   if (allocated_zone != nullptr) {
-//     goto end;
-//   }
-
-//   /* Try to fill an already open zone(with the best life time diff) */
-//   s = GetBestOpenZoneMatch(file_lifetime, &best_diff, &allocated_zone,
-//                            min_capacity);
-//   if (!s.ok()) {
-//     PutOpenIOZoneToken();
-//     return s;
-//   }
-
-//   // Holding allocated_zone if != nullptr
-
-//   if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
-//     s = AllocateEmptyZone(&allocated_zone);
-//     if (allocated_zone != nullptr && s.ok()) {
-//       // assert(allocated_zone->IsBusy());
-//       allocated_zone->lifetime_ = file_lifetime;
-//       new_zone = true;
-//     } else {
-//       PutActiveIOZoneToken();
-//     }
-//   }
-//   if (s.ok() && allocated_zone == nullptr) {
-//     s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
-//     if (allocated_zone) {
-//       allocated_zone->lifetime_ = file_lifetime;
-//     }
-//   }
-
-//   if (allocated_zone) {
-//     // printf(
-//     //     "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt:
-//     //     %d\n", new_zone, allocated_zone->start_, allocated_zone->wp_,
-//     //     allocated_zone->lifetime_, file_lifetime);
-//     Debug(logger_,
-//           "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt:
-//           %d\n", new_zone, allocated_zone->start_, allocated_zone->wp_,
-//           allocated_zone->lifetime_, file_lifetime);
-//   } else {
-//     PutOpenIOZoneToken();
-//   }
-//   // if(allocated_zone==nullptr){
-//   //   s=GetAnyLargestRemainingZone(&allocated_zone,false);
-//   // }
-
-//   if (io_type != IOType::kWAL) {
-//     LogZoneStats();
-//   }
-// end:
-//   *out_zone = allocated_zone;
-
-//   auto elapsed = std::chrono::high_resolution_clock::now() - start_chrono;
-//   long long nanoseconds =
-//       std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
-//   (void)(nanoseconds);
-//   // printf("\t\t\t\t%llu\n",nanoseconds);
-//   metrics_->ReportGeneral(ZENFS_OPEN_ZONES_COUNT, open_io_zones_);
-//   metrics_->ReportGeneral(ZENFS_ACTIVE_ZONES_COUNT, active_io_zones_);
-
-//   return IOStatus::OK();
-// }
 
 std::string ZonedBlockDevice::GetFilename() { return zbd_be_->GetFilename(); }
 
