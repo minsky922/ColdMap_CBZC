@@ -1311,12 +1311,14 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     if (is_sst) {
       if (allocation_scheme_ == CAZA) {
         // printf("AllocateCompactionAwaredZone\n");
-        AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
-                                     file_size, out_zone, min_capacity);
+        s = AllocateCompactionAwaredZone(smallest, largest, level,
+                                         file_lifetime, file_size, out_zone,
+                                         min_capacity);
       } else if (allocation_scheme_ == CAZA_ADV) {
         // printf("AllocateCompactionAwaredZoneV2\n");
-        AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
-                                       file_size, out_zone, min_capacity);
+        s = AllocateCompactionAwaredZoneV2(smallest, largest, level,
+                                           file_lifetime, file_size, out_zone,
+                                           min_capacity);
         // printf("AllocateCompactionAwaredZoneV2 - finished!!\n");
         if (s.ok() && (*out_zone) != nullptr) {
           // printf("AllocateCompactionAwaredZoneV2 - successed!!\n");
