@@ -1346,9 +1346,9 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
 
       if (s.ok() && (*out_zone) != nullptr) {
-        printf(
-            "AllocateCompactionAwaredZone - successed!! : min_capacity : %lu\n",
-            min_capacity);
+        // printf(
+        //     "AllocateCompactionAwaredZone - successed!! : min_capacity :
+        //     %lu\n", min_capacity);
         break;
       }
     }
@@ -1357,28 +1357,28 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
 
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      printf("GetBest : min_capacity : %lu\n", min_capacity);
+      // printf("GetBest : min_capacity : %lu\n", min_capacity);
       break;
     } else {
       s = GetAnyLargestRemainingZone(out_zone, min_capacity);
     }
 
     if (s.ok() && (*out_zone) != nullptr) {
-      printf("GetAny : min_capacity : %lu\n", min_capacity);
+      // printf("GetAny : min_capacity : %lu\n", min_capacity);
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
     }
     s = AllocateEmptyZone(out_zone);
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      printf("Empty: min_capacity : %lu\n", min_capacity);
+      // printf("Empty: min_capacity : %lu\n", min_capacity);
       break;
     }
 
     s = GetAnyLargestRemainingZone(out_zone, min_capacity);
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      printf("2Getany: min_capacity : %lu\n", min_capacity);
+      // printf("2Getany: min_capacity : %lu\n", min_capacity);
       break;
     }
 
@@ -1389,7 +1389,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
   }
 
   if (s.ok() && (*out_zone) != nullptr) {
-    printf("LAST: min_capacity : %lu\n", min_capacity);
+    // printf("LAST: min_capacity : %lu\n", min_capacity);
     Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
   } else {
     migrating_ = false;
@@ -2320,7 +2320,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
   }
 
   if (allocated_zone != nullptr) {
-    printf("CAZA l1 <= \n");
+    // printf("CAZA l1 <= \n");
     *zone_out = allocated_zone;
     return IOStatus::OK();
   }
@@ -2336,7 +2336,7 @@ l0:
     s = AllocateMostL0FilesZone(zone_score, fno_list, is_input_in_zone,
                                 &allocated_zone, min_capacity);
     if (allocated_zone != nullptr) {
-      printf("CAZA 2.1\n");
+      // printf("CAZA 2.1\n");
     }
   } else {  // if other level, same level but near key-sstfile zone
     fno_list.clear();
@@ -2349,7 +2349,7 @@ l0:
                                    is_input_in_zone, &allocated_zone,
                                    min_capacity);
     if (allocated_zone != nullptr) {
-      printf("CAZA 2.2\n");
+      // printf("CAZA 2.2\n");
     }
   }
 
@@ -2357,7 +2357,7 @@ l0:
     return s;
   }
   if (allocated_zone != nullptr) {
-    printf("CAZA 3\n");
+    // printf("CAZA 3\n");
     *zone_out = allocated_zone;
     return s;
   }
