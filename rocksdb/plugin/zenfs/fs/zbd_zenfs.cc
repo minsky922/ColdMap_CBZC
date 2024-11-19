@@ -1325,21 +1325,21 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
           break;
         }
 
-        // if (GetActiveIOZoneTokenIfAvailable()) {
-        //   s = AllocateEmptyZone(out_zone);
-        //   if (s.ok() && (*out_zone) != nullptr) {
-        //     // printf("CAZA2-AllocateEmptyZone\n");
-        //     Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-        //     (*out_zone)->lifetime_ = file_lifetime;
-        //     break;
-        //   } else {
-        //     PutActiveIOZoneToken();
-        //     // printf("CAZA2-PutActiveIOZoneToken\n");
-        //   }
-        // } else {
-        //   AllocateAllInvalidZone(out_zone);
-        //   // printf("CAZA2-AllocateAllInvalidZone\n");
-        // }
+        if (GetActiveIOZoneTokenIfAvailable()) {
+          s = AllocateEmptyZone(out_zone);
+          if (s.ok() && (*out_zone) != nullptr) {
+            // printf("CAZA2-AllocateEmptyZone\n");
+            Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+            (*out_zone)->lifetime_ = file_lifetime;
+            break;
+          } else {
+            PutActiveIOZoneToken();
+            // printf("CAZA2-PutActiveIOZoneToken\n");
+          }
+        } else {
+          AllocateAllInvalidZone(out_zone);
+          // printf("CAZA2-AllocateAllInvalidZone\n");
+        }
 
       } else {
         // printf("I am LIZA!\n");
