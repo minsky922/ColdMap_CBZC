@@ -865,17 +865,6 @@ void ZenFS::ZoneCleaning(bool forced) {
           for (const auto& value : lifetime_values) {
             value_counts[value]++;
           }
-
-          std::cout << "Lifetime Values(" << file_count << "): [";
-          bool first = true;
-          for (const auto& [value, count] : value_counts) {
-            if (!first) {
-              std::cout << ", ";
-            }
-            first = false;
-            std::cout << value << " : " << count;
-          }
-          std::cout << "]" << std::endl;
         }
 
         /* benefit = sigma^ZLV * (1-simga)^(free space)
@@ -931,9 +920,9 @@ void ZenFS::ZoneCleaning(bool forced) {
 
         // std::cout << "cost : " << cost << std::endl;
         // std::cout << "freespace : " << freeSpace << std::endl;
-        std::cout << "weighted freespace : " << weighted_freeSpace << std::endl;
-        // std::cout << "age : " << average_lifetime << std::endl;
-        std::cout << "weighted age : " << weighted_age << std::endl;
+        // std::cout << "weighted freespace : " << weighted_freeSpace <<
+        // std::endl; std::cout << "age : " << average_lifetime << std::endl;
+        // std::cout << "weighted age : " << weighted_age << std::endl;
         // std::cout << "sigma : " << sigma << std::endl;
         // std::cout << "benefit : " << benefit << std::endl;
 
@@ -942,6 +931,23 @@ void ZenFS::ZoneCleaning(bool forced) {
               static_cast<double>(benefit) / static_cast<double>(cost);
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx});
+
+          std::cout << "cost-benefit score: " << cost_benefit_score
+                    << ", zone start: " << zone_start
+                    << ", Garbage Percentage: " << garbage_percent_approx << "%"
+                    << std::endl;
+
+          std::cout << "  Lifetime Values(" << file_count << "): [";
+          bool first = true;
+          for (const auto& [value, count] : value_counts) {
+            if (!first) {
+              std::cout << ", ";
+            }
+            first = false;
+            std::cout << value * 100 << " : " << count;
+          }
+          std::cout << "]" << ",freespace: " << weighted_freeSpace
+                    << ",age: " << weighted_age << std::endl;
         }
       }
     } else {  // 유효 데이터가 없는 경우
@@ -970,9 +976,16 @@ void ZenFS::ZoneCleaning(bool forced) {
   //     <<
   //     "==================================================================="
   //     << std::endl;
-  for (const auto& candidate : victim_candidate) {
-    std::cout << "cost-benefit score: " << candidate.score
-              << "zone start: " << candidate.zone_start
+  // for (const auto& candidate : victim_candidate) {
+  //   std::cout << "cost-benefit score: " << candidate.score
+  //             << ", zone start: " << candidate.zone_start
+  //             << ", Garbage Percentage: " << candidate.garbage_percent_approx
+  //             << "%" << std::endl;
+  // }
+  if (!victim_candidate.empty()) {
+    const auto& candidate = victim_candidate.front();
+    std::cout << "[Picked]cost-benefit score: " << candidate.score
+              << ", zone start: " << candidate.zone_start
               << ", Garbage Percentage: " << candidate.garbage_percent_approx
               << "%" << std::endl;
   }
