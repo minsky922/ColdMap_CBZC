@@ -529,10 +529,10 @@ void ZenFS::ReCalculateLifetimes() {
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
-    // std::cout << "Level: " << level
-    //           << ", Original: " << vertical_lifetimes[level]
-    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
-    //           << std::endl;
+    std::cout << "Level: " << level
+              << ", Original: " << vertical_lifetimes[level]
+              << ", Normalized: " << normalized_vertical_lifetimes[level]
+              << std::endl;
   }
 
   double alpha_value = zbd_->GetAlphaValue();
@@ -571,15 +571,15 @@ void ZenFS::ReCalculateLifetimes() {
             //     sst_lifetime_value, 1, {sst_lifetime_value}};
 
           } else {
-            zone_lifetime_map_[zone_start].first +=
-                sst_lifetime_value;                      // 수명 추가
-            zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
+            // zone_lifetime_map_[zone_start].first +=
+            //     sst_lifetime_value;                      // 수명 추가
+            // zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
 
-            // auto& entry = zone_lifetime_map_[zone_start];
-            // std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
-            // std::get<1>(entry) += 1;                   // 파일 수 증가
-            // std::get<2>(entry).push_back(
-            //     sst_lifetime_value);  // 각 파일의 lifetime 저장
+            auto& entry = zone_lifetime_map_[zone_start];
+            std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
+            std::get<1>(entry) += 1;                   // 파일 수 증가
+            std::get<2>(entry).push_back(
+                sst_lifetime_value);  // 각 파일의 lifetime 저장
           }
         }
       } else {
@@ -842,177 +842,197 @@ void ZenFS::ZoneCleaning(bool forced) {
         double average_lifetime = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
-          double total_lifetime = zone_lifetime_map_[zone_start].first;
-          int file_count = zone_lifetime_map_[zone_start].second;
+          // double total_lifetime = zone_lifetime_map_[zone_start].first;
+          // int file_count = zone_lifetime_map_[zone_start].second;
+          auto& entry = zone_lifetime_map_[zone_start];
+          double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
+          int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
+          const auto& lifetime_values =
+              std::get<2>(entry);  // 각 파일의 lifetime 값
           average_lifetime = total_lifetime / file_count;
           // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
         }
 
-        /* benefit = sigma^ZLV * (1-simga)^(free space)
-          0<ZLV<1, 0<free space<1
-          0<sigma<1 */
-        // uint64_t ZoneLifetimeValue = 0;
+        std::cout << "Zone Start: " << zone_start << std::endl;
+        std::cout << "Lifetime Values: [";
 
-        // uint64_t min_variance = 20;
-        // uint64_t max_variance = 700;
-        // double sigma_min = 0.5;
-        // double sigma_max = 2.0;
-
-        // double variance_weight =
-        //     (static_cast<double>(cur_variance) - min_variance) /
-        //     (max_variance - min_variance);
-        // double sigma = sigma_min + (sigma_max - sigma_min) *
-        // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
-        // sigma);
-        // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
-        // uint64_t freeSpace = 100 * (zone.max_capacity - zone.used_capacity)
-        // /
-        //                      zone.max_capacity;
-        // uint64_t cost = 100 + u;
-        // uint64_t benefit = freeSpace * ZoneLifetimeValue;
-        // uint64_t benefit = freeSpace * weighted_age;
-
-        // double sigma = cur_variance;
-
-        double u = 2 * (static_cast<double>(zone.used_capacity) /
-                        static_cast<double>(zone.max_capacity));
-
-        double freeSpace =
-            static_cast<double>(zone.max_capacity - zone.used_capacity) /
-            static_cast<double>(zone.max_capacity);
-
-        // double weighted_age = pow(sigma, average_lifetime);
-        // double weighted_age = pow(average_lifetime * 100, sigma / 100);
-        double weighted_age = average_lifetime * 100;
-        // double weighted_freeSpace = pow(1-sigma, freeSpace);
-        double weighted_freeSpace = freeSpace * 100;
-
-        double cost = 2 * u * 100;
-        if (weighted_age == 0) {
-          weighted_age = 0.1;
+        for (auto it = lifetime_values.begin(); it != lifetime_values.end();
+             ++it) {
+          if (it != lifetime_values.begin()) {
+            std::cout << ", ";
+          }
+          std::cout << *it * 100;
         }
-        double benefit = weighted_freeSpace * weighted_age;
 
-        // double cost = 2 * (static_cast<double>(zone.used_capacity) /
-        //                    static_cast<double>(zone.max_capacity));
-        // double benefit = (static_cast<double>(zone.max_capacity) -
-        //                   static_cast<double>(zone.used_capacity)) *
-        //                  average_lifetime;  // free space * lifetime
-
-        // std::cout << "cost : " << cost << std::endl;
-        // std::cout << "freespace : " << freeSpace << std::endl;
-        // std::cout << "weighted freespace : " << weighted_freeSpace <<
-        // std::endl; std::cout << "age : " << average_lifetime << std::endl;
-        // std::cout << "weighted age : " << weighted_age << std::endl;
-        // std::cout << "sigma : " << sigma << std::endl;
-        // std::cout << "benefit : " << benefit << std::endl;
-
-        if (cost != 0) {
-          double cost_benefit_score =
-              static_cast<double>(benefit) / static_cast<double>(cost);
-          victim_candidate.push_back(
-              {cost_benefit_score, zone.start, garbage_percent_approx});
-        }
+        std::cout << "]" << std::endl;
       }
-    } else {  // 유효 데이터가 없는 경우
-      all_inval_zone_n++;
-      // std::cout << "all_inal_zone..." << std::endl;
+
+      /* benefit = sigma^ZLV * (1-simga)^(free space)
+        0<ZLV<1, 0<free space<1
+        0<sigma<1 */
+      // uint64_t ZoneLifetimeValue = 0;
+
+      // uint64_t min_variance = 20;
+      // uint64_t max_variance = 700;
+      // double sigma_min = 0.5;
+      // double sigma_max = 2.0;
+
+      // double variance_weight =
+      //     (static_cast<double>(cur_variance) - min_variance) /
+      //     (max_variance - min_variance);
+      // double sigma = sigma_min + (sigma_max - sigma_min) *
+      // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
+      // sigma);
+      // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
+      // uint64_t freeSpace = 100 * (zone.max_capacity - zone.used_capacity)
+      // /
+      //                      zone.max_capacity;
+      // uint64_t cost = 100 + u;
+      // uint64_t benefit = freeSpace * ZoneLifetimeValue;
+      // uint64_t benefit = freeSpace * weighted_age;
+
+      // double sigma = cur_variance;
+
+      double u = 2 * (static_cast<double>(zone.used_capacity) /
+                      static_cast<double>(zone.max_capacity));
+
+      double freeSpace =
+          static_cast<double>(zone.max_capacity - zone.used_capacity) /
+          static_cast<double>(zone.max_capacity);
+
+      // double weighted_age = pow(sigma, average_lifetime);
+      // double weighted_age = pow(average_lifetime * 100, sigma / 100);
+      double weighted_age = average_lifetime * 100;
+      // double weighted_freeSpace = pow(1-sigma, freeSpace);
+      double weighted_freeSpace = freeSpace * 100;
+
+      double cost = 2 * u * 100;
+      if (weighted_age == 0) {
+        weighted_age = 0.1;
+      }
+      double benefit = weighted_freeSpace * weighted_age;
+
+      // double cost = 2 * (static_cast<double>(zone.used_capacity) /
+      //                    static_cast<double>(zone.max_capacity));
+      // double benefit = (static_cast<double>(zone.max_capacity) -
+      //                   static_cast<double>(zone.used_capacity)) *
+      //                  average_lifetime;  // free space * lifetime
+
+      // std::cout << "cost : " << cost << std::endl;
+      // std::cout << "freespace : " << freeSpace << std::endl;
+      std::cout << "weighted freespace : " << weighted_freeSpace << std::endl;
+      // std::cout << "age : " << average_lifetime << std::endl;
+      std::cout << "weighted age : " << weighted_age << std::endl;
+      // std::cout << "sigma : " << sigma << std::endl;
+      // std::cout << "benefit : " << benefit << std::endl;
+
+      if (cost != 0) {
+        double cost_benefit_score =
+            static_cast<double>(benefit) / static_cast<double>(cost);
+        victim_candidate.push_back(
+            {cost_benefit_score, zone.start, garbage_percent_approx});
+      }
     }
   }
-
-  // std::cout << "Sorting victim candidates..." << std::endl;
-  // sort(victim_candidate.rbegin(), victim_candidate.rend());
-  if (zc_scheme == GREEDY) {
-    // GREEDY에서는 garbage_percent_approx 를 기준으로 내림차순 정렬
-    std::sort(victim_candidate.begin(), victim_candidate.end(),
-              [](const ZoneInfo& a, const ZoneInfo& b) {
-                return a.garbage_percent_approx > b.garbage_percent_approx;
-              });
-  } else {
-    // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
-    // std::cout << "zc_scheme: " << zc_scheme << std::endl;
-    std::sort(
-        victim_candidate.begin(), victim_candidate.end(),
-        [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
+  else {  // 유효 데이터가 없는 경우
+    all_inval_zone_n++;
+    // std::cout << "all_inal_zone..." << std::endl;
   }
+}
 
-  // std::cout
-  //     <<
-  //     "==================================================================="
-  //     << std::endl;
-  // for (const auto& candidate : victim_candidate) {
-  //   std::cout << "cost-benefit score: " << candidate.score
-  //             << ", Garbage Percentage: " << candidate.garbage_percent_approx
-  //             << "%" << std::endl;
+// std::cout << "Sorting victim candidates..." << std::endl;
+// sort(victim_candidate.rbegin(), victim_candidate.rend());
+if (zc_scheme == GREEDY) {
+  // GREEDY에서는 garbage_percent_approx 를 기준으로 내림차순 정렬
+  std::sort(victim_candidate.begin(), victim_candidate.end(),
+            [](const ZoneInfo& a, const ZoneInfo& b) {
+              return a.garbage_percent_approx > b.garbage_percent_approx;
+            });
+} else {
+  // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
+  // std::cout << "zc_scheme: " << zc_scheme << std::endl;
+  std::sort(
+      victim_candidate.begin(), victim_candidate.end(),
+      [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
+}
+
+// std::cout
+//     <<
+//     "==================================================================="
+//     << std::endl;
+for (const auto& candidate : victim_candidate) {
+  std::cout << "cost-benefit score: " << candidate.score
+            << "zone start: " << candidate.zone_start
+            << ", Garbage Percentage: " << candidate.garbage_percent_approx
+            << "%" << std::endl;
+}
+
+// uint64_t threshold = 0;
+uint64_t reclaimed_zone_n = 1;
+
+// if (forced) {
+//   reclaimed_zone_n += 1;
+// }
+
+// 청소할 존 수 계산
+reclaimed_zone_n = reclaimed_zone_n > victim_candidate.size()
+                       ? victim_candidate.size()
+                       : reclaimed_zone_n;
+
+// 청소 대상 존 선택
+for (size_t i = 0;
+     (i < reclaimed_zone_n && migrate_zones_start.size() < reclaimed_zone_n);
+     i++) {
+  // if (victim_candidate[i].first > threshold) {
+  // should_be_copied +=
+  //     (zone_size - (victim_candidate[i].first * zone_size / 100));
+  // std::cout << "cost-benefit score: " << victim_candidate[i].first
+  // << ", Zone Start: " << victim_candidate[i].second << std::endl;
+  // migrate_zones_start.emplace(victim_candidate[i].second);
+  migrate_zones_start.emplace(victim_candidate[i].zone_start);
   // }
+}
 
-  // uint64_t threshold = 0;
-  uint64_t reclaimed_zone_n = 1;
+// std::cout << "ZoneCleaning::reclaimed_zone_n: " << reclaimed_zone_n <<
+// "\n";
 
-  // if (forced) {
-  //   reclaimed_zone_n += 1;
-  // }
-
-  // 청소할 존 수 계산
-  reclaimed_zone_n = reclaimed_zone_n > victim_candidate.size()
-                         ? victim_candidate.size()
-                         : reclaimed_zone_n;
-
-  // 청소 대상 존 선택
-  for (size_t i = 0;
-       (i < reclaimed_zone_n && migrate_zones_start.size() < reclaimed_zone_n);
-       i++) {
-    // if (victim_candidate[i].first > threshold) {
-    // should_be_copied +=
-    //     (zone_size - (victim_candidate[i].first * zone_size / 100));
-    // std::cout << "cost-benefit score: " << victim_candidate[i].first
-    // << ", Zone Start: " << victim_candidate[i].second << std::endl;
-    // migrate_zones_start.emplace(victim_candidate[i].second);
-    migrate_zones_start.emplace(victim_candidate[i].zone_start);
-    // }
+std::vector<ZoneExtentSnapshot*> migrate_exts;
+for (auto& ext : snapshot.extents_) {
+  if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
+    should_be_copied += ext.length;
+    migrate_exts.push_back(&ext);
   }
+}
 
-  // std::cout << "ZoneCleaning::reclaimed_zone_n: " << reclaimed_zone_n <<
-  // "\n";
-
-  std::vector<ZoneExtentSnapshot*> migrate_exts;
-  for (auto& ext : snapshot.extents_) {
-    if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
-      should_be_copied += ext.length;
-      migrate_exts.push_back(&ext);
-    }
+if (migrate_zones_start.size() > 0) {
+  IOStatus s;
+  Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
+  printf("Garbage collecting %d extents \n", (int)migrate_exts.size());
+  clock_gettime(CLOCK_MONOTONIC, &start_timespec);
+  s = MigrateExtents(migrate_exts);
+  clock_gettime(CLOCK_MONOTONIC, &end_timespec);
+  if (!s.ok()) {
+    printf("Garbage collection failed\n");
+    Error(logger_, "Garbage collection failed");
   }
-
-  if (migrate_zones_start.size() > 0) {
-    IOStatus s;
-    Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
-    printf("Garbage collecting %d extents \n", (int)migrate_exts.size());
-    clock_gettime(CLOCK_MONOTONIC, &start_timespec);
-    s = MigrateExtents(migrate_exts);
-    clock_gettime(CLOCK_MONOTONIC, &end_timespec);
-    if (!s.ok()) {
-      printf("Garbage collection failed\n");
-      Error(logger_, "Garbage collection failed");
-    }
-    // 종료 시간 기록
-    int end = GetMountTime();
-    if (should_be_copied > 0) {
-      long elapsed_ns_timespec =
-          (end_timespec.tv_sec - start_timespec.tv_sec) * 1000000000 +
-          (end_timespec.tv_nsec - start_timespec.tv_nsec);
-      // long long microseconds =
-      //     std::chrono::duration_cast<std::chrono::microseconds>(elapsed)
-      //         .count();
-      zbd_->AddCumulativeIOBlocking(elapsed_ns_timespec);
-      zbd_->AddZCTimeLapse(start, end, (elapsed_ns_timespec / 1000),
-                           migrate_zones_start.size(), should_be_copied,
-                           forced);
-    }
-    zc_triggerd_count_.fetch_add(1);
-    // std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
-    // std::endl; zc_lock_.unlock(); return migrate_zones_start.size() +
-    // all_inval_zone_n;
+  // 종료 시간 기록
+  int end = GetMountTime();
+  if (should_be_copied > 0) {
+    long elapsed_ns_timespec =
+        (end_timespec.tv_sec - start_timespec.tv_sec) * 1000000000 +
+        (end_timespec.tv_nsec - start_timespec.tv_nsec);
+    // long long microseconds =
+    //     std::chrono::duration_cast<std::chrono::microseconds>(elapsed)
+    //         .count();
+    zbd_->AddCumulativeIOBlocking(elapsed_ns_timespec);
+    zbd_->AddZCTimeLapse(start, end, (elapsed_ns_timespec / 1000),
+                         migrate_zones_start.size(), should_be_copied, forced);
   }
+  zc_triggerd_count_.fetch_add(1);
+  // std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
+  // std::endl; zc_lock_.unlock(); return migrate_zones_start.size() +
+  // all_inval_zone_n;
+}
 }
 
 /* 이 함수는 백그라운드에서 주기적으로 실행되며,
@@ -2848,7 +2868,8 @@ FactoryFunc<FileSystem> zenfs_filesystem_reg =
           f->reset(fs);
           return f->get();
         });
-};  // namespace ROCKSDB_NAMESPACE
+}
+;  // namespace ROCKSDB_NAMESPACE
 
 #else
 
