@@ -529,9 +529,13 @@ void ZenFS::ReCalculateLifetimes() {
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
+    std::cout << "==================================================="
+              << std::endl;
     std::cout << "Level: " << level
               << ", Original: " << vertical_lifetimes[level]
               << ", Normalized: " << normalized_vertical_lifetimes[level]
+              << std::endl;
+    std::cout << "==================================================="
               << std::endl;
   }
 
@@ -859,8 +863,6 @@ void ZenFS::ZoneCleaning(bool forced) {
           average_lifetime = total_lifetime / file_count;
           // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
 
-          std::cout << "Zone Start: " << zone_start << std::endl;
-
           std::map<double, int> value_counts;
           for (const auto& value : lifetime_values) {
             value_counts[value]++;
@@ -972,10 +974,9 @@ void ZenFS::ZoneCleaning(bool forced) {
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
   }
 
-  // std::cout
-  //     <<
-  //     "==================================================================="
-  //     << std::endl;
+  std::cout
+      << "-------------------------------------------------------------------"
+      << std::endl;
   // for (const auto& candidate : victim_candidate) {
   //   std::cout << "cost-benefit score: " << candidate.score
   //             << ", zone start: " << candidate.zone_start
@@ -989,6 +990,9 @@ void ZenFS::ZoneCleaning(bool forced) {
               << ", Garbage Percentage: " << candidate.garbage_percent_approx
               << "%" << std::endl;
   }
+  std::cout
+      << "-------------------------------------------------------------------"
+      << std::endl;
 
   // uint64_t threshold = 0;
   uint64_t reclaimed_zone_n = 1;
