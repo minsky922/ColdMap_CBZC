@@ -524,20 +524,21 @@ void ZenFS::ReCalculateLifetimes() {
 
   std::vector<double> normalized_vertical_lifetimes(6);
   double range = max_vertical_lifetime - min_vertical_lifetime;
+  std::cout << "==================================================="
+            << std::endl;
   for (int level = 0; level < 6; level++) {
     normalized_vertical_lifetimes[level] =
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
-    std::cout << "==================================================="
-              << std::endl;
+
     std::cout << "Level: " << level
               << ", Original: " << vertical_lifetimes[level]
               << ", Normalized: " << normalized_vertical_lifetimes[level]
               << std::endl;
-    std::cout << "==================================================="
-              << std::endl;
   }
+  std::cout << "==================================================="
+            << std::endl;
 
   double alpha_value = zbd_->GetAlphaValue();
   double alpha_ = alpha_value;
