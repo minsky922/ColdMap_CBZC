@@ -860,16 +860,21 @@ void ZenFS::ZoneCleaning(bool forced) {
           // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
 
           std::cout << "Zone Start: " << zone_start << std::endl;
-          std::cout << "Lifetime Values: [";
 
-          for (auto it = lifetime_values.begin(); it != lifetime_values.end();
-               ++it) {
-            if (it != lifetime_values.begin()) {
-              std::cout << ", ";
-            }
-            std::cout << *it * 100;
+          std::map<double, int> value_counts;
+          for (const auto& value : lifetime_values) {
+            value_counts[value]++;
           }
 
+          std::cout << "Lifetime Values(" << file_count << "): [";
+          bool first = true;
+          for (const auto& [value, count] : value_counts) {
+            if (!first) {
+              std::cout << ", ";
+            }
+            first = false;
+            std::cout << value << " : " << count;
+          }
           std::cout << "]" << std::endl;
         }
 
