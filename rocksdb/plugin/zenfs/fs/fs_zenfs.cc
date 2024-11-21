@@ -565,10 +565,10 @@ void ZenFS::ReCalculateLifetimes() {
 
           // 해당 존의 lifetime 합산 및 파일 수를 업데이트
           if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-            zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
+            // zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
 
-            // zone_lifetime_map_[zone_start] = {
-            //     sst_lifetime_value, 1, {sst_lifetime_value}};
+            zone_lifetime_map_[zone_start] = {
+                sst_lifetime_value, 1, {sst_lifetime_value}};
 
           } else {
             // zone_lifetime_map_[zone_start].first +=
@@ -684,7 +684,9 @@ void ZenFS::Adv_ReCalculateLifetimes() {
           uint64_t zone_start = extent->zone_->start_;
 
           if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-            zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
+            // zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
+            zone_lifetime_map_[zone_start] = {
+                sst_lifetime_value, 1, {sst_lifetime_value}};
           } else {
             // zone_lifetime_map_[zone_start].first += sst_lifetime_value;
             // zone_lifetime_map_[zone_start].second += 1;
