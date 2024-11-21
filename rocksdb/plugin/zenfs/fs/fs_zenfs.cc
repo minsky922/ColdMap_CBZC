@@ -686,8 +686,13 @@ void ZenFS::Adv_ReCalculateLifetimes() {
           if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
             zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
           } else {
-            zone_lifetime_map_[zone_start].first += sst_lifetime_value;
-            zone_lifetime_map_[zone_start].second += 1;
+            // zone_lifetime_map_[zone_start].first += sst_lifetime_value;
+            // zone_lifetime_map_[zone_start].second += 1;
+            auto& entry = zone_lifetime_map_[zone_start];
+            std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
+            std::get<1>(entry) += 1;                   // 파일 수 증가
+            std::get<2>(entry).push_back(
+                sst_lifetime_value);  // 각 파일의 lifetime 저장
           }
         }
       } else {
