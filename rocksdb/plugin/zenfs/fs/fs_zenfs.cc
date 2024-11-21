@@ -354,33 +354,33 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
   }
 }
 
-void ZenFS::NormalizeZoneLifetimes() {
-  double min_lifetime = std::numeric_limits<double>::max();
-  double max_lifetime = 0.0;
+// void ZenFS::NormalizeZoneLifetimes() {
+//   double min_lifetime = std::numeric_limits<double>::max();
+//   double max_lifetime = 0.0;
 
-  // 최소값과 최대값 계산
-  for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    double average_lifetime = entry.first / entry.second;
-    min_lifetime = std::min(min_lifetime, average_lifetime);
-    max_lifetime = std::max(max_lifetime, average_lifetime);
-  }
+//   // 최소값과 최대값 계산
+//   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+//     double average_lifetime = entry.first / entry.second;
+//     min_lifetime = std::min(min_lifetime, average_lifetime);
+//     max_lifetime = std::max(max_lifetime, average_lifetime);
+//   }
 
-  // 0~100 정규화
-  double range = max_lifetime - min_lifetime;
-  for (auto& [zone_start, entry] : zone_lifetime_map_) {
-    double average_lifetime = entry.first / entry.second;
+//   // 0~100 정규화
+//   double range = max_lifetime - min_lifetime;
+//   for (auto& [zone_start, entry] : zone_lifetime_map_) {
+//     double average_lifetime = entry.first / entry.second;
 
-    uint64_t normalized_lifetime;
-    if (range > 0) {
-      normalized_lifetime = static_cast<uint64_t>(
-          ((average_lifetime - min_lifetime) * 100) / range);
-    } else {
-      normalized_lifetime = 50;
-    }
+//     uint64_t normalized_lifetime;
+//     if (range > 0) {
+//       normalized_lifetime = static_cast<uint64_t>(
+//           ((average_lifetime - min_lifetime) * 100) / range);
+//     } else {
+//       normalized_lifetime = 50;
+//     }
 
-    entry.first = normalized_lifetime;  // 정규화된 Lifetime 저장
-  }
-}
+//     entry.first = normalized_lifetime;  // 정규화된 Lifetime 저장
+//   }
+// }
 
 // uint64_t ZenFS::CalculateZoneLifetimeVariance() {
 //   // 모든 존의 Lifetime 값을 모아 분산 계산
@@ -401,28 +401,28 @@ void ZenFS::NormalizeZoneLifetimes() {
 //   return variance / lifetimes.size();
 // }
 
-uint64_t ZenFS::CalculateZoneLifetimeVariance() {
-  size_t n = zone_lifetime_map_.size();
-  if (n == 0) {
-    return 0;
-  }
+// uint64_t ZenFS::CalculateZoneLifetimeVariance() {
+//   size_t n = zone_lifetime_map_.size();
+//   if (n == 0) {
+//     return 0;
+//   }
 
-  uint64_t sum = 0;
-  uint64_t sum_of_squares = 0;
+//   uint64_t sum = 0;
+//   uint64_t sum_of_squares = 0;
 
-  for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    uint64_t mean_lifetime = static_cast<uint64_t>(
-        static_cast<double>(entry.first) / entry.second * 100);
-    sum += mean_lifetime;
-    sum_of_squares += mean_lifetime * mean_lifetime;
-  }
+//   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+//     uint64_t mean_lifetime = static_cast<uint64_t>(
+//         static_cast<double>(entry.first) / entry.second * 100);
+//     sum += mean_lifetime;
+//     sum_of_squares += mean_lifetime * mean_lifetime;
+//   }
 
-  uint64_t mean = sum / n;
+//   uint64_t mean = sum / n;
 
-  uint64_t variance = (sum_of_squares / n) - (mean * mean);
+//   uint64_t variance = (sum_of_squares / n) - (mean * mean);
 
-  return variance;
-}
+//   return variance;
+// }
 
 void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
