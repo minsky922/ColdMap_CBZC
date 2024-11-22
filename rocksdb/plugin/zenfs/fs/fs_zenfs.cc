@@ -415,7 +415,6 @@ double ZenFS::CalculateZoneLifetimeVariance() {
     //     static_cast<double>(entry.first) / entry.second * 100);
     double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
     int file_count = std::get<1>(entry);         // 존에 포함된 파일 수
-    const auto& lifetime_values = std::get<2>(entry);  // 각 파일의 lifetime 값
     double mean_lifetime = total_lifetime / file_count;
     sum += mean_lifetime;
     sum_of_squares += mean_lifetime * mean_lifetime;
@@ -897,7 +896,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           // uint64_t benefit = freeSpace * ZoneLifetimeValue;
           // uint64_t benefit = freeSpace * weighted_age;
 
-          double sigma = cur_variance;
+          // double sigma = cur_variance;
 
           double u = 2 * (static_cast<double>(zone.used_capacity) /
                           static_cast<double>(zone.max_capacity));
