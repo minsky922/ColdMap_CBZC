@@ -401,28 +401,32 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 //   return variance / lifetimes.size();
 // }
 
-// uint64_t ZenFS::CalculateZoneLifetimeVariance() {
-//   size_t n = zone_lifetime_map_.size();
-//   if (n == 0) {
-//     return 0;
-//   }
+double ZenFS::CalculateZoneLifetimeVariance() {
+  size_t n = zone_lifetime_map_.size();
+  if (n == 0) {
+    return 0;
+  }
 
-//   uint64_t sum = 0;
-//   uint64_t sum_of_squares = 0;
+  double sum = 0;
+  double sum_of_squares = 0;
 
-//   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-//     uint64_t mean_lifetime = static_cast<uint64_t>(
-//         static_cast<double>(entry.first) / entry.second * 100);
-//     sum += mean_lifetime;
-//     sum_of_squares += mean_lifetime * mean_lifetime;
-//   }
+  for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+    // double mean_lifetime = static_cast<double>(
+    //     static_cast<double>(entry.first) / entry.second * 100);
+    double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
+    int file_count = std::get<1>(entry);         // 존에 포함된 파일 수
+    const auto& lifetime_values = std::get<2>(entry);  // 각 파일의 lifetime 값
+    double mean_lifetime = total_lifetime / file_count;
+    sum += mean_lifetime;
+    sum_of_squares += mean_lifetime * mean_lifetime;
+  }
 
-//   uint64_t mean = sum / n;
+  double mean = sum / n;
 
-//   uint64_t variance = (sum_of_squares / n) - (mean * mean);
+  double variance = (sum_of_squares / n) - (mean * mean);
 
-//   return variance;
-// }
+  return variance;
+}
 
 void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
@@ -732,8 +736,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     ReCalculateLifetimes();
   }
   // NormalizeZoneLifetimes();
-  // double cur_variance = CalculateZoneLifetimeVariance();
-  // std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
+  double cur_variance = CalculateZoneLifetimeVariance();
+  std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &end_ts);
   long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
                        (end_ts.tv_nsec - start_ts.tv_nsec);
@@ -893,7 +897,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           // uint64_t benefit = freeSpace * ZoneLifetimeValue;
           // uint64_t benefit = freeSpace * weighted_age;
 
-          // double sigma = cur_variance;
+          double sigma = cur_variance;
 
           double u = 2 * (static_cast<double>(zone.used_capacity) /
                           static_cast<double>(zone.max_capacity));
@@ -903,8 +907,8 @@ void ZenFS::ZoneCleaning(bool forced) {
               static_cast<double>(zone.max_capacity);
 
           // double weighted_age = pow(sigma, average_lifetime);
-          // double weighted_age = pow(average_lifetime * 100, sigma / 100);
-          double weighted_age = average_lifetime * 1000;
+          double weighted_age = pow(average_lifetime * 100, 2);
+          // double weighted_age = average_lifetime * 1000; //best
           // double weighted_freeSpace = pow(1-sigma, freeSpace);
           double weighted_freeSpace = freeSpace * 100;
 
