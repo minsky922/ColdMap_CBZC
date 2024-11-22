@@ -906,7 +906,7 @@ void ZenFS::ZoneCleaning(bool forced) {
               static_cast<double>(zone.max_capacity);
 
           // double weighted_age = pow(sigma, average_lifetime);
-          double weighted_age = pow(average_lifetime * 100, 2);
+          double weighted_age = pow(average_lifetime * 1000, 2);
           // double weighted_age = average_lifetime * 1000; //best
           // double weighted_freeSpace = pow(1-sigma, freeSpace);
           double weighted_freeSpace = freeSpace * 100;
