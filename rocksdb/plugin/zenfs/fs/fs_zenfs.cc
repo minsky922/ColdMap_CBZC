@@ -989,10 +989,10 @@ void ZenFS::ZoneCleaning(bool forced) {
   // }
   if (!victim_candidate.empty()) {
     for (const auto& candidate : victim_candidate) {
-      const auto it = zone_lifetime_map_.find(candidate.zone_start);
+      const auto it = zone_lifetime_map_.[candidate.zone_start];
 
       if (it != zone_lifetime_map_.end()) {
-        const auto& lifetime_values = std::get<2>(it->second);
+        const auto& lifetime_values = std::get<2>(it);
 
         bool contains_hot_value = std::any_of(
             lifetime_values.begin(), lifetime_values.end(),
