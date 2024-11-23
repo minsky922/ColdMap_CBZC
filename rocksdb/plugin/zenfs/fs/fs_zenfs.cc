@@ -998,8 +998,9 @@ void ZenFS::ZoneCleaning(bool forced) {
       const auto& lifetime_values = std::get<2>(it->second);
 
       bool contains_hot_value = std::any_of(
-          lifetime_values.begin(), lifetime_values.end(),
-          [](double value) { return value >= 0.0 && value <= 1.0; });
+          lifetime_values.begin(), lifetime_values.end(), [](double value) {
+            return value * 100 >= 0.0 && value * 100 <= 1.0;
+          });
 
       if (contains_hot_value) {
         continue;
