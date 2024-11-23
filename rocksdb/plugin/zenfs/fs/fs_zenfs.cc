@@ -988,44 +988,50 @@ void ZenFS::ZoneCleaning(bool forced) {
   //             << "%" << std::endl;
   // }
   if (!victim_candidate.empty()) {
-    const auto& candidate = victim_candidate.front();
-    std::cout << "[Picked]cost-benefit score: " << candidate.score
-              << ", zone start: " << candidate.zone_start
-              << ", Garbage Percentage: " << candidate.garbage_percent_approx
-              << "%" << std::endl;
+    for (const auto& candidate : victim_candidate) {
+      const auto it = zone_lifetime_map_.find(candidate.zone_start);
+
+      if (it != zone_lifetime_map_.end()) {
+        const auto& lifetime_values = std::get<2>(it->second);
+
+        bool contains_hot_value = std::any_of(
+            lifetime_values.begin(), lifetime_values.end(),
+            [](double value) { return value >= 0.0 && value <= 1.0; });
+
+        if (contains_hot_value) {
+          continue;
+        }
+      }
+
+      migrate_zones_start.emplace(candidate.zone_start);
+
+      std::cout << "[Picked] cost-benefit score: " << candidate.score
+                << ", zone start: " << candidate.zone_start
+                << ", Garbage Percentage: " << candidate.garbage_percent_approx
+                << "%" << std::endl;
+
+      break;
+    }
   }
+
   std::cout
       << "-------------------------------------------------------------------"
       << std::endl;
 
   // uint64_t threshold = 0;
-  uint64_t reclaimed_zone_n = 1;
+  // uint64_t reclaimed_zone_n = 1;
 
-  // if (forced) {
-  //   reclaimed_zone_n += 1;
+  // // 청소할 존 수 계산
+  // reclaimed_zone_n = reclaimed_zone_n > victim_candidate.size()
+  //                        ? victim_candidate.size()
+  //                        : reclaimed_zone_n;
+
+  // // 청소 대상 존 선택
+  // for (size_t i = 0;
+  //      (i < reclaimed_zone_n && migrate_zones_start.size() <
+  //      reclaimed_zone_n); i++) {
+  //   migrate_zones_start.emplace(victim_candidate[i].zone_start);
   // }
-
-  // 청소할 존 수 계산
-  reclaimed_zone_n = reclaimed_zone_n > victim_candidate.size()
-                         ? victim_candidate.size()
-                         : reclaimed_zone_n;
-
-  // 청소 대상 존 선택
-  for (size_t i = 0;
-       (i < reclaimed_zone_n && migrate_zones_start.size() < reclaimed_zone_n);
-       i++) {
-    // if (victim_candidate[i].first > threshold) {
-    // should_be_copied +=
-    //     (zone_size - (victim_candidate[i].first * zone_size / 100));
-    // std::cout << "cost-benefit score: " << victim_candidate[i].first
-    // << ", Zone Start: " << victim_candidate[i].second << std::endl;
-    // migrate_zones_start.emplace(victim_candidate[i].second);
-    migrate_zones_start.emplace(victim_candidate[i].zone_start);
-    // }
-  }
-
-  // std::cout << "ZoneCleaning::reclaimed_zone_n: " << reclaimed_zone_n <<
-  // "\n";
 
   std::vector<ZoneExtentSnapshot*> migrate_exts;
   for (auto& ext : snapshot.extents_) {
