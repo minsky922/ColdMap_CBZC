@@ -1003,6 +1003,11 @@ void ZenFS::ZoneCleaning(bool forced) {
           });
 
       if (contains_hot_value) {
+        std::cout << "[Skipped] cost-benefit score: " << candidate.score
+                  << ", zone start: " << candidate.zone_start
+                  << ", Garbage Percentage: "
+                  << candidate.garbage_percent_approx << "%"
+                  << " (Contains hot values in lifetime)" << std::endl;
         continue;
       }
 
