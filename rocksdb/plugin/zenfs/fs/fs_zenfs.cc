@@ -987,9 +987,10 @@ void ZenFS::ZoneCleaning(bool forced) {
   //             << ", Garbage Percentage: " << candidate.garbage_percent_approx
   //             << "%" << std::endl;
   // }
+
   if (!victim_candidate.empty()) {
     for (const auto& candidate : victim_candidate) {
-      auto it = zone_lifetime_map_[candidate.zone_start];
+      auto it = zone_lifetime_map_.find(candidate.zone_start);
       if (it == zone_lifetime_map_.end()) {
         continue;
       }
