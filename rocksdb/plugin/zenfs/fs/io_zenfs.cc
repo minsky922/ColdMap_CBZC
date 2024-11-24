@@ -524,8 +524,8 @@ IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
       if (zone != nullptr) {
         break;
       }
-      zbd_->ResetUnusedIOZones();
-      // zbd_->RuntimeReset();
+      // zbd_->ResetUnusedIOZones();
+      zbd_->RuntimeReset();
     }
     int end = zenfs_->GetMountTime();
 

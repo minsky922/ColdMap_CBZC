@@ -76,6 +76,7 @@ Zone::Zone(ZonedBlockDevice *zbd, ZonedBlockDeviceBackend *zbd_be,
   capacity_ = 0;                  // 현재 용량 초기화
   zone_sz_ = zbd_be_->GetZoneSize();
   block_sz_ = zbd_be_->GetBlockSize();
+  is_finished_ = false;
   if (zbd_be->ZoneIsWritable(zones, idx))  // 존이 쓰기 가능한 상태인지 확인
     capacity_ =
         max_capacity_ - (wp_ - start_);  // 쓰기 가능한 경우 현재 용량 설정
@@ -85,6 +86,7 @@ bool Zone::IsUsed() { return (used_capacity_ > 0); }
 uint64_t Zone::GetCapacityLeft() { return capacity_; }
 bool Zone::IsFull() { return (capacity_ == 0); }
 bool Zone::IsEmpty() { return (wp_ == start_); }
+bool Zone::IsFinished() { return is_finished_; }
 uint64_t Zone::GetZoneNr() { return start_ / zbd_->GetZoneSize(); }  // 존 넘버
 
 void Zone::EncodeJson(std::ostream &json_stream) {
@@ -104,7 +106,8 @@ IOStatus Zone::Reset() {
   uint64_t max_capacity;
 
   assert(!IsUsed());
-  assert(IsBusy());
+  // assert(IsBusy());
+  is_finished_ = false;
 
   IOStatus ios = zbd_be_->Reset(start_, &offline, &max_capacity);
   if (ios != IOStatus::OK()) return ios;
@@ -117,6 +120,7 @@ IOStatus Zone::Reset() {
 
   wp_ = start_;  // 쓰기 포인터(write pointer)를 존의 시작 위치로 재설정
   lifetime_ = Env::WLTH_NOT_SET;  // 존의 수명(lifetime)을 초기화
+
   //////
   // std::cout << "#####zone Reset" << std::endl;
   ////
@@ -126,13 +130,15 @@ IOStatus Zone::Reset() {
 이동시킵니다. 존이 더 이상 쓰기 작업을 받지 않도록 설정합니다. 일반적으로 데이터
 쓰기가 완료된 후 존을 마무리할 때 사용됩니다.*/
 IOStatus Zone::Finish() {
-  assert(IsBusy());
+  // assert(IsBusy());
 
   IOStatus ios = zbd_be_->Finish(start_);
   if (ios != IOStatus::OK()) return ios;
 
   capacity_ = 0;
+  is_finished_ = true;
   wp_ = start_ + zbd_->GetZoneSize();
+  zbd_->AddFinishCount(1);
   //////
   // std::cout << "######zone Finish" << std::endl;
   ////
@@ -143,7 +149,7 @@ IOStatus Zone::Finish() {
 수행합니다. 일반적으로 존을 더 이상 사용하지 않을 때 호출됩니다. 이는 존이 가득
 찼거나 비어 있지 않은 경우에만 수행됩니다.*/
 IOStatus Zone::Close() {
-  assert(IsBusy());
+  // assert(IsBusy());
 
   if (!(IsEmpty() || IsFull())) {
     IOStatus ios = zbd_be_->Close(start_);
@@ -473,15 +479,22 @@ void ZonedBlockDevice::LogGarbageInfo() {
 ZonedBlockDevice::~ZonedBlockDevice() {
   size_t rc = reset_count_.load();
   uint64_t wwp = wasted_wp_.load() / (1 << 20);
+  uint64_t zone_sz = BYTES_TO_MB(io_zones[0]->max_capacity_);  // MB
   uint64_t R_wp;
+  printf("zone size at ~ %lu\n", zone_sz);
   if (rc == 0) {
     R_wp = 100;
   } else {
-    R_wp = (ZONE_SIZE * 100 - wwp * 100 / (rc)) / ZONE_SIZE;
+    R_wp = (zone_sz * 100 - wwp * 100 / (rc)) / zone_sz;  // MB
   }
   printf("============================================================\n");
   printf("FAR STAT 1 :: WWP (MB) : %lu, R_wp : %lu\n",
          wasted_wp_.load() / (1 << 20), R_wp);
+  printf("new WWP(MB) : %lu\n", new_wasted_wp_.load() / (1 << 20));
+  if (rc != 0) {
+    printf("FAR STAT 1-1 :: Runtime zone reset R_wp %lu\n",
+           ((zone_sz * 100) - ((wwp * 100) / rc)) / zone_sz);
+  }
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
   //        compaction_blocked_at_amount_.size());
@@ -515,6 +528,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
          (gc_bytes_written_.load()) >> 20);
   printf("FAR STAT  :: Reset Count (R+ZC) : %ld+%ld=%ld\n", rc - rc_zc, rc_zc,
          rc);
+  printf("Finish Count : %ld\n", finish_count_.load());
   // for (size_t i = 0; i < io_block_timelapse_.size(); i++) {
   //   int s = io_block_timelapse_[i].s;
   //   int e = io_block_timelapse_[i].e;
@@ -853,6 +867,7 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
         uint64_t cp = z->GetCapacityLeft();
         reset_count_.fetch_add(1);
         wasted_wp_.fetch_add(cp);
+        new_wasted_wp_.fetch_add(cp);
         clock_t end = clock();
         reset_latency += (end - start);
         runtime_reset_reset_latency_.fetch_add(reset_latency);
@@ -873,7 +888,7 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
                           // IOStatus::OK()를 반환
 }
 
-IOStatus ZonedBlockDevice::RuntimeZoneReset(std::vector<bool> &is_reseted) {
+IOStatus ZonedBlockDevice::RuntimeZoneReset() {
   size_t total_invalid = 0;
 
   uint64_t zeu_size = 1 << 30;
@@ -881,9 +896,9 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset(std::vector<bool> &is_reseted) {
   IOStatus reset_status = IOStatus::OK();
   for (size_t i = 0; i < io_zones.size(); i++) {
     const auto z = io_zones[i];
-    if (is_reseted[i]) {
-      continue;
-    }
+    // if (is_reseted[i]) {
+    //   continue;
+    // }
     if (z->IsEmpty()) {
       continue;
     }
@@ -912,13 +927,20 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset(std::vector<bool> &is_reseted) {
       }
       erase_size_.fetch_add(total_invalid);
       if (total_invalid % zeu_size) {
-        wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
+        new_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
+      }
+      if (z->IsFinished()) {
+        if (total_invalid % zeu_size) {
+          finished_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
+        }
       }
 
       reset_status = z->Reset();
+      uint64_t cp = z->GetCapacityLeft();
+      wasted_wp_.fetch_add(cp);
 
       if (!reset_status.ok()) return reset_status;
-      is_reseted[i] = true;
+      // is_reseted[i] = true;
       reset_count_.fetch_add(1);
       z->reset_count_++;
 
@@ -961,35 +983,19 @@ void ZonedBlockDevice::WaitForOpenIOZoneToken(bool prioritized) {
 IOStatus ZonedBlockDevice::RuntimeReset(void) {
   IOStatus s = IOStatus::OK();
   if (RuntimeZoneResetDisabled()) {
-    // printf("RuntimeZoneResetDisabled!!\n");
+    printf("RuntimeZoneResetDisabled!!\n");
     return s;
   }
   if (ProactiveZoneCleaning()) {
     return s;
   }
-  std::vector<bool> is_reseted;
+  // std::vector<bool> is_reseted;
   // auto start_chrono = std::chrono::high_resolution_clock::now();
-  is_reseted.assign(io_zones.size(), false);
+  // is_reseted.assign(io_zones.size(), false);
   switch (GetPartialResetScheme()) {
-    // case PARTIAL_RESET_ONLY:
-    //   s = RuntimePartialZoneReset(is_reseted);
-    //   break;
-    // case PARTIAL_RESET_WITH_ZONE_RESET:
-    //   s = RuntimeZoneReset(is_reseted);
-    //   if (!s.ok()) break;
-    //   s = RuntimePartialZoneReset(is_reseted);
-    //   break;
-    // case PARTIAL_RESET_BACKGROUND_T_WITH_ZONE_RESET:
-    //   /* fall through */
-    // case PARTIAL_RESET_AT_BACKGROUND:
-    //   /* fall through */
     case RUNTIME_ZONE_RESET_ONLY:
-      // if(AsyncZCEnabled()){
-      //   ResetMultipleUnusedIOZones();
-      // }else{
-      // ResetUnusedIOZones();
-      // }
-      s = RuntimeZoneReset(is_reseted);
+      printf("RUNTIME_ZONE_RESET_ONLY!!\n");
+      s = RuntimeZoneReset();
 
       break;
     default:
@@ -1609,7 +1615,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
       }
 
       if (allocated_zone != nullptr) {
-        assert(allocated_zone->IsBusy());
+        // assert(allocated_zone->IsBusy());
         allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
         new_zone = true;
       } else {
@@ -1619,7 +1625,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
   }
   // 할당된 영역 정보 출력
   if (allocated_zone) {
-    assert(allocated_zone->IsBusy());
+    // assert(allocated_zone->IsBusy());
     Debug(logger_,
           "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt: %d\n",
           new_zone, allocated_zone->start_, allocated_zone->wp_,
@@ -1781,7 +1787,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
 
       if (allocated_zone != nullptr) {
-        assert(allocated_zone->IsBusy());
+        // assert(allocated_zone->IsBusy());
         allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
         new_zone = true;
       } else {

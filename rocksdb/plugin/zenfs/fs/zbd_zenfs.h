@@ -151,6 +151,7 @@ class Zone {
   unsigned int log2_erase_unit_size_ = 0;
   uint64_t erase_unit_size_ = 0;
   uint64_t block_sz_;
+  bool is_finished_ = false;
   uint64_t reset_count_ = 0;
   enum State { EMPTY, OPEN, CLOSE, FINISH, RO, OFFLINE };
   State state_ = EMPTY;
@@ -165,6 +166,7 @@ class Zone {
   bool IsUsed();
   bool IsFull();
   bool IsEmpty();
+  bool IsFinished();
   uint64_t GetZoneNr();
   uint64_t GetCapacityLeft();
   bool IsBusy() { return this->busy_.load(std::memory_order_relaxed); }
@@ -257,6 +259,7 @@ class ZonedBlockDevice {
   std::atomic<long> migration_io_zones_{0};
   ///
   std::atomic<size_t> reset_count_{0};
+  std::atomic<uint64_t> finish_count_{0};
 
   std::atomic<size_t> erase_size_{0};
   std::atomic<size_t> erase_size_zc_{0};
@@ -285,6 +288,8 @@ class ZonedBlockDevice {
   std::atomic<uint64_t> read_n_{0};
 
   std::atomic<uint64_t> wasted_wp_{0};
+  std::atomic<uint64_t> new_wasted_wp_{0};
+  std::atomic<uint64_t> finished_wasted_wp_{0};
   std::atomic<clock_t> runtime_reset_reset_latency_{0};
   std::atomic<clock_t> runtime_reset_latency_{0};
 
@@ -524,7 +529,7 @@ class ZonedBlockDevice {
   //////////////////////////////////////
   std::string GetFilename();
   uint32_t GetBlockSize();
-  IOStatus RuntimeZoneReset(std::vector<bool> &is_reseted);
+  IOStatus RuntimeZoneReset();
   IOStatus RuntimePartialZoneReset(std::vector<bool> &is_reseted);
   IOStatus ResetUnusedIOZones();
   //////////////////////////////////////////////////
@@ -663,6 +668,7 @@ class ZonedBlockDevice {
   // void AddGCBytesWritten(uint64_t written) { gc_bytes_written_ += written;
   // };
   void AddBytesWritten(uint64_t written) { bytes_written_.fetch_add(written); };
+  void AddFinishCount(uint64_t count) { finish_count_.fetch_add(count); };
   void AddGCBytesWritten(uint64_t written) {
     gc_bytes_written_.fetch_add(written);
     zc_copied_timelapse_.push_back(written);

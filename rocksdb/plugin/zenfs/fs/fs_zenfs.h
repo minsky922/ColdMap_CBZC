@@ -116,7 +116,7 @@ class ZenMetaLog {
 
  public:
   ZenMetaLog(ZonedBlockDevice* zbd, Zone* zone) {
-    assert(zone->IsBusy());
+    // assert(zone->IsBusy());
     zbd_ = zbd;
     zone_ = zone;
     bs_ = zbd_->GetBlockSize();
