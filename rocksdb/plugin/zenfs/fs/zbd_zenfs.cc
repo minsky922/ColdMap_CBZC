@@ -1589,7 +1589,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
     if (allocated_zone == nullptr) {
       /* We have to make sure we can open an empty zone */
       while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-        s = FinishCheapestIOZone();  // 가장 저렴한 I/O 영역 마무리
+        s = FinishCheapestIOZone();
         if (!s.ok()) {
           PutOpenIOZoneToken();
           return s;

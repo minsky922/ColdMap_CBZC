@@ -990,26 +990,26 @@ void ZenFS::ZoneCleaning(bool forced) {
 
   if (!victim_candidate.empty()) {
     for (const auto& candidate : victim_candidate) {
-      auto it = zone_lifetime_map_.find(candidate.zone_start);
-      if (it == zone_lifetime_map_.end()) {
-        continue;
-      }
+      // auto it = zone_lifetime_map_.find(candidate.zone_start);
+      // if (it == zone_lifetime_map_.end()) {
+      //   continue;
+      // }
 
-      const auto& lifetime_values = std::get<2>(it->second);
+      // const auto& lifetime_values = std::get<2>(it->second);
 
-      bool contains_hot_value = std::any_of(
-          lifetime_values.begin(), lifetime_values.end(), [](double value) {
-            return value * 100 >= 0.0 && value * 100 <= 1.0;
-          });
+      // bool contains_hot_value = std::any_of(
+      //     lifetime_values.begin(), lifetime_values.end(), [](double value) {
+      //       return value * 100 >= 0.0 && value * 100 <= 1.0;
+      //     });
 
-      if (contains_hot_value) {
-        std::cout << "[Skipped] cost-benefit score: " << candidate.score
-                  << ", zone start: " << candidate.zone_start
-                  << ", Garbage Percentage: "
-                  << candidate.garbage_percent_approx << "%"
-                  << " (Contains hot values in lifetime)" << std::endl;
-        continue;
-      }
+      // if (contains_hot_value) {
+      //   std::cout << "[Skipped] cost-benefit score: " << candidate.score
+      //             << ", zone start: " << candidate.zone_start
+      //             << ", Garbage Percentage: "
+      //             << candidate.garbage_percent_approx << "%"
+      //             << " (Contains hot values in lifetime)" << std::endl;
+      //   continue;
+      // }
 
       migrate_zones_start.emplace(candidate.zone_start);
 
