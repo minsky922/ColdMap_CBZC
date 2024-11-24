@@ -829,7 +829,7 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
 
   for (size_t i = 0; i < io_zones.size(); i++) {
     const auto z = io_zones[i];
-    printf("resetunused - is finished ? %ld\n", z->is_finished_);
+    printf("resetunused - is finished ? %d\n", z->is_finished_);
     bool full = z->IsFull();
     if (!full) {
       continue;
@@ -906,7 +906,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
   IOStatus reset_status = IOStatus::OK();
   for (size_t i = 0; i < io_zones.size(); i++) {
     const auto z = io_zones[i];
-    printf("runtimezonereset - is finished ? %ld\n", z->is_finished_);
+    printf("runtimezonereset - is finished ? %d\n", z->is_finished_);
     // if (is_reseted[i]) {
     //   continue;
     // }
