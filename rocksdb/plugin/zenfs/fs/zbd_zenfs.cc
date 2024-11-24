@@ -1562,12 +1562,12 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
     return s;
   }
   // WAL이 아닌 경우 Finish Threshold 적용
-  if (io_type != IOType::kWAL) {
-    s = ApplyFinishThreshold();
-    if (!s.ok()) {
-      return s;
-    }
-  }
+  // if (io_type != IOType::kWAL) {
+  //   s = ApplyFinishThreshold();
+  //   if (!s.ok()) {
+  //     return s;
+  //   }
+  // }
 
   WaitForOpenIOZoneToken(io_type == IOType::kWAL);  // I/O 토큰 대기
 
@@ -1694,12 +1694,12 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     return s;
   }
   // WAL이 아닌 경우 Finish Threshold 적용
-  if (io_type != IOType::kWAL) {
-    s = ApplyFinishThreshold();
-    if (!s.ok()) {
-      return s;
-    }
-  }
+  // if (io_type != IOType::kWAL) {
+  //   s = ApplyFinishThreshold();
+  //   if (!s.ok()) {
+  //     return s;
+  //   }
+  // }
 
   WaitForOpenIOZoneToken(io_type == IOType::kWAL);  // I/O 토큰 대기
 
