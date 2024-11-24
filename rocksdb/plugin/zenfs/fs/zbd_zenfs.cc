@@ -495,7 +495,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     printf("FAR STAT 1-1 :: Runtime zone reset R_wp %lu\n",
            ((zone_sz * 100) - ((wwp * 100) / rc)) / zone_sz);
   }
-  printf("ZONE FINISH WWP(MB) : %lu\n", finished_wasted_wp_.load());
+  printf("ZONE FINISH WWP(MB) : %lu\n", finished_wasted_wp_.load() / (1 << 20));
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
   //        compaction_blocked_at_amount_.size());
