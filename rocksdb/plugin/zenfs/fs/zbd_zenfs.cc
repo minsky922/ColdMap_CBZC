@@ -868,6 +868,10 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
         reset_count_.fetch_add(1);
         wasted_wp_.fetch_add(cp);
         new_wasted_wp_.fetch_add(cp);
+        if (z->IsFinished()) {
+          printf("resetunued - finish++\n");
+          finished_wasted_wp_.fetch_add(cp);
+        }
         clock_t end = clock();
         reset_latency += (end - start);
         runtime_reset_reset_latency_.fetch_add(reset_latency);
@@ -932,6 +936,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
       }
       if (z->IsFinished()) {
         if (total_invalid % zeu_size) {
+          printf("runtime - finish++\n");
           finished_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
         }
       }
@@ -995,7 +1000,7 @@ IOStatus ZonedBlockDevice::RuntimeReset(void) {
   // is_reseted.assign(io_zones.size(), false);
   switch (GetPartialResetScheme()) {
     case RUNTIME_ZONE_RESET_ONLY:
-      printf("RUNTIME_ZONE_RESET_ONLY!!\n");
+      // printf("RUNTIME_ZONE_RESET_ONLY!!\n");
       s = RuntimeZoneReset();
 
       break;
