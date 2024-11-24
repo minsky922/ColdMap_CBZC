@@ -139,6 +139,7 @@ IOStatus Zone::Finish() {
   is_finished_ = true;
   wp_ = start_ + zbd_->GetZoneSize();
   zbd_->AddFinishCount(1);
+  finish_count_++;
   //////
   // std::cout << "######zone Finish" << std::endl;
   ////
@@ -490,11 +491,12 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   printf("============================================================\n");
   printf("FAR STAT 1 :: WWP (MB) : %lu, R_wp : %lu\n",
          wasted_wp_.load() / (1 << 20), R_wp);
-  printf("new WWP(MB) : %lu\n", new_wasted_wp_.load() / (1 << 20));
+  printf("NEW WWP(MB) : %lu\n", new_wasted_wp_.load() / (1 << 20));
   if (rc != 0) {
     printf("FAR STAT 1-1 :: Runtime zone reset R_wp %lu\n",
            ((zone_sz * 100) - ((wwp * 100) / rc)) / zone_sz);
   }
+  printf("ZONE FINISH WWP(MB) : %lu\n", finished_wasted_wp_.load());
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
   //        compaction_blocked_at_amount_.size());

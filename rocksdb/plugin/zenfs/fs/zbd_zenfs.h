@@ -153,6 +153,7 @@ class Zone {
   uint64_t block_sz_;
   bool is_finished_ = false;
   uint64_t reset_count_ = 0;
+  uint64_t finish_count_ = 0;
   enum State { EMPTY, OPEN, CLOSE, FINISH, RO, OFFLINE };
   State state_ = EMPTY;
   //
