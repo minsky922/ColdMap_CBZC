@@ -1100,8 +1100,6 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
         continue;
       }
       if (finish_victim->capacity_ > z->capacity_) {
-        printf("1 finish_victim->capacity_: %lu\n",
-               finish_victim->capacity_ / (1 << 20));
         s = finish_victim->CheckRelease();
         if (!s.ok()) return s;
         finish_victim = z;
@@ -1118,6 +1116,9 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
     return IOStatus::OK();
   }
 
+  uint64_t cp = finish_victim->GetCapacityLeft();
+  printf("1 finish_victim->capacity_: %lu\n",
+         finish_victim->capacity_ / (1 << 20));
   s = finish_victim->Finish();
   IOStatus release_status = finish_victim->CheckRelease();
 
@@ -1129,7 +1130,7 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
     return release_status;
   }
   // uint64_t cp = finish_victim->capacity_;
-  uint64_t cp = finish_victim->GetCapacityLeft();
+
   printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
   // finish_victim->is_finished_ = true;
   finished_wasted_wp_.fetch_add(cp);
