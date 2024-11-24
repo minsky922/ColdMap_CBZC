@@ -76,7 +76,6 @@ Zone::Zone(ZonedBlockDevice *zbd, ZonedBlockDeviceBackend *zbd_be,
   capacity_ = 0;                  // 현재 용량 초기화
   zone_sz_ = zbd_be_->GetZoneSize();
   block_sz_ = zbd_be_->GetBlockSize();
-  is_finished_ = false;
   if (zbd_be->ZoneIsWritable(zones, idx))  // 존이 쓰기 가능한 상태인지 확인
     capacity_ =
         max_capacity_ - (wp_ - start_);  // 쓰기 가능한 경우 현재 용량 설정
@@ -107,7 +106,7 @@ IOStatus Zone::Reset() {
 
   assert(!IsUsed());
   // assert(IsBusy());
-  is_finished_ = false;
+  // is_finished_ = false;
 
   IOStatus ios = zbd_be_->Reset(start_, &offline, &max_capacity);
   if (ios != IOStatus::OK()) return ios;
@@ -136,10 +135,10 @@ IOStatus Zone::Finish() {
   if (ios != IOStatus::OK()) return ios;
 
   capacity_ = 0;
-  is_finished_ = true;
+  // is_finished_ = true;
   wp_ = start_ + zbd_->GetZoneSize();
-  zbd_->AddFinishCount(1);
-  finish_count_++;
+  // zbd_->AddFinishCount(1);
+  // finish_count_++;
   //////
   // std::cout << "######zone Finish" << std::endl;
   ////
@@ -867,12 +866,14 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
         clock_t start = clock();
         IOStatus reset_status = z->Reset();
         uint64_t cp = z->GetCapacityLeft();
-        reset_count_.fetch_add(1);
+
         wasted_wp_.fetch_add(cp);
         new_wasted_wp_.fetch_add(cp);
         if (z->IsFinished()) {
           printf("resetunued - finish++\n");
           finished_wasted_wp_.fetch_add(cp);
+          finish_count_.fetch_add(1);
+          z->finish_count_++;
         }
         clock_t end = clock();
         reset_latency += (end - start);
@@ -881,6 +882,8 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
           z->Release();
           return reset_status;
         }
+        reset_count_.fetch_add(1);
+        z->is_finished_ = false;
         if (!full) {
           PutActiveIOZoneToken();
           // PutOpenIOZoneToken();
@@ -940,6 +943,8 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
         if (total_invalid % zeu_size) {
           printf("runtime - finish++\n");
           finished_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
+          finish_count_.fetch_add(1);
+          z->finish_count_++;
         }
       }
 
@@ -949,6 +954,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
 
       if (!reset_status.ok()) return reset_status;
       // is_reseted[i] = true;
+      z->is_finished_ = false;
       reset_count_.fetch_add(1);
       z->reset_count_++;
 
@@ -1108,6 +1114,8 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
   IOStatus release_status = finish_victim->CheckRelease();
 
   if (s.ok()) {
+    finish_victim->is_finished_ = true;
+    printf("is Finish = true \n");
     PutActiveIOZoneToken();
   }
 

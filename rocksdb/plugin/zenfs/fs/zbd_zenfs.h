@@ -260,7 +260,7 @@ class ZonedBlockDevice {
   std::atomic<long> migration_io_zones_{0};
   ///
   std::atomic<size_t> reset_count_{0};
-  std::atomic<uint64_t> finish_count_{0};
+  std::atomic<size_t> finish_count_{0};
 
   std::atomic<size_t> erase_size_{0};
   std::atomic<size_t> erase_size_zc_{0};
