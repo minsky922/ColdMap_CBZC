@@ -829,9 +829,9 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
 
   for (size_t i = 0; i < io_zones.size(); i++) {
     const auto z = io_zones[i];
-    if (z->is_finished_) {
-      printf("resetunused - is finished ? %d\n", z->is_finished_);
-    }
+    // if (z->is_finished_) {
+    //   printf("resetunused - is finished ? %d\n", z->is_finished_);
+    // }
 
     bool full = z->IsFull();
     if (!full) {
@@ -873,12 +873,12 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
 
         wasted_wp_.fetch_add(cp);
         new_wasted_wp_.fetch_add(cp);
-        if (z->is_finished_) {
-          printf("resetunued - finish++\n");
-          finished_wasted_wp_.fetch_add(cp);
-          finish_count_.fetch_add(1);
-          z->finish_count_++;
-        }
+        // if (z->is_finished_) {
+        //   printf("resetunued - finish++\n");
+        //   finished_wasted_wp_.fetch_add(cp);
+        //   finish_count_.fetch_add(1);
+        //   z->finish_count_++;
+        // }
         clock_t end = clock();
         reset_latency += (end - start);
         runtime_reset_reset_latency_.fetch_add(reset_latency);
@@ -887,7 +887,7 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
           return reset_status;
         }
         reset_count_.fetch_add(1);
-        z->is_finished_ = false;
+        // z->is_finished_ = false;
         if (!full) {
           PutActiveIOZoneToken();
           // PutOpenIOZoneToken();
@@ -909,9 +909,9 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
   IOStatus reset_status = IOStatus::OK();
   for (size_t i = 0; i < io_zones.size(); i++) {
     const auto z = io_zones[i];
-    if (z->is_finished_) {
-      printf("resetunused - is finished ? %d\n", z->is_finished_);
-    }
+    // if (z->is_finished_) {
+    //   printf("resetunused - is finished ? %d\n", z->is_finished_);
+    // }
     // if (is_reseted[i]) {
     //   continue;
     // }
@@ -946,14 +946,13 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
       if (total_invalid % zeu_size) {
         new_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
       }
-      if (z->is_finished_) {
-        if (total_invalid % zeu_size) {
-          printf("runtime - finish++\n");
-          finished_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
-          finish_count_.fetch_add(1);
-          z->finish_count_++;
-        }
-      }
+      // if (z->is_finished_) {
+      //   if (total_invalid % zeu_size) {
+      //     printf("runtime - finish++\n");
+      //     finished_wasted_wp_.fetch_add(zeu_size - (total_invalid %
+      //     zeu_size)); finish_count_.fetch_add(1); z->finish_count_++;
+      //   }
+      // }
 
       reset_status = z->Reset();
 
@@ -961,7 +960,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
 
       if (!reset_status.ok()) return reset_status;
       // is_reseted[i] = true;
-      z->is_finished_ = false;
+      // z->is_finished_ = false;
       reset_count_.fetch_add(1);
       z->reset_count_++;
 
@@ -1127,8 +1126,12 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
   if (!release_status.ok()) {
     return release_status;
   }
-  finish_victim->is_finished_ = true;
-  printf("is Finish = true \n");
+  uint64_t cp = finish_victim->capacity_;
+  printf("finish_victim->capacity_: %d\n", cp);
+  // finish_victim->is_finished_ = true;
+  finished_wasted_wp_.fetch_add(cp);
+  finish_count_.fetch_add(1);
+  printf("Zone Finish!!! \n");
 
   return s;
 }
