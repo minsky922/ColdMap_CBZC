@@ -869,7 +869,7 @@ IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
 
         wasted_wp_.fetch_add(cp);
         new_wasted_wp_.fetch_add(cp);
-        if (z->IsFinished()) {
+        if (z->is_finished_) {
           printf("resetunued - finish++\n");
           finished_wasted_wp_.fetch_add(cp);
           finish_count_.fetch_add(1);
@@ -939,7 +939,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
       if (total_invalid % zeu_size) {
         new_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
       }
-      if (z->IsFinished()) {
+      if (z->is_finished_) {
         if (total_invalid % zeu_size) {
           printf("runtime - finish++\n");
           finished_wasted_wp_.fetch_add(zeu_size - (total_invalid % zeu_size));
@@ -1114,14 +1114,14 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
   IOStatus release_status = finish_victim->CheckRelease();
 
   if (s.ok()) {
-    finish_victim->is_finished_ = true;
-    printf("is Finish = true \n");
     PutActiveIOZoneToken();
   }
 
   if (!release_status.ok()) {
     return release_status;
   }
+  finish_victim->is_finished_ = true;
+  printf("is Finish = true \n");
 
   return s;
 }
@@ -1379,7 +1379,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
 
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      printf("GetBest : min_capacity : %lu\n", min_capacity);
+      // printf("GetBest : min_capacity : %lu\n", min_capacity);
       break;
     } else {
       s = GetAnyLargestRemainingZone(out_zone, min_capacity);
@@ -1783,7 +1783,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     if (allocated_zone == nullptr) {
       /* We have to make sure we can open an empty zone */
       while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-        s = FinishCheapestIOZone();  // 가장 저렴한 I/O 영역 마무리
+        s = FinishCheapestIOZone();
         if (!s.ok()) {
           PutOpenIOZoneToken();
           return s;

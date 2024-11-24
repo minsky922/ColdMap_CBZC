@@ -527,21 +527,21 @@ void ZenFS::ReCalculateLifetimes() {
 
   std::vector<double> normalized_vertical_lifetimes(6);
   double range = max_vertical_lifetime - min_vertical_lifetime;
-  std::cout << "==================================================="
-            << std::endl;
+  // std::cout << "==================================================="
+  // << std::endl;
   for (int level = 0; level < 6; level++) {
     normalized_vertical_lifetimes[level] =
         (range > 0)
             ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
             : 0;  // 모든 값이 같으면 0으로 설정
 
-    std::cout << "Level: " << level
-              << ", Original: " << vertical_lifetimes[level]
-              << ", Normalized: " << normalized_vertical_lifetimes[level]
-              << std::endl;
+    // std::cout << "Level: " << level
+    //           << ", Original: " << vertical_lifetimes[level]
+    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
+    //           << std::endl;
   }
-  std::cout << "==================================================="
-            << std::endl;
+  // std::cout << "==================================================="
+  // << std::endl;
 
   double alpha_value = zbd_->GetAlphaValue();
   double alpha_ = alpha_value;
@@ -1053,7 +1053,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   if (migrate_zones_start.size() > 0) {
     IOStatus s;
     Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
-    printf("Garbage collecting %d extents \n", (int)migrate_exts.size());
+    // printf("Garbage collecting %d extents \n", (int)migrate_exts.size());
     clock_gettime(CLOCK_MONOTONIC, &start_timespec);
     s = MigrateExtents(migrate_exts);
     clock_gettime(CLOCK_MONOTONIC, &end_timespec);
@@ -2838,10 +2838,10 @@ IOStatus ZenFS::MigrateFileExtents(
   SyncFileExtents(zfile.get(), new_extent_list);
   zfile->ReleaseWRLock();
 
-  printf(
-      "MigrateFileExtents Finished, fname: %s, extent count: %lu, copied : "
-      "%lu\n",
-      fname.data(), migrate_exts.size(), (copied) >> 20);
+  // printf(
+  //     "MigrateFileExtents Finished, fname: %s, extent count: %lu, copied : "
+  //     "%lu\n",
+  //     fname.data(), migrate_exts.size(), (copied) >> 20);
   Info(logger_, "MigrateFileExtents Finished, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
   return IOStatus::OK();
