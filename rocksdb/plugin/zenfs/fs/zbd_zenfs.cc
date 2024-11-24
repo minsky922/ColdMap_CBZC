@@ -1127,7 +1127,7 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
     return release_status;
   }
   uint64_t cp = finish_victim->capacity_;
-  printf("finish_victim->capacity_: %d\n", cp);
+  printf("finish_victim->capacity_: %ld\n", cp);
   // finish_victim->is_finished_ = true;
   finished_wasted_wp_.fetch_add(cp);
   finish_count_.fetch_add(1);
