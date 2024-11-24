@@ -916,6 +916,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
       }
 
       bool full = z->IsFull();
+      uint64_t cp = z->GetCapacityLeft();
 
       total_invalid = z->wp_ - z->start_ < z->max_capacity_
                           ? (z->wp_ - z->start_)
@@ -936,7 +937,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
       }
 
       reset_status = z->Reset();
-      uint64_t cp = z->GetCapacityLeft();
+
       wasted_wp_.fetch_add(cp);
 
       if (!reset_status.ok()) return reset_status;
