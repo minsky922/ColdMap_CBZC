@@ -280,20 +280,22 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   //   max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
   if (max_nr_active_zones == 0)
-    max_nr_active_zones = 13;
+    max_nr_active_io_zones_ = zbd_be_->GetNrZones();
   else
     max_nr_active_io_zones_ = 14 - 1;
 
   if (max_nr_open_zones == 0)
-    max_nr_open_zones = 13;
+    max_nr_open_io_zones_ = zbd_be_->GetNrZones();
   else
     max_nr_open_io_zones_ = 14 - 1;
 
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
   //
-  printf("Zone block device nr zones: %u max active: %u max open: %u \n",
-         zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
+  printf(
+      "Zone block device nr zones: %lu max active: %u (%d) max open: %u(%d) \n",
+      zbd_be_->GetNrZones(), max_nr_active_zones,
+      max_nr_active_io_zones_.load(), max_nr_open_zones, max_nr_open_io_zones_);
   //
   zone_rep = zbd_be_->ListZones();
   if (zone_rep == nullptr || zone_rep->ZoneCount() != zbd_be_->GetNrZones()) {
@@ -319,13 +321,14 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // for (; i < zone_rep->ZoneCount() &&
   //        (io_zones.size() * zbd_be_->GetZoneSize()) < (device_io_capacity);
   //      i++) {
-  for (; i < zone_rep->ZoneCount() && i < ZENFS_IO_ZONES + 4; i++) {
+  for (; i < zone_rep->ZoneCount() && i < ZENFS_IO_ZONES + 3; i++) {
     // for (; i < zone_rep->ZoneCount(); i++) {
     /* Only use sequential write required zones */
     if (zbd_be_->ZoneIsSwr(zone_rep, i)) {
       if (!zbd_be_->ZoneIsOffline(zone_rep, i)) {
         Zone *newZone = new Zone(this, zbd_be_.get(), zone_rep, i);
         if (!newZone->Acquire()) {
+          printf("Failed to allocate new Zone at index %ld\n", i);
           assert(false);
           return IOStatus::Corruption("Failed to set busy flag of zone " +
                                       std::to_string(newZone->GetZoneNr()));
@@ -333,6 +336,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
         io_zones.push_back(newZone);
         printf("io zone at %ld\n", i);
         if (zbd_be_->ZoneIsActive(zone_rep, i)) {
+          printf("active resoruced %lu\n", active_io_zones_.load());
           active_io_zones_++;
           if (zbd_be_->ZoneIsOpen(zone_rep, i)) {
             if (!readonly) {
@@ -350,9 +354,12 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // uint64_t device_free_space = (ZENFS_IO_ZONES) * (ZONE_SIZE);
   // printf("device free space : %ld\n", device_free_space);
   // device_free_space_.store(device_free_space);
+  for (uint64_t f = 0; f <= 100; f++) {
+    CalculateResetThreshold(f);
+  }
 
   printf("io_zones.size() : %ld\n", io_zones.size());
-  printf("zbd_be_->GetZoneSize(): %ld\n", zbd_be_->GetZoneSize());
+  printf("zone sz %lu\n", zone_sz_);
   uint64_t device_free_space = io_zones.size() * zbd_be_->GetZoneSize();
   printf("device free space : %ld\n", BYTES_TO_MB(device_free_space));
   // printf("zone sz %ld\n", zone_sz_);
