@@ -281,7 +281,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
 
   if (max_nr_active_zones == 0) {
     max_nr_active_zones = 13;
-    max_nr_open_io_zones_ = 14 - 1;
+    max_nr_active_io_zones_ = 14 - 1;
   } else {
     max_nr_active_io_zones_ = 14 - 1;
   }
