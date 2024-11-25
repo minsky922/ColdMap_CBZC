@@ -1845,13 +1845,16 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     /* If we haven't found an open zone to fill, open a new zone */
     if (allocated_zone == nullptr) {
       /* We have to make sure we can open an empty zone */
-      while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-        printf("allocateiozone - finish!!\n");
-        s = FinishCheapestIOZone(false);
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-          return s;
-        }
+      // while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
+      //   printf("allocateiozone - finish!!\n");
+      //   s = FinishCheapestIOZone(false);
+      //   if (!s.ok()) {
+      //     PutOpenIOZoneToken();
+      //     return s;
+      //   }
+      // }
+      if (!GetActiveIOZoneTokenIfAvailable()) {
+        FinishCheapestIOZone(false);
       }
 
       s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
