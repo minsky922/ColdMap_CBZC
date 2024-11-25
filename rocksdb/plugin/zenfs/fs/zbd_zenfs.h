@@ -345,8 +345,10 @@ class ZonedBlockDevice {
   std::mutex migrate_zone_mtx_;
   std::atomic<bool> migrating_{false};
 
-  unsigned int max_nr_active_io_zones_;
-  unsigned int max_nr_open_io_zones_;
+  // unsigned int max_nr_active_io_zones_;
+  std::atomic<int> max_nr_active_io_zones_;
+  int max_nr_open_io_zones_;
+  // unsigned int max_nr_open_io_zones_;
   //
   uint64_t cur_free_percent_ = 100;
   //
