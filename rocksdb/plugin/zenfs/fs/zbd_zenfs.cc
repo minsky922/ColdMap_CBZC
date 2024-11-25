@@ -266,15 +266,18 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
                                   " required)");
   }
 
-  if (max_nr_active_zones == 0)
-    max_nr_active_io_zones_ = zbd_be_->GetNrZones();
-  else
-    max_nr_active_io_zones_ = max_nr_active_zones - reserved_zones;
+  // if (max_nr_active_zones == 0)
+  //   max_nr_active_io_zones_ = zbd_be_->GetNrZones();
+  // else
+  //   max_nr_active_io_zones_ = max_nr_active_zones - reserved_zones;
 
-  if (max_nr_open_zones == 0)
-    max_nr_open_io_zones_ = zbd_be_->GetNrZones();
-  else
-    max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
+  // if (max_nr_open_zones == 0)
+  //   max_nr_open_io_zones_ = zbd_be_->GetNrZones();
+  // else
+  //   max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
+
+  max_nr_active_io_zones_ = 13;
+  max_nr_open_io_zones_ = 13;
 
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
@@ -1084,7 +1087,7 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
   return IOStatus::OK();
 }
 
-IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
+IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   IOStatus s;
   Zone *finish_victim = nullptr;
 
@@ -1122,7 +1125,10 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone() {
   s = finish_victim->Finish();
   IOStatus release_status = finish_victim->CheckRelease();
 
-  if (s.ok()) {
+  // if (s.ok()) {
+  //   PutActiveIOZoneToken();
+  // }
+  if (put_token) {
     PutActiveIOZoneToken();
   }
 
@@ -1397,21 +1403,27 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       // printf("GetBest : min_capacity : %lu\n", min_capacity);
       break;
-    } else {
-      s = GetAnyLargestRemainingZone(out_zone, min_capacity);
     }
+    // else {
+    //   s = GetAnyLargestRemainingZone(out_zone, min_capacity);
+    // }
 
-    if (s.ok() && (*out_zone) != nullptr) {
-      // printf("GetAny : min_capacity : %lu\n", min_capacity);
-      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      break;
-    }
+    // if (s.ok() && (*out_zone) != nullptr) {
+    //   // printf("GetAny : min_capacity : %lu\n", min_capacity);
+    //   Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+    //   break;
+    // }
     if (!GetActiveIOZoneTokenIfAvailable()) {
       printf("Takemigrate - finish!!\n");
-      FinishCheapestIOZone();
+      FinishCheapestIOZone(false);
     }
 
     s = AllocateEmptyZone(out_zone);
+    // 실패하면 putactive
+    if (!s.ok()) {
+      PutActiveIOZoneToken();
+      return s;
+    }
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       // printf("Empty: min_capacity : %lu\n", min_capacity);
@@ -1753,7 +1765,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
 
     if (!GetActiveIOZoneTokenIfAvailable()) {
       // printf("allocateiozone-finishchepest!!\n");
-      FinishCheapestIOZone();
+      FinishCheapestIOZone(false);
     }
     s = AllocateEmptyZone(&allocated_zone);
     // printf("allocateiozone-allocate emptyzone!!\n");
@@ -1805,7 +1817,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       /* We have to make sure we can open an empty zone */
       while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
         printf("allocateiozone - finish!!\n");
-        s = FinishCheapestIOZone();
+        s = FinishCheapestIOZone(false);
         if (!s.ok()) {
           PutOpenIOZoneToken();
           return s;
@@ -1813,6 +1825,10 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
 
       s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+      if (!s.ok()) {
+        PutActiveIOZoneToken();
+        return s;
+      }
       //
       if (s.ok() && allocated_zone == nullptr) {
         s = GetAnyLargestRemainingZone(&allocated_zone);
