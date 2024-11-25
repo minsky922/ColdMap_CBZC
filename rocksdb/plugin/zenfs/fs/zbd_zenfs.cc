@@ -1406,6 +1406,11 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
     }
+    if (!GetActiveIOZoneTokenIfAvailable()) {
+      printf("Takemigrate - finish!!\n");
+      FinishCheapestIOZone();
+    }
+
     s = AllocateEmptyZone(out_zone);
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
