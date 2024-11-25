@@ -338,7 +338,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
         }
         io_zones.push_back(newZone);
         printf("io zone at %ld\n", i);
-        if (i < 13) {
+        if (i < 13 + 3) {
           if (zbd_be_->ZoneIsActive(zone_rep, i)) {
             printf("active resoruced %lu\n", active_io_zones_.load());
             active_io_zones_++;
