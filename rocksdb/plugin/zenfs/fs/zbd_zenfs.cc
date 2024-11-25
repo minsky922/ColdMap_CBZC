@@ -1777,7 +1777,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
   // default
   // if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
-  //   bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
+  bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
 
   //   /* If we did not get a token, try to use the best match, even if the life
   //    * time diff not good but a better choice than to finish an existing zone
