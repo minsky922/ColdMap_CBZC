@@ -1775,80 +1775,82 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     PutOpenIOZoneToken();  // 오류 발생 시 토큰 반환
     return s;
   }
+  // default
+  // if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
+  //   bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
 
-  if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
-    bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
+  //   /* If we did not get a token, try to use the best match, even if the life
+  //    * time diff not good but a better choice than to finish an existing zone
+  //    * and open a new one
+  //    */
+  //   // 이미 할당된 영역이 없으면 새 영역을 할당
+  //   if (allocated_zone != nullptr) {
+  //     if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
+  //       Debug(logger_,
+  //             "Allocator: avoided a finish by relaxing lifetime diff "
+  //             "requirement\n");
+  //     } else {
+  //       s = allocated_zone->CheckRelease();
+  //       if (!s.ok()) {
+  //         PutOpenIOZoneToken();
+  //         if (got_token) PutActiveIOZoneToken();
+  //         return s;
+  //       }
+  //       allocated_zone = nullptr;
+  //     }
+  //   }
 
-    /* If we did not get a token, try to use the best match, even if the life
-     * time diff not good but a better choice than to finish an existing zone
-     * and open a new one
-     */
-    // 이미 할당된 영역이 없으면 새 영역을 할당
-    if (allocated_zone != nullptr) {
-      if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
-        Debug(logger_,
-              "Allocator: avoided a finish by relaxing lifetime diff "
-              "requirement\n");
-      } else {
-        s = allocated_zone->CheckRelease();
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-          if (got_token) PutActiveIOZoneToken();
-          return s;
-        }
-        allocated_zone = nullptr;
-      }
-    }
+  //   /* If we haven't found an open zone to fill, open a new zone */
+  //   if (allocated_zone == nullptr) {
+  //     /* We have to make sure we can open an empty zone */
+  //     while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
+  //       s = FinishCheapestIOZone();
+  //       if (!s.ok()) {
+  //         PutOpenIOZoneToken();
+  //         return s;
+  //       }
+  //     }
 
-    /* If we haven't found an open zone to fill, open a new zone */
-    if (allocated_zone == nullptr) {
-      /* We have to make sure we can open an empty zone */
-      while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-        s = FinishCheapestIOZone();
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-          return s;
-        }
-      }
+  //     s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+  //     //
+  //     if (s.ok() && allocated_zone == nullptr) {
+  //       s = GetAnyLargestRemainingZone(&allocated_zone);
+  //     }
+  //     //
+  //     if (!s.ok()) {
+  //       PutActiveIOZoneToken();
+  //       PutOpenIOZoneToken();
+  //       return s;
+  //     }
 
-      s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
-      //
-      if (s.ok() && allocated_zone == nullptr) {
-        s = GetAnyLargestRemainingZone(&allocated_zone);
-      }
-      //
-      if (!s.ok()) {
-        PutActiveIOZoneToken();
-        PutOpenIOZoneToken();
-        return s;
-      }
+  //     if (allocated_zone != nullptr) {
+  //       // assert(allocated_zone->IsBusy());
+  //       allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
+  //       new_zone = true;
+  //     } else {
+  //       PutActiveIOZoneToken();
+  //     }
+  //   }
+  // }
 
-      if (allocated_zone != nullptr) {
-        // assert(allocated_zone->IsBusy());
-        allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
-        new_zone = true;
-      } else {
-        PutActiveIOZoneToken();
-      }
+  // new
+  if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
+    s = AllocateEmptyZone(&allocated_zone);
+    if (allocated_zone != nullptr && s.ok()) {
+      // assert(allocated_zone->IsBusy());
+      allocated_zone->lifetime_ = file_lifetime;
+      new_zone = true;
+    } else {
+      PutActiveIOZoneToken();
     }
   }
-
-  // if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
-  //   s = AllocateEmptyZone(&allocated_zone);
-  //   if (allocated_zone != nullptr && s.ok()) {
-  //     // assert(allocated_zone->IsBusy());
-  //     allocated_zone->lifetime_ = file_lifetime;
-  //     new_zone = true;
-  //   } else {
-  //     PutActiveIOZoneToken();
-  //   }
-  // }
-  // if (s.ok() && allocated_zone == nullptr) {
-  //   s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
-  //   if (allocated_zone) {
-  //     allocated_zone->lifetime_ = file_lifetime;
-  //   }
-  // }
+  if (s.ok() && allocated_zone == nullptr) {
+    s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
+    if (allocated_zone) {
+      allocated_zone->lifetime_ = file_lifetime;
+    }
+  }
+  //
 
   if (allocated_zone) {
     Debug(logger_,
