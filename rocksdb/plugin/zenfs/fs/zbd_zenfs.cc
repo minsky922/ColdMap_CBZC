@@ -245,13 +245,14 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
 이 작업을 통해 디바이스가 준비되고, 사용할 수 있는 존이 올바르게 설정됩니다.*/
 IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   std::unique_ptr<ZoneList> zone_rep;
-  unsigned int max_nr_active_zones;
-  unsigned int max_nr_open_zones;
+  unsigned int max_nr_active_zones = 14;
+  unsigned int max_nr_open_zones = 14;
   Status s;
   uint64_t i = 0;
   uint64_t m = 0;
   // Reserve one zone for metadata and another one for extent migration
   // int reserved_zones = 2;
+  int reserved_zones = 1;
 
   if (!readonly && !exclusive)
     return IOStatus::InvalidArgument("Write opens must be exclusive");
@@ -266,20 +267,15 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
                                   " required)");
   }
 
-  // if (max_nr_active_zones == 0)
-  //   max_nr_active_io_zones_ = zbd_be_->GetNrZones();
-  // else
-  //   max_nr_active_io_zones_ = max_nr_active_zones - reserved_zones;
+  if (max_nr_active_zones == 0)
+    max_nr_active_io_zones_ = zbd_be_->GetNrZones();
+  else
+    max_nr_active_io_zones_ = max_nr_active_zones - reserved_zones;
 
-  // if (max_nr_open_zones == 0)
-  //   max_nr_open_io_zones_ = zbd_be_->GetNrZones();
-  // else
-  //   max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
-
-  // max_nr_active_zones = 13;
-  max_nr_active_io_zones_ = 13;
-  // max_nr_open_zones = 13;
-  max_nr_open_io_zones_ = 13;
+  if (max_nr_open_zones == 0)
+    max_nr_open_io_zones_ = zbd_be_->GetNrZones();
+  else
+    max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
