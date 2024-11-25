@@ -327,12 +327,17 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   for (; i < zone_rep->ZoneCount() && i < ZENFS_IO_ZONES + 3; i++) {
     // for (; i < zone_rep->ZoneCount(); i++) {
     /* Only use sequential write required zones */
+    /*Sequential Write Required (SWR)*/
+    /*Conventional Zone (Non-SWR) :  임의의 위치에 자유롭게
+     * 쓰기가 가능*/
     if (zbd_be_->ZoneIsSwr(zone_rep, i)) {
-      printf("ZoneIsSwr : zone_rep: %u, i : %ld\n", zone_rep->ZoneCount(), i);
+      // printf("ZoneIsSwr : zone_rep: %u, i : %ld\n", zone_rep->ZoneCount(),
+      // i);
       if (!zbd_be_->ZoneIsOffline(zone_rep, i)) {
         Zone *newZone = new Zone(this, zbd_be_.get(), zone_rep, i);
-        printf("ZoneIsOffline : zone_rep: %u, i : %ld\n", zone_rep->ZoneCount(),
-               i);
+        // printf("ZoneIsOffline : zone_rep: %u, i : %ld\n",
+        // zone_rep->ZoneCount(),
+        //  i);
         if (!newZone->Acquire()) {
           printf("Failed to allocate new Zone at index %ld\n", i);
           assert(false);
@@ -341,7 +346,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
         }
         io_zones.push_back(newZone);
         printf("io zone at %ld\n", i);
-        if (i < 13) {
+        if (i < 13 + 3) {
           if (zbd_be_->ZoneIsActive(zone_rep, i)) {
             printf("ZoneIsActive : zone_rep: %u, i : %ld\n",
                    zone_rep->ZoneCount(), i);
