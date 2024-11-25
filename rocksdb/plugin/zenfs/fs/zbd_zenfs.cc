@@ -1776,70 +1776,65 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     return s;
   }
   // default
-  // if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
-  // bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
+  if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
+    bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
 
-  //   /* If we did not get a token, try to use the best match, even if the life
-  //    * time diff not good but a better choice than to finish an existing zone
-  //    * and open a new one
-  //    */
-  //   // 이미 할당된 영역이 없으면 새 영역을 할당
-  //   if (allocated_zone != nullptr) {
-  //     if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
-  //       Debug(logger_,
-  //             "Allocator: avoided a finish by relaxing lifetime diff "
-  //             "requirement\n");
-  //     } else {
-  //       s = allocated_zone->CheckRelease();
-  //       if (!s.ok()) {
-  //         PutOpenIOZoneToken();
-  //         if (got_token) PutActiveIOZoneToken();
-  //         return s;
-  //       }
-  //       allocated_zone = nullptr;
-  //     }
-  //   }
+    /* If we did not get a token, try to use the best match, even if the life
+     * time diff not good but a better choice than to finish an existing zone
+     * and open a new one
+     */
+    // 이미 할당된 영역이 없으면 새 영역을 할당
+    if (allocated_zone != nullptr) {
+      if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
+        Debug(logger_,
+              "Allocator: avoided a finish by relaxing lifetime diff "
+              "requirement\n");
+      } else {
+        s = allocated_zone->CheckRelease();
+        if (!s.ok()) {
+          PutOpenIOZoneToken();
+          if (got_token) PutActiveIOZoneToken();
+          return s;
+        }
+        allocated_zone = nullptr;
+      }
+    }
 
-  //   /* If we haven't found an open zone to fill, open a new zone */
-  bool got_token = false;
-  if (allocated_zone == nullptr) {
-    //     /* We have to make sure we can open an empty zone */
-    got_token = GetActiveIOZoneTokenIfAvailable();
-    while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-      s = FinishCheapestIOZone();
-      printf("allocateiozone -FinishCheapestIOZone!!\n");
+    /* If we haven't found an open zone to fill, open a new zone */
+    if (allocated_zone == nullptr) {
+      /* We have to make sure we can open an empty zone */
+      while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
+        printf("allocateiozone - finish!!\n");
+        s = FinishCheapestIOZone();
+        if (!s.ok()) {
+          PutOpenIOZoneToken();
+          return s;
+        }
+      }
+
+      s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+      //
+      if (s.ok() && allocated_zone == nullptr) {
+        s = GetAnyLargestRemainingZone(&allocated_zone);
+      }
+      //
       if (!s.ok()) {
+        PutActiveIOZoneToken();
         PutOpenIOZoneToken();
         return s;
       }
-    }
-    s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
 
-    //
-    //
-    if (s.ok() && allocated_zone == nullptr) {
-      s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
-    }
-    //
-    if (!s.ok()) {
-      PutActiveIOZoneToken();
-      PutOpenIOZoneToken();
-      return s;
-    }
-
-    if (allocated_zone != nullptr) {
-      // assert(allocated_zone->IsBusy());
-      allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
-      new_zone = true;
-    } else {
-      PutActiveIOZoneToken();
+      if (allocated_zone != nullptr) {
+        // assert(allocated_zone->IsBusy());
+        allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
+        new_zone = true;
+      } else {
+        PutActiveIOZoneToken();
+      }
     }
   }
 
-  // new
   // if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
-  //   FinishCheapestIOZone();
-
   //   s = AllocateEmptyZone(&allocated_zone);
   //   if (allocated_zone != nullptr && s.ok()) {
   //     // assert(allocated_zone->IsBusy());
@@ -1855,7 +1850,6 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   //     allocated_zone->lifetime_ = file_lifetime;
   //   }
   // }
-  //
 
   if (allocated_zone) {
     Debug(logger_,
@@ -2333,8 +2327,7 @@ IOStatus ZonedBlockDevice::AllocateMostL0FilesZone(
       for (auto e : extents) {
         if (!e->zone_->IsFull()) {
           // std::cout << "zidx : "
-          //           << e->zone_->zidx_ - ZENFS_META_ZONES -
-          //           ZENFS_SPARE_ZONES
+          //           << e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES
           //           << std::endl;
           zone_score[e->zone_->zidx_ - ZENFS_META_ZONES - ZENFS_SPARE_ZONES] +=
               e->length_;
@@ -2558,8 +2551,8 @@ void ZonedBlockDevice::DownwardAdjacentFileList(
 }
 
 // return most large one
-// uint64_t ZonedBlockDevice::MostLargeUpperAdjacentFile(Slice& smallest
-// ,Slice& largest, int level){
+// uint64_t ZonedBlockDevice::MostLargeUpperAdjacentFile(Slice& smallest ,Slice&
+// largest, int level){
 //   assert(db_ptr_!=nullptr);
 
 //   return db_ptr_->MostLargeUpperAdjacentFile(smallest,largest,level);
