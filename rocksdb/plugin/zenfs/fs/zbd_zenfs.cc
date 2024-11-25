@@ -251,7 +251,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   uint64_t i = 0;
   uint64_t m = 0;
   // Reserve one zone for metadata and another one for extent migration
-  int reserved_zones = 2;
+  // int reserved_zones = 2;
 
   if (!readonly && !exclusive)
     return IOStatus::InvalidArgument("Write opens must be exclusive");
