@@ -245,8 +245,8 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
 이 작업을 통해 디바이스가 준비되고, 사용할 수 있는 존이 올바르게 설정됩니다.*/
 IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   std::unique_ptr<ZoneList> zone_rep;
-  unsigned int max_nr_active_zones;
-  unsigned int max_nr_open_zones;
+  unsigned int max_nr_active_zones = 13;
+  unsigned int max_nr_open_zones = 13;
   Status s;
   uint64_t i = 0;
   uint64_t m = 0;
