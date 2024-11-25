@@ -338,7 +338,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
         }
         io_zones.push_back(newZone);
         printf("io zone at %ld\n", i);
-        if (i < 13 + 3) {
+        if (i < 13) {
           if (zbd_be_->ZoneIsActive(zone_rep, i)) {
             printf("active resoruced %lu\n", active_io_zones_.load());
             active_io_zones_++;
@@ -362,7 +362,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   for (uint64_t f = 0; f <= 100; f++) {
     CalculateResetThreshold(f);
   }
-
+  printf("active io zones :  %lu\n", active_io_zones_.load());
   printf("io_zones.size() : %ld\n", io_zones.size());
   printf("zone sz %lu\n", zone_sz_);
   uint64_t device_free_space = io_zones.size() * zbd_be_->GetZoneSize();
