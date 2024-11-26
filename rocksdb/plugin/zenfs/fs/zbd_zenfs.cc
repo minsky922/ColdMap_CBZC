@@ -1872,10 +1872,9 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           return s;
         }
       } else {
-                s = AllocateAllInvalidZone(out_zone);
-        if (s.ok() && (*out_zone) != nullptr) {
+        s = AllocateAllInvalidZone(&allocated_zone);
+        if (s.ok() && allocated_zone != nullptr) {
           printf("allocateiozone - allocateallinvalidzone!!\n");
-          break;
         }
       }
       //
