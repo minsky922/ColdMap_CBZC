@@ -203,6 +203,7 @@ DBOptions BuildDBOptions(const ImmutableDBOptions& immutable_db_options,
   options.zc_scheme = immutable_db_options.zc_scheme;
   options.alpha_value = immutable_db_options.alpha_value;
   options.sigma_value = immutable_db_options.sigma_value;
+  options.disable_finish = immutable_db_options.disable_finish;
   return options;
 }
 

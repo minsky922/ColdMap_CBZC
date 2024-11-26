@@ -364,6 +364,7 @@ class ZonedBlockDevice {
   uint64_t zc_scheme_;
   double alpha_value_;
   double sigma_value_;
+  uint64_t disable_finish_;
   uint32_t partial_reset_scheme_;
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
@@ -442,6 +443,7 @@ class ZonedBlockDevice {
   uint64_t GetZCScheme() const { return zc_scheme_; }
   double GetAlphaValue() const { return alpha_value_; }
   double GetSigmaValue() const { return sigma_value_; }
+  uint64_t GetDisableFinish() const { return disable_finish_; }
 
   //
   std::atomic<uint64_t> lsm_tree_[10];
@@ -702,13 +704,14 @@ class ZonedBlockDevice {
   void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
-                      double sigma_value,
+                      double sigma_value, uint64_t disable_finish,
                       std::vector<uint64_t> &other_options) {
     reset_scheme_ = r;
     allocation_scheme_ = allocation_scheme;
     zc_scheme_ = zc_scheme;
     alpha_value_ = alpha_value;
     sigma_value_ = sigma_value;
+    disable_finish_ = disable_finish;
     partial_reset_scheme_ = partial_reset_scheme;
     tuning_point_ = T;
     input_aware_scheme_ = other_options[0];
@@ -717,7 +720,8 @@ class ZonedBlockDevice {
 
     std::cout << "zbd_->SetResetScheme: r = " << r << ", T = " << T
               << ", allocation_schme = " << allocation_scheme
-              << ", zc_scheme = " << zc_scheme << std::endl;
+              << ", zc_scheme = " << zc_scheme
+              << ", disable_finish = " << disable_finish << std::endl;
 
     for (auto opt : other_options) {
       printf("other options %lu\n", opt);

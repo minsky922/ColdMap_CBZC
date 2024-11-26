@@ -119,6 +119,7 @@ struct ImmutableDBOptions {
   uint64_t zc_scheme;
   double alpha_value;
   double sigma_value;
+  uint64_t disable_finish;
 
   uint64_t input_aware_scheme;
   uint64_t cbzc_enabled;
