@@ -1443,16 +1443,21 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     //   Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
     //   break;
     // }
-    if (!GetActiveIOZoneTokenIfAvailable()) {
-      printf("Takemigrate - finish!!\n");
-      FinishCheapestIOZone(false);
-    }
+    if (!disable_finish_) {
+      if (!GetActiveIOZoneTokenIfAvailable()) {
+        printf("Takemigrate - finish!!\n");
+        FinishCheapestIOZone(false);
+      }
 
-    s = AllocateEmptyZone(out_zone);
-    // 실패하면 putactive
-    if (!s.ok()) {
-      PutActiveIOZoneToken();
-      return s;
+      s = AllocateEmptyZone(out_zone);
+      // 실패하면 putactive
+      if (!s.ok()) {
+        PutActiveIOZoneToken();
+        return s;
+      }
+    } else {
+      printf("takemigrate - allocateallinvalidzone!!\n");
+      s = AllocateAllInvalidZone(out_zone);
     }
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
@@ -1853,14 +1858,19 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       //     return s;
       //   }
       // }
-      if (!GetActiveIOZoneTokenIfAvailable()) {
-        FinishCheapestIOZone(false);
-      }
+      if (!disable_finish_) {
+        if (!GetActiveIOZoneTokenIfAvailable()) {
+          FinishCheapestIOZone(false);
+        }
 
-      s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
-      if (!s.ok()) {
-        PutActiveIOZoneToken();
-        return s;
+        s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+        if (!s.ok()) {
+          PutActiveIOZoneToken();
+          return s;
+        }
+      } else {
+        printf("allocateiozone - allocateallinvalidzone!!\n");
+        s = AllocateAllInvalidZone(out_zone);
       }
       //
       if (s.ok() && allocated_zone == nullptr) {
