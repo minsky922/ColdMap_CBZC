@@ -1456,8 +1456,11 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         return s;
       }
     } else {
-      printf("takemigrate - allocateallinvalidzone!!\n");
       s = AllocateAllInvalidZone(out_zone);
+      if (s.ok() && (*out_zone) != nullptr) {
+        printf("takemigrate - allocateallinvalidzone!!\n");
+        break;
+      }
     }
     if (s.ok() && (*out_zone) != nullptr) {
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
@@ -1869,8 +1872,11 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           return s;
         }
       } else {
-        printf("allocateiozone - allocateallinvalidzone!!\n");
-        s = AllocateAllInvalidZone(out_zone);
+                s = AllocateAllInvalidZone(out_zone);
+        if (s.ok() && (*out_zone) != nullptr) {
+          printf("allocateiozone - allocateallinvalidzone!!\n");
+          break;
+        }
       }
       //
       if (s.ok() && allocated_zone == nullptr) {
