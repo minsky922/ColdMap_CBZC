@@ -1495,7 +1495,7 @@ class EnvWrapper : public Env {
   void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
-                      double sigma_value, double disable_finish,
+                      double sigma_value, uint64_t disable_finish,
                       std::vector<uint64_t>& other_options) override {
     target_.env->SetResetScheme(r, partial_reset_scheme, T, zc, until,
                                 allocation_scheme, zc_scheme, alpha_value,
