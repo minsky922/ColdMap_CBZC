@@ -1307,7 +1307,7 @@ IOStatus ZonedBlockDevice::ReleaseMigrateZone(Zone *zone) {
     if (zone != nullptr) {
       bool full = zone->IsFull();
       s = zone->CheckRelease();
-      PutOpenIOZoneToken(ZC);
+      PutOpenIOZoneToken();
       if (full) {
         PutActiveIOZoneToken();
       }
@@ -1470,11 +1470,6 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       // printf("Empty: min_capacity : %lu\n", min_capacity);
       break;
-    }
-    if (!s.ok()) {
-      PutActiveIOZoneToken();
-      PutOpenIOZoneToken();
-      return s;
     }
 
     s = GetAnyLargestRemainingZone(out_zone, min_capacity);
