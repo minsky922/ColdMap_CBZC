@@ -245,8 +245,8 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
 이 작업을 통해 디바이스가 준비되고, 사용할 수 있는 존이 올바르게 설정됩니다.*/
 IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   std::unique_ptr<ZoneList> zone_rep;
-  unsigned int max_nr_active_zones = 13;
-  unsigned int max_nr_open_zones = 13;
+  unsigned int max_nr_active_zones;
+  unsigned int max_nr_open_zones;
   Status s;
   uint64_t i = 0;
   uint64_t m = 0;
@@ -1305,7 +1305,12 @@ IOStatus ZonedBlockDevice::ReleaseMigrateZone(Zone *zone) {
     std::unique_lock<std::mutex> lock(migrate_zone_mtx_);
     migrating_ = false;
     if (zone != nullptr) {
+      bool full = zone->IsFull();
       s = zone->CheckRelease();
+      PutOpenIOZoneToken(ZC);
+      if (full) {
+        PutActiveIOZoneToken();
+      }
       Info(logger_, "ReleaseMigrateZone: %lu", zone->start_);
     }
   }
@@ -1446,15 +1451,14 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     if (!disable_finish_) {
       if (!GetActiveIOZoneTokenIfAvailable()) {
         printf("Takemigrate - finish!!\n");
-        FinishCheapestIOZone(false);
+        s = FinishCheapestIOZone(false);
+        if (!s.ok()) {
+          PutOpenIOZoneToken();
+          return s;
+        }
       }
 
       s = AllocateEmptyZone(out_zone);
-      // 실패하면 putactive
-      if (!s.ok()) {
-        PutActiveIOZoneToken();
-        return s;
-      }
     } else {
       s = AllocateAllInvalidZone(out_zone);
       if (s.ok() && (*out_zone) != nullptr) {
@@ -1466,6 +1470,11 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       // printf("Empty: min_capacity : %lu\n", min_capacity);
       break;
+    }
+    if (!s.ok()) {
+      PutActiveIOZoneToken();
+      PutOpenIOZoneToken();
+      return s;
     }
 
     s = GetAnyLargestRemainingZone(out_zone, min_capacity);
@@ -1863,7 +1872,11 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       // }
       if (!disable_finish_) {
         if (!GetActiveIOZoneTokenIfAvailable()) {
-          FinishCheapestIOZone(false);
+          s = FinishCheapestIOZone(false);
+          if (!s.ok()) {
+            PutOpenIOZoneToken();
+            return s;
+          }
         }
 
         s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
