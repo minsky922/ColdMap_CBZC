@@ -1454,11 +1454,17 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         s = FinishCheapestIOZone(false);
         if (!s.ok()) {
           PutOpenIOZoneToken();
-          return s;
+        }
+        s = AllocateEmptyZone(out_zone);
+        if (s.ok() && (*out_zone) != nullptr) {
+          Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+          (*out_zone)->lifetime_ = file_lifetime;
+          break;
+        } else {
+          PutActiveIOZoneToken();
         }
       }
 
-      s = AllocateEmptyZone(out_zone);
     } else {
       s = AllocateAllInvalidZone(out_zone);
       if (s.ok() && (*out_zone) != nullptr) {
@@ -1875,10 +1881,6 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         }
 
         s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
-        if (!s.ok()) {
-          PutActiveIOZoneToken();
-          return s;
-        }
       } else {
         s = AllocateAllInvalidZone(&allocated_zone);
         if (s.ok() && allocated_zone != nullptr) {
@@ -1939,6 +1941,9 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
 end:
   // printf("allocateiozone - end!!\n");
   *out_zone = allocated_zone;
+
+  printf("ZENFS_OPEN_ZONES_COUNT: %d\n", open_io_zones_);
+  printf("ZENFS_ACTIVE_ZONES_COUNT: %d\n", active_io_zones_);
 
   metrics_->ReportGeneral(ZENFS_OPEN_ZONES_COUNT, open_io_zones_);
   metrics_->ReportGeneral(ZENFS_ACTIVE_ZONES_COUNT, active_io_zones_);
