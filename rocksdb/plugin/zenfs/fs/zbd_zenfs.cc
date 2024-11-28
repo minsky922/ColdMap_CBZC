@@ -1150,8 +1150,8 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   }
 
   uint64_t cp = finish_victim->GetCapacityLeft();
-  printf("1 finish_victim->capacity_: %lu\n",
-         finish_victim->capacity_ / (1 << 20));
+  // printf("1 finish_victim->capacity_: %lu\n",
+  //        finish_victim->capacity_ / (1 << 20));
   s = finish_victim->Finish();
   IOStatus release_status = finish_victim->CheckRelease();
 
@@ -1167,13 +1167,17 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   }
   // uint64_t cp = finish_victim->capacity_;
 
-  printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
-  printf("After finish_victim->capacity_: %lu\n",
-         finish_victim->capacity_ / (1 << 20));
+  // printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
+  // printf("After finish_victim->capacity_: %lu\n",
+  //  finish_victim->capacity_ / (1 << 20));
   // finish_victim->is_finished_ = true;
   finished_wasted_wp_.fetch_add(cp);
   finish_count_.fetch_add(1);
-  printf("Zone Finish!!! \n");
+  // printf("Zone Finish!!! \n");
+  printf(
+      "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
+      "%ld\n",
+      finish_victim->start_, cp, open_io_zones_.load());
 
   return s;
 }
@@ -1453,11 +1457,6 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         printf("Takemigrate - finish!!\n");
         // s = FinishCheapestIOZone(false);
         s = FinishCheapestIOZone(true);
-        printf(
-            "Finish complete: Zone start: 0x%lx, capacity left: %lu, "
-            "open_io_zones_: %ld\n",
-            finish_victim->start_, cp, open_io_zones_.load());
-
         if (!s.ok()) {
           PutOpenIOZoneToken();
         }
