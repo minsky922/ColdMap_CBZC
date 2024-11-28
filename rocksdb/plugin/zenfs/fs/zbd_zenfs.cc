@@ -1451,7 +1451,13 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     if (!disable_finish_) {
       if (!GetActiveIOZoneTokenIfAvailable()) {
         printf("Takemigrate - finish!!\n");
-        s = FinishCheapestIOZone(false);
+        // s = FinishCheapestIOZone(false);
+        s = FinishCheapestIOZone(true);
+        printf(
+            "Finish complete: Zone start: 0x%lx, capacity left: %lu, "
+            "open_io_zones_: %ld\n",
+            finish_victim->start_, cp, open_io_zones_.load());
+
         if (!s.ok()) {
           PutOpenIOZoneToken();
         }
@@ -1461,7 +1467,11 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
           (*out_zone)->lifetime_ = file_lifetime;
           break;
         } else {
+          printf("Before PutActiveIOZoneToken: open_io_zones_=%ld\n",
+                 open_io_zones_.load());
           PutActiveIOZoneToken();
+          printf("After PutActiveIOZoneToken: open_io_zones_=%ld\n",
+                 open_io_zones_.load());
         }
       }
 
@@ -1813,6 +1823,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
 
     if (!GetActiveIOZoneTokenIfAvailable()) {
       // printf("allocateiozone-finishchepest!!\n");
+      // FinishCheapestIOZone(false);
       FinishCheapestIOZone(false);
     }
     s = AllocateEmptyZone(&allocated_zone);
@@ -1873,7 +1884,8 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       // }
       if (!disable_finish_) {
         if (!GetActiveIOZoneTokenIfAvailable()) {
-          s = FinishCheapestIOZone(false);
+          // s = FinishCheapestIOZone(false);
+          s = FinishCheapestIOZone(true);
           if (!s.ok()) {
             PutOpenIOZoneToken();
             return s;
