@@ -1942,8 +1942,8 @@ end:
   // printf("allocateiozone - end!!\n");
   *out_zone = allocated_zone;
 
-  printf("ZENFS_OPEN_ZONES_COUNT: %d\n", open_io_zones_);
-  printf("ZENFS_ACTIVE_ZONES_COUNT: %d\n", active_io_zones_);
+  printf("ZENFS_ACTIVE_ZONES_COUNT: %d\n", active_io_zones_.load());
+  printf("ZENFS_OPEN_ZONES_COUNT: %d\n", open_io_zones_.load());
 
   metrics_->ReportGeneral(ZENFS_OPEN_ZONES_COUNT, open_io_zones_);
   metrics_->ReportGeneral(ZENFS_ACTIVE_ZONES_COUNT, active_io_zones_);
