@@ -1452,6 +1452,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     //   Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
     //   break;
     // }
+    std::cout << "disable_finish_: " << disable_finish << std::endl;
     if (!disable_finish_) {
       if (!GetActiveIOZoneTokenIfAvailable()) {
         printf("Takemigrate - finish!!\n");
