@@ -1309,7 +1309,7 @@ IOStatus ZonedBlockDevice::ReleaseMigrateZone(Zone *zone) {
     std::unique_lock<std::mutex> lock(migrate_zone_mtx_);
     migrating_ = false;
     if (zone != nullptr) {
-      bool full = zone->IsFull();
+      // bool full = zone->IsFull();
       s = zone->CheckRelease();
       // PutOpenIOZoneToken();
       // if (full) {
