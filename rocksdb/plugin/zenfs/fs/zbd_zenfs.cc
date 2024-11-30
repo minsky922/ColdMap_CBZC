@@ -1311,10 +1311,10 @@ IOStatus ZonedBlockDevice::ReleaseMigrateZone(Zone *zone) {
     if (zone != nullptr) {
       bool full = zone->IsFull();
       s = zone->CheckRelease();
-      PutOpenIOZoneToken();
-      if (full) {
-        PutActiveIOZoneToken();
-      }
+      // PutOpenIOZoneToken();
+      // if (full) {
+      //   PutActiveIOZoneToken();
+      // }
       Info(logger_, "ReleaseMigrateZone: %lu", zone->start_);
     }
   }
