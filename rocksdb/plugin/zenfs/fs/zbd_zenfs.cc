@@ -1390,6 +1390,10 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
 
   (void)(run_gc_worker_);
 
+  if (db_ptr_ == nullptr) {
+    return s;
+  }
+
   while (CalculateCapacityRemain() > min_capacity) {
     if (is_sst) {
       if (allocation_scheme_ == CAZA) {
