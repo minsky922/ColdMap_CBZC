@@ -1125,7 +1125,8 @@ bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
     if (z->Acquire()) {
       if (z->IsEmpty() || z->IsFull()) {
         s = z->CheckRelease();
-        if (!s.ok()) return s;
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
         continue;
       }
       if (finish_victim == nullptr) {
@@ -1134,11 +1135,13 @@ bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
       }
       if (finish_victim->capacity_ > z->capacity_) {
         s = finish_victim->CheckRelease();
-        if (!s.ok()) return s;
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
         finish_victim = z;
       } else {
         s = z->CheckRelease();
-        if (!s.ok()) return s;
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
       }
     }
   }
