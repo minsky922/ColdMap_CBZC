@@ -1117,7 +1117,7 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
   return IOStatus::OK();
 }
 
-IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
+bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   IOStatus s;
   Zone *finish_victim = nullptr;
 
@@ -1146,7 +1146,8 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   // If all non-busy zones are empty or full, we should return success.
   if (finish_victim == nullptr) {
     Info(logger_, "All non-busy zones are empty or full, skip.");
-    return IOStatus::OK();
+    // return IOStatus::OK();
+    return false;
   }
 
   uint64_t cp = finish_victim->GetCapacityLeft();
@@ -1162,9 +1163,9 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
     PutActiveIOZoneToken();
   }
 
-  if (!release_status.ok()) {
-    return release_status;
-  }
+  // if (!release_status.ok()) {
+  //   return release_status;
+  // }
   // uint64_t cp = finish_victim->capacity_;
 
   // printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
@@ -1179,7 +1180,7 @@ IOStatus ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
       "%ld\n",
       finish_victim->start_, cp, open_io_zones_.load());
 
-  return s;
+  return true;
 }
 
 IOStatus ZonedBlockDevice::GetAnyLargestRemainingZone(Zone **zone_out,
@@ -1191,6 +1192,10 @@ IOStatus ZonedBlockDevice::GetAnyLargestRemainingZone(Zone **zone_out,
     if (!z->Acquire()) {
       continue;
     }
+    if (z->IsEmpty()) {
+      z->Release();
+      continue;
+    }
     if (z->capacity_ > min_capacity) {
       if (allocated_zone) {
         s = allocated_zone->CheckRelease();
@@ -1198,7 +1203,7 @@ IOStatus ZonedBlockDevice::GetAnyLargestRemainingZone(Zone **zone_out,
           return s;
         }
       }
-      allocated_zone = z;
+      no empty zone allocated_zone = z;
       min_capacity = z->capacity_;
       continue;
     }
@@ -1447,58 +1452,95 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       // printf("GetBest : min_capacity : %lu\n", min_capacity);
       break;
     }
-    // else {
-    //   s = GetAnyLargestRemainingZone(out_zone, min_capacity);
-    // }
 
-    // if (s.ok() && (*out_zone) != nullptr) {
-    //   // printf("GetAny : min_capacity : %lu\n", min_capacity);
-    //   Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-    //   break;
-    // }
-    std::cout << "disable_finish_: " << disable_finish_ << std::endl;
-    if (!disable_finish_) {
-      if (!GetActiveIOZoneTokenIfAvailable()) {
-        printf("Takemigrate - finish!!\n");
-        // s = FinishCheapestIOZone(false);
-        s = FinishCheapestIOZone(true);
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-        }
-        s = AllocateEmptyZone(out_zone);
-        if (s.ok() && (*out_zone) != nullptr) {
-          Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+    if (disable_finish_) {
+      if (GetActiveIOZoneTokenIfAvailable()) {
+        AllocateEmptyZone(out_zone);  // 빈 영역 할당
+        if (*out_zone != nullptr) {
           (*out_zone)->lifetime_ = file_lifetime;
           break;
-        } else {
-          printf("Before PutActiveIOZoneToken: open_io_zones_=%ld\n",
-                 open_io_zones_.load());
-          PutActiveIOZoneToken();
-          printf("After PutActiveIOZoneToken: open_io_zones_=%ld\n",
-                 open_io_zones_.load());
+        }
+        PutActiveIOZoneToken();
+      }
+      // AllocateAllInvalidZone(out_zone);
+      // if (*out_zone) {
+      //   break;
+      // }
+      GetAnyLargestRemainingZone(out_zone, min_capacity);
+      if (*out_zone) {
+        break;
+      }
+      // goto reset;
+    } else {
+      while (true) {
+        if (GetActiveIOZoneTokenIfAvailable()) {
+          break;
+        }
+        if (FinishCheapestIOZone(false)) {
+          break;
         }
       }
-
-    } else {
-      s = AllocateAllInvalidZone(out_zone);
-      if (s.ok() && (*out_zone) != nullptr) {
-        printf("takemigrate - allocateallinvalidzone!!\n");
+      s = AllocateEmptyZone(out_zone);  // 빈 영역 할당
+      if (*out_zone != nullptr) {
+        // PutActiveIOZoneToken();
+        (*out_zone)->lifetime_ = file_lifetime;
+        break;
+      }
+      PutActiveIOZoneToken();
+      // AllocateAllInvalidZone(out_zone);
+      // if (*out_zone) {
+      //   break;
+      // }
+      GetAnyLargestRemainingZone(out_zone, min_capacity);
+      if (*out_zone) {
         break;
       }
     }
-    if (s.ok() && (*out_zone) != nullptr) {
-      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      // printf("Empty: min_capacity : %lu\n", min_capacity);
-      break;
-    }
 
-    s = GetAnyLargestRemainingZone(out_zone, min_capacity);
-    if (s.ok() && (*out_zone) != nullptr) {
-      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      // printf("2Getany: min_capacity : %lu\n", min_capacity);
-      break;
-    }
+    // std::cout << "disable_finish_: " << disable_finish_ << std::endl;
+    // if (!disable_finish_) {
+    //   if (!GetActiveIOZoneTokenIfAvailable()) {
+    //     printf("Takemigrate - finish!!\n");
+    //     s = FinishCheapestIOZone(false);
+    //     // s = FinishCheapestIOZone(true);
+    //     if (!s.ok()) {
+    //       PutOpenIOZoneToken();
+    //     }
+    //     s = AllocateEmptyZone(out_zone);
+    //     if (s.ok() && (*out_zone) != nullptr) {
+    //       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+    //       (*out_zone)->lifetime_ = file_lifetime;
+    //       break;
+    //     } else {
+    //       printf("Before PutActiveIOZoneToken: open_io_zones_=%ld\n",
+    //              open_io_zones_.load());
+    //       PutActiveIOZoneToken();
+    //       printf("After PutActiveIOZoneToken: open_io_zones_=%ld\n",
+    //              open_io_zones_.load());
+    //     }
+    //   }
+    //   s = AllocateEmptyZone(out_zone);
 
+    // } else {
+    //   s = AllocateAllInvalidZone(out_zone);
+    //   if (s.ok() && (*out_zone) != nullptr) {
+    //     printf("takemigrate - allocateallinvalidzone!!\n");
+    //     break;
+    //   }
+    // }
+    // if (s.ok() && (*out_zone) != nullptr) {
+    //   Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+    //   // printf("Empty: min_capacity : %lu\n", min_capacity);
+    //   break;
+    // }
+
+    // s = GetAnyLargestRemainingZone(out_zone, min_capacity);
+    // if (s.ok() && (*out_zone) != nullptr) {
+    //   Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+    //   // printf("2Getany: min_capacity : %lu\n", min_capacity);
+    //   break;
+    // }
+    // reset:
     s = ResetUnusedIOZones();
     if (!s.ok()) {
       return s;
@@ -1810,32 +1852,33 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       return s;
     }
   } else if (is_sst && level >= 0 && allocation_scheme_ == CAZA_ADV) {
-    s = AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
-                                       predicted_size, &allocated_zone,
-                                       min_capacity);
-    // printf("allocateiozone-AllocateCompactionAwaredZoneV2\n");
-    if (!s.ok()) {
-      // printf("allocateiozone-putopen!!\n");
-      PutOpenIOZoneToken();
-      return s;
-    }
+    // s = AllocateCompactionAwaredZoneV2(smallest, largest, level,
+    // file_lifetime,
+    //                                    predicted_size, &allocated_zone,
+    //                                    min_capacity);
+    // // printf("allocateiozone-AllocateCompactionAwaredZoneV2\n");
+    // if (!s.ok()) {
+    //   // printf("allocateiozone-putopen!!\n");
+    //   PutOpenIOZoneToken();
+    //   return s;
+    // }
 
-    if (allocated_zone != nullptr) {
-      // printf("allocateiozone-go to end\n");
-      goto end;
-    }
+    // if (allocated_zone != nullptr) {
+    //   // printf("allocateiozone-go to end\n");
+    //   goto end;
+    // }
 
-    if (!GetActiveIOZoneTokenIfAvailable()) {
-      // printf("allocateiozone-finishchepest!!\n");
-      // FinishCheapestIOZone(false);
-      FinishCheapestIOZone(false);
-    }
-    s = AllocateEmptyZone(&allocated_zone);
-    // printf("allocateiozone-allocate emptyzone!!\n");
-    if (allocated_zone == nullptr) {
-      // printf("allocateiozone-allocate emptyzone - putactive!!\n");
-      PutActiveIOZoneToken();
-    }
+    // if (!GetActiveIOZoneTokenIfAvailable()) {
+    //   // printf("allocateiozone-finishchepest!!\n");
+    //   // FinishCheapestIOZone(false);
+    //   FinishCheapestIOZone(false);
+    // }
+    // s = AllocateEmptyZone(&allocated_zone);
+    // // printf("allocateiozone-allocate emptyzone!!\n");
+    // if (allocated_zone == nullptr) {
+    //   // printf("allocateiozone-allocate emptyzone - putactive!!\n");
+    //   PutActiveIOZoneToken();
+    // }
   }
 
   if (allocated_zone != nullptr) {
@@ -1850,109 +1893,165 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     PutOpenIOZoneToken();  // 오류 발생 시 토큰 반환
     return s;
   }
-  // default
-  if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
-    bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
+  // defauLt
 
-    /* If we did not get a token, try to use the best match, even if the life
-     * time diff not good but a better choice than to finish an existing zone
-     * and open a new one
-     */
-    // 이미 할당된 영역이 없으면 새 영역을 할당
-    if (allocated_zone != nullptr) {
-      if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
-        Debug(logger_,
-              "Allocator: avoided a finish by relaxing lifetime diff "
-              "requirement\n");
-      } else {
-        s = allocated_zone->CheckRelease();
-        if (!s.ok()) {
-          PutOpenIOZoneToken();
-          if (got_token) PutActiveIOZoneToken();
-          return s;
-        }
-        allocated_zone = nullptr;
-      }
+  if (allocated_zone != nullptr) {
+    if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
+      allocated_zone->CheckRelease();
+      allocated_zone = nullptr;
     }
+  }
 
-    /* If we haven't found an open zone to fill, open a new zone */
-    if (allocated_zone == nullptr) {
-      /* We have to make sure we can open an empty zone */
-      // while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
-      //   printf("allocateiozone - finish!!\n");
-      //   s = FinishCheapestIOZone(false);
-      //   if (!s.ok()) {
-      //     PutOpenIOZoneToken();
-      //     return s;
-      //   }
-      // }
-      if (!disable_finish_) {
-        if (!GetActiveIOZoneTokenIfAvailable()) {
-          // s = FinishCheapestIOZone(false);
-          s = FinishCheapestIOZone(true);
-          if (!s.ok()) {
-            PutOpenIOZoneToken();
-            return s;
-          }
+  if (allocated_zone == nullptr) {
+    if (disable_finish_) {
+      if (GetActiveIOZoneTokenIfAvailable()) {
+        AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+        if (allocated_zone != nullptr) {
+          allocated_zone->lifetime_ = file_lifetime;
+          goto end;
         }
-
-        s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
-      } else {
-        s = AllocateAllInvalidZone(&allocated_zone);
-        if (s.ok() && allocated_zone != nullptr) {
-          printf("allocateiozone - allocateallinvalidzone!!\n");
-        }
-      }
-      //
-      if (s.ok() && allocated_zone == nullptr) {
-        s = GetAnyLargestRemainingZone(&allocated_zone);
-      }
-      //
-      if (!s.ok()) {
         PutActiveIOZoneToken();
-        PutOpenIOZoneToken();
-        return s;
       }
-
+      AllocateAllInvalidZone(&allocated_zone);
+      if (allocated_zone) {
+        goto end;
+      }
+      GetAnyLargestRemainingZone(&allocated_zone);
+      if (allocated_zone) {
+        goto end;
+      }
+      PutOpenIOZoneToken();
+      return IOStatus::OK();
+    } else {
+      while (true) {
+        if (GetActiveIOZoneTokenIfAvailable()) {
+          break;
+        }
+        if (FinishCheapestIOZone(false)) {
+          break;
+        }
+      }
+      // 무조건 active 있음
+      s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
       if (allocated_zone != nullptr) {
-        // assert(allocated_zone->IsBusy());
-        allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
-        new_zone = true;
-      } else {
-        PutActiveIOZoneToken();
+        // PutActiveIOZoneToken();
+        allocated_zone->lifetime_ = file_lifetime;
+        goto end;
       }
+      PutActiveIOZoneToken();
+
+      AllocateAllInvalidZone(&allocated_zone);
+      if (allocated_zone) {
+        goto end;
+      }
+      GetAnyLargestRemainingZone(&allocated_zone);
+      if (allocated_zone) {
+        goto end;
+      }
+      PutOpenIOZoneToken();
+      return IOStatus::OK();
     }
   }
 
-  // if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
-  //   s = AllocateEmptyZone(&allocated_zone);
-  //   if (allocated_zone != nullptr && s.ok()) {
-  //     // assert(allocated_zone->IsBusy());
-  //     allocated_zone->lifetime_ = file_lifetime;
-  //     new_zone = true;
-  //   } else {
-  //     PutActiveIOZoneToken();
+  /////////////////////////////////////
+  // // if (best_diff >= LIFETIME_DIFF_COULD_BE_WORSE) {
+  //   bool got_token = GetActiveIOZoneTokenIfAvailable();  // 새로운 영역 열기
+
+  //   /* If we did not get a token, try to use the best match, even if the life
+  //    * time diff not good but a better choice than to finish an existing zone
+  //    * and open a new one
+  //    */
+  //   // 이미 할당된 영역이 없으면 새 영역을 할당
+  //   if (allocated_zone != nullptr) {
+  //     if (!got_token && best_diff == LIFETIME_DIFF_COULD_BE_WORSE) {
+  //       Debug(logger_,
+  //             "Allocator: avoided a finish by relaxing lifetime diff "
+  //             "requirement\n");
+  //     } else {
+  //       // s = allocated_zone->CheckRelease();
+  //       // if (!s.ok()) {
+  //       //   PutOpenIOZoneToken();
+  //       //   if (got_token) PutActiveIOZoneToken();
+  //       //   return s;
+  //       // }
+  //       allocated_zone = nullptr;
+  //     }
   //   }
-  // }
-  // if (s.ok() && allocated_zone == nullptr) {
-  //   s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
-  //   if (allocated_zone) {
-  //     allocated_zone->lifetime_ = file_lifetime;
+  //   if (allocated_zone == nullptr) {
+  //     /* We have to make sure we can open an empty zone */
+  //     // while (!got_token && !GetActiveIOZoneTokenIfAvailable()) {
+  //     //   printf("allocateiozone - finish!!\n");
+  //     //   s = FinishCheapestIOZone(false);
+  //     //   if (!s.ok()) {
+  //     //     PutOpenIOZoneToken();
+  //     //     return s;
+  //     //   }
+  //     // }
+  //     if (!disable_finish_) {
+  //       if (!GetActiveIOZoneTokenIfAvailable()) {
+  //         s = FinishCheapestIOZone(false);
+  //         // s = FinishCheapestIOZone(true);
+  //         if (!s.ok()) {
+  //           PutOpenIOZoneToken();
+  //           return s;
+  //         }
+  //       }
+
+  //       s = AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
+  //       if ()
+  //         if allocate
+  //           zone fail, put active token
+  //     } else {
+  //       s = AllocateAllInvalidZone(&allocated_zone);
+  //       if (s.ok() && allocated_zone != nullptr) {
+  //         printf("allocateiozone - allocateallinvalidzone!!\n");
+  //       }
+  //     }
+  //     //
+  //     if (s.ok() && allocated_zone == nullptr) {
+  //       s = GetAnyLargestRemainingZone(&allocated_zone);
+  //     }
+
+  //     if (allocated_zone != nullptr) {
+  //       // assert(allocated_zone->IsBusy());
+  //       // allocated_zone->lifetime_ = file_lifetime;  // 새 영역에 수명 설정
+  //       // new_zone = true;
+  //     } else {
+  //       PutActiveIOZoneToken();
+  //     }
   //   }
   // }
 
-  if (allocated_zone) {
-    Debug(logger_,
-          "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt: %d\n",
-          new_zone, allocated_zone->start_, allocated_zone->wp_,
-          allocated_zone->lifetime_, file_lifetime);
-  } else {
-    PutOpenIOZoneToken();
-  }
+  // // if (allocated_zone == nullptr && GetActiveIOZoneTokenIfAvailable()) {
+  // //   s = AllocateEmptyZone(&allocated_zone);
+  // //   if (allocated_zone != nullptr && s.ok()) {
+  // //     // assert(allocated_zone->IsBusy());
+  // //     allocated_zone->lifetime_ = file_lifetime;
+  // //     new_zone = true;
+  // //   } else {
+  // //     PutActiveIOZoneToken();
+  // //   }
+  // // }
+  // // if (s.ok() && allocated_zone == nullptr) {
+  // //   s = GetAnyLargestRemainingZone(&allocated_zone, min_capacity);
+  // //   if (allocated_zone) {
+  // //     allocated_zone->lifetime_ = file_lifetime;
+  // //   }
+  // // }
 
-  if (io_type != IOType::kWAL) {
-    LogZoneStats();
-  }
+  // if (allocated_zone) {
+  //   Debug(logger_,
+  //         "Allocating zone(new=%d) start: 0x%lx wp: 0x%lx lt: %d file lt:
+  //         %d\n", new_zone, allocated_zone->start_, allocated_zone->wp_,
+  //         allocated_zone->lifetime_, file_lifetime);
+  // } else {
+  //   PutOpenIOZoneToken();
+  // }
+
+  // if (io_type != IOType::kWAL) {
+  //   LogZoneStats();
+  // }
+  /////////////////////////////////////////////////////
 
 end:
   // printf("allocateiozone - end!!\n");
@@ -2714,6 +2813,7 @@ IOStatus ZonedBlockDevice::AllocateAllInvalidZone(Zone **zone_out) {
       z->Release();
       continue;
     }
+
     allocated_zone = z;
     break;
   }
