@@ -1203,7 +1203,7 @@ IOStatus ZonedBlockDevice::GetAnyLargestRemainingZone(Zone **zone_out,
           return s;
         }
       }
-      no empty zone allocated_zone = z;
+      allocated_zone = z;
       min_capacity = z->capacity_;
       continue;
     }
@@ -1805,7 +1805,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     uint64_t predicted_size, Zone **out_zone, uint64_t min_capacity) {
   Zone *allocated_zone = nullptr;
   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;  // 수명차이
-  int new_zone = 0;  // 새로운 영역인지 여부
+  // int new_zone = 0;  // 새로운 영역인지 여부
   IOStatus s;
 
   // (void)(input_fno);
