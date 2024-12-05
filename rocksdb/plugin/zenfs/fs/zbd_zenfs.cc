@@ -370,6 +370,9 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   for (uint64_t f = 0; f <= 100; f++) {
     CalculateResetThreshold(f);
   }
+  for (uint64_t f = 0; f <= 100; f++) {
+    CalculateFinishThreshold(f);
+  }
   printf("active io zones :  %lu\n", active_io_zones_.load());
   printf("io_zones.size() : %ld\n", io_zones.size());
   printf("zone sz %lu\n", zone_sz_);
@@ -776,6 +779,44 @@ inline uint64_t ZonedBlockDevice::LazyExponential(uint64_t sz, uint64_t fr,
   return sz - (b * sz / 100);
 }
 
+
+void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
+  uint64_t rt = 0;
+  uint64_t max_capacity = io_zones[0]->max_capacity_;
+  // uint64_t free_percent = cur_free_percent_;
+  switch (finish_scheme_) {
+    case FINISH_ENABLE:
+      rt = max_capacity;
+      break;
+    case FINISH_DISABLE:
+      rt = 0;
+      break;
+    case FINISH_PROPOSAL:  // Constant scale
+      rt = max_capacity - (max_capacity * free_percent) / 100;
+      break;
+    // case kLazy_Log:
+    //   rt = LazyLog(max_capacity, free_percent, tuning_point_);
+    //   break;
+    // case kNoRuntimeLinear:
+    // case kLazy_Linear:
+    //   rt = LazyLinear(max_capacity, free_percent, tuning_point_);
+    //   break;
+    // case kCustom:
+    //   rt = Custom(max_capacity, free_percent, tuning_point_);
+    //   break;
+    // case kLogLinear:
+    //   rt = LogLinear(max_capacity, free_percent, tuning_point_);
+    //   break;
+    // case kLazyExponential:
+    //   rt = LazyExponential(max_capacity, free_percent, tuning_point_);
+      // break;
+    default:
+      break;
+  }
+  // finish_threshold_ = rt;
+  finish_threshold_arr_[free_percent] = rt;
+}
+
 void ZonedBlockDevice::CalculateResetThreshold(uint64_t free_percent) {
   uint64_t rt = 0;
   uint64_t max_capacity = io_zones[0]->max_capacity_;
@@ -1118,9 +1159,76 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
 }
 
 bool ZonedBlockDevice::FinishProposal(bool put_token){
-  // (bool)(put_token);
+  IOStatus s;
+  Zone *finish_victim = nullptr;
 
-  return put_token;
+  for (const auto z : io_zones) {
+    if (z->Acquire()) {
+      if (z->IsEmpty() || z->IsFull()) {
+        s = z->CheckRelease();
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
+        continue;
+      }
+      if (finish_victim == nullptr) {
+        finish_victim = z;
+        continue;
+      }
+      if (finish_victim->capacity_ > z->capacity_) {
+        s = finish_victim->CheckRelease();
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
+        finish_victim = z;
+      } else {
+        s = z->CheckRelease();
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
+      }
+    }
+  }
+
+  // If all non-busy zones are empty or full, we should return success.
+  if (finish_victim == nullptr) {
+    Info(logger_, "All non-busy zones are empty or full, skip.");
+    // return IOStatus::OK();
+    return false;
+  }
+
+  uint64_t cp = finish_victim->GetCapacityLeft();
+  if(cp>finish_threshold_[cur_free_percent_]){
+    finish_victim->CheckRelease();
+    return false;
+  }
+  // printf("1 finish_victim->capacity_: %lu\n",
+  //        finish_victim->capacity_ / (1 << 20));
+  s = finish_victim->Finish();
+  IOStatus release_status = finish_victim->CheckRelease();
+
+  // if (s.ok()) {
+  //   PutActiveIOZoneToken();
+  // }
+  if (put_token) {
+    PutActiveIOZoneToken();
+  }
+
+  // if (!release_status.ok()) {
+  //   return release_status;
+  // }
+  // uint64_t cp = finish_victim->capacity_;
+
+  // printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
+  // printf("After finish_victim->capacity_: %lu\n",
+  //  finish_victim->capacity_ / (1 << 20));
+  // finish_victim->is_finished_ = true;
+  finished_wasted_wp_.fetch_add(cp);
+  finish_count_.fetch_add(1);
+  // printf("Zone Finish!!! \n");
+  // printf(
+  //     "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
+  //     "%ld\n",
+  //     finish_victim->start_, cp, open_io_zones_.load());
+
+  return true;
 }
 
 bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {

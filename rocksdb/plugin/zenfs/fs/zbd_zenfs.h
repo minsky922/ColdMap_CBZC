@@ -259,6 +259,8 @@ class ZonedBlockDevice {
   std::atomic<bool> force_zc_should_triggered_{false};
   uint64_t reset_threshold_ = 0;
   uint64_t reset_threshold_arr_[101];
+
+  uint64_t finish_threshold_arr_[101];
   ///
   std::atomic<long> active_io_zones_;
   std::atomic<long> open_io_zones_;
@@ -363,6 +365,7 @@ class ZonedBlockDevice {
   void EncodeJsonZone(std::ostream &json_stream,
                       const std::vector<Zone *> zones);
   void CalculateResetThreshold(uint64_t free_percent);
+  void CalculateFinishThreshold(uint64_t free_percent);
   uint32_t reset_scheme_;
   // bool reset_at_foreground_;
   uint64_t allocation_scheme_;
