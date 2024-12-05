@@ -1118,8 +1118,9 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
 }
 
 bool ZonedBlockDevice::FinishProposal(bool put_token){
-  (bool)(put_token);
-  return true;
+  // (bool)(put_token);
+
+  return put_token;
 }
 
 bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
