@@ -305,7 +305,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       immutable_db_options_.compaction_scheme,
       immutable_db_options_.input_aware_scheme, immutable_db_options_.zc_scheme,
       immutable_db_options_.alpha_value, immutable_db_options_.sigma_value,
-      immutable_db_options_.disable_finish);
+      immutable_db_options_.finish_scheme);
   // fs_->reset_scheme_= immutable_db_options_.reset_scheme;
   std::vector<uint64_t> other_options;
   other_options.clear();
@@ -318,7 +318,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       immutable_db_options_.tuning_point, immutable_db_options_.zc_kicks,
       immutable_db_options_.until, immutable_db_options_.allocation_scheme,
       immutable_db_options_.zc_scheme, immutable_db_options_.alpha_value,
-      immutable_db_options_.sigma_value, immutable_db_options_.disable_finish,
+      immutable_db_options_.sigma_value, immutable_db_options_.finish_scheme,
       other_options);
 }
 

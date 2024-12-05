@@ -1458,11 +1458,11 @@ class FileSystemWrapper : public FileSystem {
   void SetResetScheme(uint32_t r, uint32_t partial_reset_scheme, uint64_t T,
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
-                      double sigma_value, uint64_t disable_finish,
+                      double sigma_value, uint64_t finish_scheme,
                       std::vector<uint64_t>& other_options) {
     target_->SetResetScheme(r, partial_reset_scheme, T, zc, until,
                             allocation_scheme, zc_scheme, alpha_value,
-                            sigma_value, disable_finish, other_options);
+                            sigma_value, finish_scheme, other_options);
   }
   // void GiveZenFStoLSMTreeHint(
   //     std::vector<uint64_t>& compaction_inputs_input_level_fno,

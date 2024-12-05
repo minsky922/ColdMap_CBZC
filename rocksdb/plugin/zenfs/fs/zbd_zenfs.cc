@@ -1456,7 +1456,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (disable_finish_) {
+    if (finish_scheme_) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(out_zone);  // 빈 영역 할당
         if (*out_zone != nullptr) {
@@ -1500,8 +1500,8 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
     }
 
-    // std::cout << "disable_finish_: " << disable_finish_ << std::endl;
-    // if (!disable_finish_) {
+    // std::cout << "finish_scheme_: " << finish_scheme_ << std::endl;
+    // if (!finish_scheme_) {
     //   if (!GetActiveIOZoneTokenIfAvailable()) {
     //     printf("Takemigrate - finish!!\n");
     //     s = FinishCheapestIOZone(false);
@@ -1906,7 +1906,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
 
   if (allocated_zone == nullptr) {
-    if (disable_finish_) {
+    if (finish_scheme_ == 1) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
         if (allocated_zone != nullptr) {
@@ -1925,7 +1925,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
       PutOpenIOZoneToken();
       return IOStatus::OK();
-    } else {
+    } else if(finish_scheme_==0){
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -1990,7 +1990,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   //     //     return s;
   //     //   }
   //     // }
-  //     if (!disable_finish_) {
+  //     if (!finish_scheme_) {
   //       if (!GetActiveIOZoneTokenIfAvailable()) {
   //         s = FinishCheapestIOZone(false);
   //         // s = FinishCheapestIOZone(true);
