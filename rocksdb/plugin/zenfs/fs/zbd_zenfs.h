@@ -101,6 +101,11 @@ class ZoneFile;
 
 #define IS_BIG_SSTABLE(file_size) \
   (bool)((uint64_t)(file_size) > (uint64_t)(63 << 20))
+
+
+#define FINISH_ENABLE 0
+#define FINISH_DISABLE 1
+#define FINISH_PROPOSAL 2
 enum WaitForOpenZoneClass {
   WAL = 0,
   ZC = 1,

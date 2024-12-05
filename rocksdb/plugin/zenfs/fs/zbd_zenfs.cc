@@ -1906,7 +1906,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
 
   if (allocated_zone == nullptr) {
-    if (finish_scheme_ == 1) {
+    if (finish_scheme_ == FINISH_DISABLE) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
         if (allocated_zone != nullptr) {
@@ -1925,7 +1925,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
       PutOpenIOZoneToken();
       return IOStatus::OK();
-    } else if(finish_scheme_==0){
+    } else if(finish_scheme_==FINISH_ENABLE){
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -1953,6 +1953,8 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
       PutOpenIOZoneToken();
       return IOStatus::OK();
+    }else{ // finish_scheme_ == FINISH_PROPOSAL
+
     }
   }
 
