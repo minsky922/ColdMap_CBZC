@@ -1972,7 +1972,9 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           goto end;
         }
         allocated_zone->Release();
-      }else{
+        allocated_zone=nullptr;
+      }
+      // {
         AllocateAllInvalidZone(&allocated_zone);
         if (allocated_zone) {
           goto end;
@@ -1983,7 +1985,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         }
         PutOpenIOZoneToken();
         return IOStatus::OK();
-      }
+      // }
 
 
     }
