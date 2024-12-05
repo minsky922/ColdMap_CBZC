@@ -1195,8 +1195,8 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   }
 
   uint64_t cp = finish_victim->GetCapacityLeft();
-  printf("cp %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
-    cp>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
+  // printf("cp %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
+  //   cp>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
   if(cp>finish_threshold_arr_[cur_free_percent_]){
 
     finish_victim->CheckRelease();
