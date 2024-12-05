@@ -821,7 +821,7 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
       break;
   }
   // finish_threshold_ = rt;
-  printf("%lu : %lu",free_percent,rt);
+  printf("%lu : %lu\n",free_percent,rt);
   finish_threshold_arr_[free_percent] = rt;
 }
 
