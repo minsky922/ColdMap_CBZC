@@ -811,6 +811,7 @@ class ZonedBlockDevice {
   void WaitForOpenIOZoneToken(bool prioritized);
   IOStatus ApplyFinishThreshold();
   // IOStatus FinishCheapestIOZone(bool put_token = true);
+  bool FinishProposal(bool put_token);
   bool FinishCheapestIOZone(bool put_token = true);
   IOStatus GetBestOpenZoneMatch(Env::WriteLifeTimeHint file_lifetime,
                                 unsigned int *best_diff_out, Zone **zone_out,

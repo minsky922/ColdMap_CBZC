@@ -1117,6 +1117,10 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
   return IOStatus::OK();
 }
 
+bool ZonedBlockDevice::FinishProposal(bool put_token){
+  return true;
+}
+
 bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   IOStatus s;
   Zone *finish_victim = nullptr;
@@ -1906,6 +1910,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
 
   if (allocated_zone == nullptr) {
+
     if (finish_scheme_ == FINISH_DISABLE) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
@@ -1915,6 +1920,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         }
         PutActiveIOZoneToken();
       }
+      
       AllocateAllInvalidZone(&allocated_zone);
       if (allocated_zone) {
         goto end;
@@ -1924,7 +1930,9 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         goto end;
       }
       PutOpenIOZoneToken();
+
       return IOStatus::OK();
+
     } else if(finish_scheme_==FINISH_ENABLE){
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
