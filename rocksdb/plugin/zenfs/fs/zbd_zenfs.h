@@ -743,6 +743,9 @@ class ZonedBlockDevice {
     for (uint64_t f = 0; f <= 100; f++) {
       CalculateResetThreshold(f);
     }
+    for (uint64_t f = 0; f <= 100; f++) {
+      CalculateFinishThreshold(f);
+    }
   }
   void SetDBPtr(DB *db_ptr) { db_ptr_ = db_ptr; }
 
