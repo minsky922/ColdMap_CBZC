@@ -370,9 +370,9 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   for (uint64_t f = 0; f <= 100; f++) {
     CalculateResetThreshold(f);
   }
-  for (uint64_t f = 0; f <= 100; f++) {
-    CalculateFinishThreshold(f);
-  }
+  // for (uint64_t f = 0; f <= 100; f++) {
+  //   CalculateFinishThreshold(f);
+  // }
   printf("active io zones :  %lu\n", active_io_zones_.load());
   printf("io_zones.size() : %ld\n", io_zones.size());
   printf("zone sz %lu\n", zone_sz_);
@@ -1205,7 +1205,7 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   uint64_t cp = finish_victim->GetCapacityLeft();
   // printf("cp %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
   //   cp>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
-  if(cp>finish_threshold_arr_[cur_free_percent_]){
+  if(cp<finish_threshold_arr_[cur_free_percent_]){
 
     finish_victim->CheckRelease();
     return false;
