@@ -1118,6 +1118,7 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
 }
 
 bool ZonedBlockDevice::FinishProposal(bool put_token){
+  (boo)(put_token);
   return true;
 }
 
@@ -1962,6 +1963,28 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       PutOpenIOZoneToken();
       return IOStatus::OK();
     }else{ // finish_scheme_ == FINISH_PROPOSAL
+      AllocateEmptyZone(&allocated_zone);
+      if(allocated_zone!=nullptr){
+        if(GetActiveIOZoneTokenIfAvailable()){
+          goto end;
+        }
+        if(FinishProposal(false)){
+          goto end;
+        }
+        allocated_zone->Release();
+      }else{
+        AllocateAllInvalidZone(&allocated_zone);
+        if (allocated_zone) {
+          goto end;
+        }
+        GetAnyLargestRemainingZone(&allocated_zone);
+        if (allocated_zone) {
+          goto end;
+        }
+        PutOpenIOZoneToken();
+        return IOStatus::OK();
+      }
+
 
     }
   }
