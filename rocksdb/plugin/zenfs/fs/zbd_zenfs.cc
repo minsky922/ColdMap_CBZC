@@ -792,7 +792,14 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
       rt = 0;
       break;
     case FINISH_PROPOSAL:  // Constant scale
+    // if very high free space ratio, no finish
+    // medium : do finish
+    // if very low free space ratio, no finish
       rt = max_capacity - (max_capacity * free_percent) / 100;
+      if(free_percent>50){
+        rt=(max_capacity-rt);
+      }
+      
       break;
     // case kLazy_Log:
     //   rt = LazyLog(max_capacity, free_percent, tuning_point_);
@@ -814,6 +821,7 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
       break;
   }
   // finish_threshold_ = rt;
+  printf("%lu : %lu",free_percent,rt);
   finish_threshold_arr_[free_percent] = rt;
 }
 
