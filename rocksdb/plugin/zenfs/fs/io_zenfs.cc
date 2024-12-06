@@ -505,7 +505,7 @@ void ZoneFile::PushExtent() {
 }
 
 IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
-  Zone* zone;
+  Zone* zone=nullptr;
   // IOStatus s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
   int try_n = 0;
   // (void)(min_capacity);  // 활성화할땐 지우기
