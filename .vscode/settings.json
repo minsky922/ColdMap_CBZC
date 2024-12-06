@@ -72,6 +72,10 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "__split_buffer": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__tree": "cpp",
+        "ios": "cpp"
     }
 }

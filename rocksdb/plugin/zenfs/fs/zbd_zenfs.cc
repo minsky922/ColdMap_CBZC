@@ -347,7 +347,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
                                       std::to_string(newZone->GetZoneNr()));
         }
         io_zones.push_back(newZone);
-        printf("io zone at %ld\n", i);
+        // printf("io zone at %ld\n", i);
 
         if (zbd_be_->ZoneIsActive(zone_rep, i)) {
           printf("ZoneIsActive i : %ld\n", i);
@@ -369,9 +369,9 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // uint64_t device_free_space = (ZENFS_IO_ZONES) * (ZONE_SIZE);
   // printf("device free space : %ld\n", device_free_space);
   // device_free_space_.store(device_free_space);
-  for (uint64_t f = 0; f <= 100; f++) {
-    CalculateResetThreshold(f);
-  }
+  // for (uint64_t f = 0; f <= 100; f++) {
+  //   CalculateResetThreshold(f);
+  // }
   // for (uint64_t f = 0; f <= 100; f++) {
   //   CalculateFinishThreshold(f);
   // }
@@ -2035,6 +2035,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   if (allocated_zone == nullptr) {
 
     if (finish_scheme_ == FINISH_DISABLE) {
+      printf("FINISH_DISABLE\n");
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
         if (allocated_zone != nullptr) {
@@ -2057,6 +2058,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       return IOStatus::OK();
 
     } else if(finish_scheme_==FINISH_ENABLE){
+      printf("FINISH_ENABLE\n");
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -2085,6 +2087,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       PutOpenIOZoneToken();
       return IOStatus::OK();
     }else{ // finish_scheme_ == FINISH_PROPOSAL
+    printf("FINISH_PROPOSAL\n");
       AllocateEmptyZone(&allocated_zone);
       if(allocated_zone!=nullptr){
         if(GetActiveIOZoneTokenIfAvailable()){
