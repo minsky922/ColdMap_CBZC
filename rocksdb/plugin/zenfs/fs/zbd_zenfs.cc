@@ -279,8 +279,8 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   else
     max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
-  max_nr_active_io_zones_=8;
-  max_nr_open_io_zones_=8;
+  max_nr_active_io_zones_=10;
+  max_nr_open_io_zones_=10;
   // if (max_nr_active_zones == 0) {
   //   max_nr_active_zones = 13;
   //   max_nr_active_io_zones_ = 14 - 1;
@@ -1982,16 +1982,16 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       return s;
     }
   } else if (is_sst && level >= 0 && allocation_scheme_ == CAZA_ADV) {
-    // s = AllocateCompactionAwaredZoneV2(smallest, largest, level,
-    // file_lifetime,
-    //                                    predicted_size, &allocated_zone,
-    //                                    min_capacity);
+    s = AllocateCompactionAwaredZoneV2(smallest, largest, level,
+    file_lifetime,
+                                       predicted_size, &allocated_zone,
+                                       min_capacity);
     // // printf("allocateiozone-AllocateCompactionAwaredZoneV2\n");
-    // if (!s.ok()) {
-    //   // printf("allocateiozone-putopen!!\n");
-    //   PutOpenIOZoneToken();
-    //   return s;
-    // }
+    if (!s.ok()) {
+      // printf("allocateiozone-putopen!!\n");
+      PutOpenIOZoneToken();
+      return s;
+    }
 
     // if (allocated_zone != nullptr) {
     //   // printf("allocateiozone-go to end\n");
@@ -2584,6 +2584,10 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
       }
 
       if (!target_zone->Acquire()) {
+        continue;
+      }
+      if(target_zone->IsEmpty()){
+        target_zone->Release();
         continue;
       }
 

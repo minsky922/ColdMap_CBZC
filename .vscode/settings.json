@@ -71,6 +71,7 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "__split_buffer": "cpp"
+        "__split_buffer": "cpp",
+        "filesystem": "cpp"
     }
 }
