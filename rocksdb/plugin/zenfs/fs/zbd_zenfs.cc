@@ -1235,7 +1235,7 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   // printf("After finish_victim->capacity_: %lu\n",
   //  finish_victim->capacity_ / (1 << 20));
   // finish_victim->is_finished_ = true;
-  printf("FINISH OK, %lu \n",cp>>20);
+  // printf("FINISH OK, %lu \n",cp>>20);
   finished_wasted_wp_.fetch_add(cp);
   finish_count_.fetch_add(1);
   // printf("Zone Finish!!! \n");
@@ -2096,8 +2096,10 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         if(GetActiveIOZoneTokenIfAvailable()){
           goto end;
         }
-        if(FinishProposal(false)){
-          goto end;
+        if(level>1){
+          if(FinishProposal(false)){
+            goto end;
+          }
         }
         allocated_zone->Release();
         allocated_zone=nullptr;
