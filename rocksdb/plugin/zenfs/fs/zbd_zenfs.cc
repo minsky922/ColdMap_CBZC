@@ -1204,11 +1204,13 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
     return false;
   }
 
-  uint64_t cp = finish_victim->GetCapacityLeft();
-  printf("cp %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
-    cp>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
-  if(cp<finish_threshold_arr_[cur_free_percent_]){
-    printf("NO FINISH\n");
+  uint64_t cp = finish_victim->capacity_;
+  uint64_t written= finish_victim->wp_-finish_victim->start_;
+  // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
+  //   written>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
+
+  if(written<finish_threshold_arr_[cur_free_percent_]){
+    // printf("NO FINISH\n");
     finish_victim->CheckRelease();
     return false;
   }
