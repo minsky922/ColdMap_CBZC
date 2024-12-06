@@ -978,9 +978,9 @@ void ZenFS::ZoneCleaning(bool forced) {
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
   }
 
-  std::cout
-      << "-------------------------------------------------------------------"
-      << std::endl;
+  // std::cout
+  //     << "-------------------------------------------------------------------"
+  //     << std::endl;
   // for (const auto& candidate : victim_candidate) {
   //   std::cout << "cost-benefit score: " << candidate.score
   //             << ", zone start: " << candidate.zone_start
@@ -1023,9 +1023,9 @@ void ZenFS::ZoneCleaning(bool forced) {
     }
   }
 
-  std::cout
-      << "-------------------------------------------------------------------"
-      << std::endl;
+  // std::cout
+  //     << "-------------------------------------------------------------------"
+  //     << std::endl;
 
   // uint64_t threshold = 0;
   // uint64_t reclaimed_zone_n = 1;
