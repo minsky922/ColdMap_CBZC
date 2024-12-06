@@ -778,8 +778,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
       if (zc_scheme == GREEDY) {
         // printf("GREEDY!!!!\n");
-        victim_candidate.push_back({0.0,garbage_percent_approx,
-        zone.start});
+        victim_candidate.push_back({0.0,
+        zone.start,garbage_percent_approx});
       } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
       // if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
