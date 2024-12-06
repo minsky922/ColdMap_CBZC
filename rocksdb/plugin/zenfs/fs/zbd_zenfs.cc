@@ -1205,10 +1205,10 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   }
 
   uint64_t cp = finish_victim->GetCapacityLeft();
-  // printf("cp %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
-  //   cp>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
+  printf("cp %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
+    cp>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
   if(cp<finish_threshold_arr_[cur_free_percent_]){
-
+    printf("NO FINISH\n");
     finish_victim->CheckRelease();
     return false;
   }
@@ -1233,6 +1233,7 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   // printf("After finish_victim->capacity_: %lu\n",
   //  finish_victim->capacity_ / (1 << 20));
   // finish_victim->is_finished_ = true;
+  printf("FINISH OK, %lu \n",cp>>20);
   finished_wasted_wp_.fetch_add(cp);
   finish_count_.fetch_add(1);
   // printf("Zone Finish!!! \n");
@@ -2035,7 +2036,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   if (allocated_zone == nullptr) {
 
     if (finish_scheme_ == FINISH_DISABLE) {
-      printf("FINISH_DISABLE\n");
+      // printf("FINISH_DISABLE\n");
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(&allocated_zone);  // 빈 영역 할당
         if (allocated_zone != nullptr) {
@@ -2058,7 +2059,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       return IOStatus::OK();
 
     } else if(finish_scheme_==FINISH_ENABLE){
-      printf("FINISH_ENABLE\n");
+      // printf("FINISH_ENABLE\n");
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -2087,7 +2088,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       PutOpenIOZoneToken();
       return IOStatus::OK();
     }else{ // finish_scheme_ == FINISH_PROPOSAL
-    printf("FINISH_PROPOSAL\n");
+    // printf("FINISH_PROPOSAL\n");
       AllocateEmptyZone(&allocated_zone);
       if(allocated_zone!=nullptr){
         if(GetActiveIOZoneTokenIfAvailable()){
