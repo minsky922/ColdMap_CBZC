@@ -2731,9 +2731,9 @@ IOStatus ZenFS::MigrateExtents(
   for (const auto& it : file_extents) {
     s = MigrateFileExtents(it.first, it.second);
     if (!s.ok()) break;              // 마이 그레이션 실패하면 break
+  }
     s = zbd_->ResetUnusedIOZones();  // 사용되지 않는 IO 존을 재설정
     if (!s.ok()) break;  // 재설정이 실패하면 루프를 중단합니다
-  }
   return s;
 }
 /* 주어진 파일의 익스텐트를 새로운 존으로 마이그레이션하는 작업을 수행 */
