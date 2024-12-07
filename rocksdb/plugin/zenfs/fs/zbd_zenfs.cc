@@ -1751,6 +1751,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         break;
       }
       PutActiveIOZoneToken();
+      
       AllocateAllInvalidZone(out_zone);
       if (*out_zone) {
         break;
