@@ -805,9 +805,9 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
     // medium : do finish
     // if very low free space ratio, no finish
       rt = max_capacity - (max_capacity * free_percent) / 100;
-      // if(free_percent>50){
-      //   rt=(max_capacity-rt);
-      // }
+      if(free_percent>50){
+        rt=(max_capacity-rt);
+      }
       
       break;
     // case kLazy_Log:
@@ -1751,7 +1751,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         break;
       }
       PutActiveIOZoneToken();
-      
+
       AllocateAllInvalidZone(out_zone);
       if (*out_zone) {
         break;
