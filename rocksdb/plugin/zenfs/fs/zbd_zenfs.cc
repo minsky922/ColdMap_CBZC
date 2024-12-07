@@ -799,9 +799,9 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
     // medium : do finish
     // if very low free space ratio, no finish
       rt = max_capacity - (max_capacity * free_percent) / 100;
-      if(free_percent>50){
-        rt=(max_capacity-rt);
-      }
+      // if(free_percent>50){
+      //   rt=(max_capacity-rt);
+      // }
       
       break;
     // case kLazy_Log:
@@ -1172,7 +1172,7 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
 bool ZonedBlockDevice::FinishProposal(bool put_token){
   IOStatus s;
   Zone *finish_victim = nullptr;
-  // uint64_t finish_threshold_now=finish_threshold_arr_[cur_free_percent_];
+  uint64_t finish_threshold_now=finish_threshold_arr_[cur_free_percent_];
   // uint64_t finish_score;
   
   for (const auto z : io_zones) {
@@ -1183,10 +1183,10 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
         if (!s.ok()) return false;
         continue;
       }
-      // if((z->wp_-z->start_ )<finish_threshold_now){
-      //   z->Release();
-      //   continue;
-      // }
+      if((z->wp_-z->start_ )<finish_threshold_now){
+        z->Release();
+        continue;
+      }
 
       if (finish_victim == nullptr) {
         finish_victim = z;
