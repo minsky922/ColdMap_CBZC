@@ -609,17 +609,23 @@ unsigned int GetLifeTimeDiff(Env::WriteLifeTimeHint zone_lifetime,
 
   if ((file_lifetime == Env::WLTH_NOT_SET) ||
       (file_lifetime == Env::WLTH_NONE)) {
+
+    
     if (file_lifetime == zone_lifetime) {
       return 0;
     } else {
       return LIFETIME_DIFF_NOT_GOOD;
     }
+
+
   }
 
-  if (zone_lifetime > file_lifetime) return zone_lifetime - file_lifetime;
-  if (zone_lifetime == file_lifetime) return LIFETIME_DIFF_COULD_BE_WORSE;
-
+  // if (zone_lifetime > file_lifetime) return zone_lifetime - file_lifetime;
+  if (zone_lifetime == file_lifetime) return 0;
   return LIFETIME_DIFF_NOT_GOOD;
+  // else return file_lifetime-zone_lifetime;
+  // return LIFETIME_DIFF_NOT_GOOD;
+  // return zone_lifetime - file_lifetime;
 }
 
 IOStatus ZonedBlockDevice::AllocateMetaZone(Zone **out_meta_zone) {
@@ -1418,6 +1424,7 @@ IOStatus ZonedBlockDevice::GetAnyLargestRemainingZone(Zone **zone_out,
   return s;
 }
 
+
 IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
     Env::WriteLifeTimeHint file_lifetime, unsigned int *best_diff_out,
     Zone **zone_out, uint32_t min_capacity) {
@@ -1429,26 +1436,43 @@ IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
     if (z->Acquire()) {
       if ((z->used_capacity_ > 0) && !z->IsFull() &&
           z->capacity_ >= min_capacity) {
+            
+        
         unsigned int diff = GetLifeTimeDiff(z->lifetime_, file_lifetime);
-        if (diff <= best_diff) {
-          if (allocated_zone != nullptr) {
-            s = allocated_zone->CheckRelease();
-            if (!s.ok()) {
-              IOStatus s_ = z->CheckRelease();
-              if (!s_.ok()) return s_;
-              return s;
-            }
-          }
-          allocated_zone = z;
+
+        if(diff==0){
+
+          allocated_zone=z;
           best_diff = diff;
-        } else {
-          s = z->CheckRelease();
-          if (!s.ok()) return s;
+
+          break;
         }
-      } else {
-        s = z->CheckRelease();
-        if (!s.ok()) return s;
-      }
+        // else{
+          allocated_zone->Release();
+          continue;
+        // }
+
+        // if (diff < best_diff) {
+        //   if (allocated_zone != nullptr) {
+        //     s = allocated_zone->CheckRelease();
+        //     if (!s.ok()) {
+        //       IOStatus s_ = z->CheckRelease();
+        //       if (!s_.ok()) return s_;
+        //       return s;
+        //     }
+        //   }
+        //   allocated_zone = z;
+        //   best_diff = diff;
+        // } else {
+        //   s = z->CheckRelease();
+        //   if (!s.ok()) return s;
+        // }
+      } 
+      // else {
+
+      s = z->CheckRelease();
+      if (!s.ok()) return s;
+      // }
     }
   }
 
@@ -1457,6 +1481,46 @@ IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
 
   return IOStatus::OK();
 }
+
+// IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
+//     Env::WriteLifeTimeHint file_lifetime, unsigned int *best_diff_out,
+//     Zone **zone_out, uint32_t min_capacity) {
+//   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;
+//   Zone *allocated_zone = nullptr;
+//   IOStatus s;
+
+//   for (const auto z : io_zones) {
+//     if (z->Acquire()) {
+//       if ((z->used_capacity_ > 0) && !z->IsFull() &&
+//           z->capacity_ >= min_capacity) {
+//         unsigned int diff = GetLifeTimeDiff(z->lifetime_, file_lifetime);
+//         if (diff < best_diff) {
+//           if (allocated_zone != nullptr) {
+//             s = allocated_zone->CheckRelease();
+//             if (!s.ok()) {
+//               IOStatus s_ = z->CheckRelease();
+//               if (!s_.ok()) return s_;
+//               return s;
+//             }
+//           }
+//           allocated_zone = z;
+//           best_diff = diff;
+//         } else {
+//           s = z->CheckRelease();
+//           if (!s.ok()) return s;
+//         }
+//       } else {
+//         s = z->CheckRelease();
+//         if (!s.ok()) return s;
+//       }
+//     }
+//   }
+
+//   *best_diff_out = best_diff;
+//   *zone_out = allocated_zone;
+
+//   return IOStatus::OK();
+// }
 
 IOStatus ZonedBlockDevice::AllocateEmptyZone(Zone **zone_out) {
   IOStatus s;
