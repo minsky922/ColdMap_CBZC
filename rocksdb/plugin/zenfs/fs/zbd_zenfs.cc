@@ -1175,6 +1175,7 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
   return IOStatus::OK();
 }
 
+// get mininal valid data with upper threshold
 bool ZonedBlockDevice::FinishProposal(bool put_token){
   IOStatus s;
   Zone *finish_victim = nullptr;
@@ -1238,85 +1239,85 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   return true;
 }
 
-// bool ZonedBlockDevice::FinishProposal(bool put_token){
-//   IOStatus s;
-//   Zone *finish_victim = nullptr;
+bool ZonedBlockDevice::FinishProposal2(bool put_token){
+  IOStatus s;
+  Zone *finish_victim = nullptr;
 
-//   for (const auto z : io_zones) {
-//     if (z->Acquire()) {
-//       if (z->IsEmpty() || z->IsFull()) {
-//         s = z->CheckRelease();
-//         // if (!s.ok()) return s;
-//         if (!s.ok()) return false;
-//         continue;
-//       }
-//       if (finish_victim == nullptr) {
-//         finish_victim = z;
-//         continue;
-//       }
-//       if (finish_victim->capacity_ > z->capacity_) {
-//         s = finish_victim->CheckRelease();
-//         // if (!s.ok()) return s;
-//         if (!s.ok()) return false;
-//         finish_victim = z;
-//       } else {
-//         s = z->CheckRelease();
-//         // if (!s.ok()) return s;
-//         if (!s.ok()) return false;
-//       }
-//     }
-//   }
+  for (const auto z : io_zones) {
+    if (z->Acquire()) {
+      if (z->IsEmpty() || z->IsFull()) {
+        s = z->CheckRelease();
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
+        continue;
+      }
+      if (finish_victim == nullptr) {
+        finish_victim = z;
+        continue;
+      }
+      if (finish_victim->capacity_ > z->capacity_) {
+        s = finish_victim->CheckRelease();
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
+        finish_victim = z;
+      } else {
+        s = z->CheckRelease();
+        // if (!s.ok()) return s;
+        if (!s.ok()) return false;
+      }
+    }
+  }
 
-//   // If all non-busy zones are empty or full, we should return success.
-//   if (finish_victim == nullptr) {
-//     Info(logger_, "All non-busy zones are empty or full, skip.");
-//     // return IOStatus::OK();
-//     return false;
-//   }
-//     uint64_t valid_data=finish_victim->used_capacity_;
-//   uint64_t cp = finish_victim->capacity_;
-//   uint64_t written= finish_victim->wp_-finish_victim->start_;
-//   // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
-//   //   written>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
+  // If all non-busy zones are empty or full, we should return success.
+  if (finish_victim == nullptr) {
+    Info(logger_, "All non-busy zones are empty or full, skip.");
+    // return IOStatus::OK();
+    return false;
+  }
+    uint64_t valid_data=finish_victim->used_capacity_;
+  uint64_t cp = finish_victim->capacity_;
+  uint64_t written= finish_victim->wp_-finish_victim->start_;
+  // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
+  //   written>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
 
-//   if(written<finish_threshold_arr_[cur_free_percent_]){
-//     // printf("NO FINISH\n");
-//     finish_victim->CheckRelease();
-//     return false;
-//   }
-//   // printf("1 finish_victim->capacity_: %lu\n",
-//   //        finish_victim->capacity_ / (1 << 20));
-//   s = finish_victim->Finish();
-//   IOStatus release_status = finish_victim->CheckRelease();
+  if(written<finish_threshold_arr_[cur_free_percent_]){
+    // printf("NO FINISH\n");
+    finish_victim->CheckRelease();
+    return false;
+  }
+  // printf("1 finish_victim->capacity_: %lu\n",
+  //        finish_victim->capacity_ / (1 << 20));
+  s = finish_victim->Finish();
+  IOStatus release_status = finish_victim->CheckRelease();
 
-//   // if (s.ok()) {
-//   //   PutActiveIOZoneToken();
-//   // }
-//   if (put_token) {
-//     PutActiveIOZoneToken();
-//   }
+  // if (s.ok()) {
+  //   PutActiveIOZoneToken();
+  // }
+  if (put_token) {
+    PutActiveIOZoneToken();
+  }
 
-//   // if (!release_status.ok()) {
-//   //   return release_status;
-//   // }
-//   // uint64_t cp = finish_victim->capacity_;
+  // if (!release_status.ok()) {
+  //   return release_status;
+  // }
+  // uint64_t cp = finish_victim->capacity_;
 
-//   // printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
-//   // printf("After finish_victim->capacity_: %lu\n",
-//   //  finish_victim->capacity_ / (1 << 20));
-//   // finish_victim->is_finished_ = true;
-//   // printf("FINISH OK, %lu \n",cp>>20);
-//   finished_valid_data_.fetch_add(valid_data);
-//   finished_wasted_wp_.fetch_add(cp);
-//   finish_count_.fetch_add(1);
-//   // printf("Zone Finish!!! \n");
-//   // printf(
-//   //     "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
-//   //     "%ld\n",
-//   //     finish_victim->start_, cp, open_io_zones_.load());
+  // printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
+  // printf("After finish_victim->capacity_: %lu\n",
+  //  finish_victim->capacity_ / (1 << 20));
+  // finish_victim->is_finished_ = true;
+  // printf("FINISH OK, %lu \n",cp>>20);
+  finished_valid_data_.fetch_add(valid_data);
+  finished_wasted_wp_.fetch_add(cp);
+  finish_count_.fetch_add(1);
+  // printf("Zone Finish!!! \n");
+  // printf(
+  //     "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
+  //     "%ld\n",
+  //     finish_victim->start_, cp, open_io_zones_.load());
 
-//   return true;
-// }
+  return true;
+}
 
 bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   IOStatus s;
@@ -1717,7 +1718,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (finish_scheme_==FINISH_DISABLE || finish_scheme_==FINISH_PROPOSAL) {
+    if (finish_scheme_!=FINISH_ENABLE) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(out_zone);  // 빈 영역 할당
         if (*out_zone != nullptr) {
@@ -2221,7 +2222,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
       PutOpenIOZoneToken();
       return IOStatus::OK();
-    }else{ // finish_scheme_ == FINISH_PROPOSAL
+    }else{ // finish_scheme_ == FINISH_PROPOSAL 2 or 3
     // printf("FINISH_PROPOSAL\n");
       AllocateEmptyZone(&allocated_zone);
       if(allocated_zone!=nullptr){
@@ -2230,9 +2231,16 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         }
         // if(level>1){
         // if(PredictCompactionScore(level)>1.0){ // is cold level
-          if(FinishProposal(false)){
-            goto end;
+          if(finish_scheme_==FINISH_PROPOSAL){
+            if(FinishProposal(false)){
+              goto end;
+            }
+          }else if(finish_scheme_==FINISH_PROPOSAL2){
+            if(FinishProposal2(false)){
+              goto end;
+            }
           }
+
         // }
         // }
         allocated_zone->Release();

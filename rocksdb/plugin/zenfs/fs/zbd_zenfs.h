@@ -106,6 +106,7 @@ class ZoneFile;
 #define FINISH_ENABLE 0
 #define FINISH_DISABLE 1
 #define FINISH_PROPOSAL 2
+#define FINISH_PROPOSAL2 3
 enum WaitForOpenZoneClass {
   WAL = 0,
   ZC = 1,
@@ -819,6 +820,7 @@ class ZonedBlockDevice {
   IOStatus ApplyFinishThreshold();
   // IOStatus FinishCheapestIOZone(bool put_token = true);
   bool FinishProposal(bool put_token);
+  bool FinishProposal2(bool put_token);
   bool FinishCheapestIOZone(bool put_token = true);
   IOStatus GetBestOpenZoneMatch(Env::WriteLifeTimeHint file_lifetime,
                                 unsigned int *best_diff_out, Zone **zone_out,
