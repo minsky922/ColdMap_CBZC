@@ -2096,11 +2096,11 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         if(GetActiveIOZoneTokenIfAvailable()){
           goto end;
         }
-        if(level>1){
+        // if(level>1){
           if(FinishProposal(false)){
             goto end;
           }
-        }
+        // }
         allocated_zone->Release();
         allocated_zone=nullptr;
       }
