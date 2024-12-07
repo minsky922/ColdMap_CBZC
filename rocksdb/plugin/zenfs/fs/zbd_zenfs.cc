@@ -2010,7 +2010,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
 
   // (void)(input_fno);
   (void)(fname);
-  printf("predicted_size : %lu\n",predicted_size);
+  // printf("predicted_size : %lu\n",predicted_size);
   // I/O 유형에 따라 적절한 추적 태그 설정
   auto tag = ZENFS_WAL_IO_ALLOC_LATENCY;
   if (io_type != IOType::kWAL) {
@@ -2164,7 +2164,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           goto end;
         }
         // if(level>1){
-        if(PredictCompactionScore(level)<1.0){ // is cold level
+        if(PredictCompactionScore(level)>1.0){ // is cold level
           if(FinishProposal(false)){
             goto end;
           }
