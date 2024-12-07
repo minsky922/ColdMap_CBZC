@@ -298,6 +298,7 @@ class ZonedBlockDevice {
   std::atomic<uint64_t> wasted_wp_{0};
   std::atomic<uint64_t> new_wasted_wp_{0};
   std::atomic<uint64_t> finished_wasted_wp_{0};
+  std::atomic<uint64_t> finished_valid_data_{0};
   std::atomic<clock_t> runtime_reset_reset_latency_{0};
   std::atomic<clock_t> runtime_reset_latency_{0};
 
