@@ -106,7 +106,6 @@ class ZoneFile;
 #define FINISH_ENABLE 0
 #define FINISH_DISABLE 1
 #define FINISH_PROPOSAL 2
-#define FINISH_PROPOSAL2 3
 enum WaitForOpenZoneClass {
   WAL = 0,
   ZC = 1,
