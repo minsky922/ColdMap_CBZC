@@ -1681,21 +1681,21 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
           break;
         }
 
-        if (GetActiveIOZoneTokenIfAvailable()) {
-          s = AllocateEmptyZone(out_zone);
-          if (s.ok() && (*out_zone) != nullptr) {
-            printf("CAZA2-AllocateEmptyZone\n");
-            Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-            (*out_zone)->lifetime_ = file_lifetime;
-            break;
-          } else {
-            PutActiveIOZoneToken();
-            printf("CAZA2-PutActiveIOZoneToken\n");
-          }
-        } else {
-          AllocateAllInvalidZone(out_zone);
-          printf("CAZA2-AllocateAllInvalidZone\n");
-        }
+        // if (GetActiveIOZoneTokenIfAvailable()) {
+        //   s = AllocateEmptyZone(out_zone);
+        //   if (s.ok() && (*out_zone) != nullptr) {
+        //     printf("CAZA2-AllocateEmptyZone\n");
+        //     Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+        //     (*out_zone)->lifetime_ = file_lifetime;
+        //     break;
+        //   } else {
+        //     PutActiveIOZoneToken();
+        //     printf("CAZA2-PutActiveIOZoneToken\n");
+        //   }
+        // } else {
+        //   AllocateAllInvalidZone(out_zone);
+        //   printf("CAZA2-AllocateAllInvalidZone\n");
+        // }
 
       } else {
         // printf("I am LIZA!\n");
@@ -1717,7 +1717,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (finish_scheme_) {
+    if (finish_scheme_==FINISH_DISABLE || finish_scheme_==FINISH_PROPOSAL) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(out_zone);  // 빈 영역 할당
         if (*out_zone != nullptr) {
@@ -1726,16 +1726,16 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         }
         PutActiveIOZoneToken();
       }
-      // AllocateAllInvalidZone(out_zone);
-      // if (*out_zone) {
-      //   break;
-      // }
+      AllocateAllInvalidZone(out_zone);
+      if (*out_zone) {
+        break;
+      }
       GetAnyLargestRemainingZone(out_zone, min_capacity);
       if (*out_zone) {
         break;
       }
       // goto reset;
-    } else {
+    } else if(finish_scheme_==FINISH_ENABLE){
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -1751,10 +1751,10 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         break;
       }
       PutActiveIOZoneToken();
-      // AllocateAllInvalidZone(out_zone);
-      // if (*out_zone) {
-      //   break;
-      // }
+      AllocateAllInvalidZone(out_zone);
+      if (*out_zone) {
+        break;
+      }
       GetAnyLargestRemainingZone(out_zone, min_capacity);
       if (*out_zone) {
         break;
