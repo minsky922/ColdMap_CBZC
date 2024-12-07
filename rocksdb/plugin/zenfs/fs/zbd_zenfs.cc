@@ -1183,7 +1183,7 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
         if (!s.ok()) return false;
         continue;
       }
-      if((z->wp_-z_->start_ )<finish_threshold_now){
+      if((z->wp_-z->start_ )<finish_threshold_now){
         z->Release();
         continue;
       }
