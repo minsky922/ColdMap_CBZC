@@ -1448,7 +1448,7 @@ IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
           break;
         }
         // else{
-          allocated_zone->Release();
+          z->Release();
           continue;
         // }
 
