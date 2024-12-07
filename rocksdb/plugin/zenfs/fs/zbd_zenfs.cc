@@ -533,7 +533,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     printf("FAR STAT 1-1 :: Runtime zone reset R_wp %lu\n",
            ((zone_sz * 100) - ((wwp * 100) / rc)) / zone_sz);
   }
-  printf("ZONE FINISH VALID(MB) %lu\n",finished_wasted_wp_.load()>>20);
+  printf("ZONE FINISH VALID(MB) %lu\n",finished_valid_data_.load()>>20);
   printf("ZONE FINISH WWP(MB) : %lu\n", finished_wasted_wp_.load() / (1 << 20));
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
@@ -1169,12 +1169,73 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
   return IOStatus::OK();
 }
 
+// bool ZonedBlockDevice::FinishProposal(bool put_token){
+//   IOStatus s;
+//   Zone *finish_victim = nullptr;
+//   uint64_t finish_threshold_now=finish_threshold_arr_[cur_free_percent_];
+//   // uint64_t finish_score;
+  
+//   for (const auto z : io_zones) {
+//     if (z->Acquire()) {
+//       if (z->IsEmpty() || z->IsFull()) {
+//         s = z->CheckRelease();
+//         // if (!s.ok()) return s;
+//         if (!s.ok()) return false;
+//         continue;
+//       }
+//       if((z->wp_-z->start_ )<finish_threshold_now){
+//         z->Release();
+//         continue;
+//       }
+
+//       if (finish_victim == nullptr) {
+//         finish_victim = z;
+//         continue;
+//       }
+//       if (finish_victim->used_capacity_ > z->used_capacity_) {
+//         s = finish_victim->CheckRelease();
+//         // if (!s.ok()) return s;
+//         if (!s.ok()) return false;
+//         finish_victim = z;
+//       } else {
+//         s = z->CheckRelease();
+//         // if (!s.ok()) return s;
+//         if (!s.ok()) return false;
+//       }
+//     }
+//   }
+
+//   // If all non-busy zones are empty or full, we should return success.
+//   if (finish_victim == nullptr) {
+//     Info(logger_, "All non-busy zones are empty or full, skip.");
+//     // return IOStatus::OK();
+//     return false;
+//   }
+//   uint64_t valid_data=finish_victim->used_capacity_;
+//   uint64_t cp = finish_victim->capacity_;
+
+//   s = finish_victim->Finish();
+//   // IOStatus release_status = 
+//   finish_victim->CheckRelease();
+
+//   // if (s.ok()) {
+//   //   PutActiveIOZoneToken();
+//   // }
+//   if (put_token) {
+//     PutActiveIOZoneToken();
+//   }
+
+//   finished_valid_data_.fetch_add(valid_data);
+//   finished_wasted_wp_.fetch_add(cp);
+//   finish_count_.fetch_add(1);
+
+//   return true;
+// }
+
 bool ZonedBlockDevice::FinishProposal(bool put_token){
   IOStatus s;
   Zone *finish_victim = nullptr;
-  uint64_t finish_threshold_now=finish_threshold_arr_[cur_free_percent_];
-  // uint64_t finish_score;
-  
+
   for (const auto z : io_zones) {
     if (z->Acquire()) {
       if (z->IsEmpty() || z->IsFull()) {
@@ -1183,16 +1244,11 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
         if (!s.ok()) return false;
         continue;
       }
-      if((z->wp_-z->start_ )<finish_threshold_now){
-        z->Release();
-        continue;
-      }
-
       if (finish_victim == nullptr) {
         finish_victim = z;
         continue;
       }
-      if (finish_victim->used_capacity_ > z->used_capacity_) {
+      if (finish_victim->capacity_ > z->capacity_) {
         s = finish_victim->CheckRelease();
         // if (!s.ok()) return s;
         if (!s.ok()) return false;
@@ -1211,17 +1267,17 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
     // return IOStatus::OK();
     return false;
   }
-  uint64_t valid_data=finish_victim->used_capacity_;
+    uint64_t valid_data=finish_victim->used_capacity_;
   uint64_t cp = finish_victim->capacity_;
-  // uint64_t written= finish_victim->wp_-finish_victim->start_;
+  uint64_t written= finish_victim->wp_-finish_victim->start_;
   // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
   //   written>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
 
-  // if(written<finish_threshold_arr_[cur_free_percent_]){
-  //   // printf("NO FINISH\n");
-  //   finish_victim->CheckRelease();
-  //   return false;
-  // }
+  if(written<finish_threshold_arr_[cur_free_percent_]){
+    // printf("NO FINISH\n");
+    finish_victim->CheckRelease();
+    return false;
+  }
   // printf("1 finish_victim->capacity_: %lu\n",
   //        finish_victim->capacity_ / (1 << 20));
   s = finish_victim->Finish();
@@ -1255,86 +1311,6 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
 
   return true;
 }
-
-// bool ZonedBlockDevice::FinishProposal(bool put_token){
-//   IOStatus s;
-//   Zone *finish_victim = nullptr;
-
-//   for (const auto z : io_zones) {
-//     if (z->Acquire()) {
-//       if (z->IsEmpty() || z->IsFull()) {
-//         s = z->CheckRelease();
-//         // if (!s.ok()) return s;
-//         if (!s.ok()) return false;
-//         continue;
-//       }
-//       if (finish_victim == nullptr) {
-//         finish_victim = z;
-//         continue;
-//       }
-//       if (finish_victim->capacity_ > z->capacity_) {
-//         s = finish_victim->CheckRelease();
-//         // if (!s.ok()) return s;
-//         if (!s.ok()) return false;
-//         finish_victim = z;
-//       } else {
-//         s = z->CheckRelease();
-//         // if (!s.ok()) return s;
-//         if (!s.ok()) return false;
-//       }
-//     }
-//   }
-
-//   // If all non-busy zones are empty or full, we should return success.
-//   if (finish_victim == nullptr) {
-//     Info(logger_, "All non-busy zones are empty or full, skip.");
-//     // return IOStatus::OK();
-//     return false;
-//   }
-//     uint64_t valid_data=finish_victim->used_capacity_;
-//   uint64_t cp = finish_victim->capacity_;
-//   uint64_t written= finish_victim->wp_-finish_victim->start_;
-//   // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
-//   //   written>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
-
-//   if(written<finish_threshold_arr_[cur_free_percent_]){
-//     // printf("NO FINISH\n");
-//     finish_victim->CheckRelease();
-//     return false;
-//   }
-//   // printf("1 finish_victim->capacity_: %lu\n",
-//   //        finish_victim->capacity_ / (1 << 20));
-//   s = finish_victim->Finish();
-//   IOStatus release_status = finish_victim->CheckRelease();
-
-//   // if (s.ok()) {
-//   //   PutActiveIOZoneToken();
-//   // }
-//   if (put_token) {
-//     PutActiveIOZoneToken();
-//   }
-
-//   // if (!release_status.ok()) {
-//   //   return release_status;
-//   // }
-//   // uint64_t cp = finish_victim->capacity_;
-
-//   // printf("2 finish_victim->capacity_: %lu\n", cp / (1 << 20));
-//   // printf("After finish_victim->capacity_: %lu\n",
-//   //  finish_victim->capacity_ / (1 << 20));
-//   // finish_victim->is_finished_ = true;
-//   // printf("FINISH OK, %lu \n",cp>>20);
-//   finished_valid_data_.fetch_add(valid_data);
-//   finished_wasted_wp_.fetch_add(cp);
-//   finish_count_.fetch_add(1);
-//   // printf("Zone Finish!!! \n");
-//   // printf(
-//   //     "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
-//   //     "%ld\n",
-//   //     finish_victim->start_, cp, open_io_zones_.load());
-
-//   return true;
-// }
 
 bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
   IOStatus s;
@@ -2188,9 +2164,11 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
           goto end;
         }
         // if(level>1){
+        if(PredictCompactionScore(level)<1.0){ // is cold level
           if(FinishProposal(false)){
             goto end;
           }
+        }
         // }
         allocated_zone->Release();
         allocated_zone=nullptr;
