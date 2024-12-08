@@ -2232,15 +2232,15 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         // if(level>1){
         // if(PredictCompactionScore(level)>1.0){ // is cold level
           // if(finish_scheme_==FINISH_PROPOSAL){
-          //   if(FinishProposal(false)){
-          //     goto end;
-          //   }
+            if(FinishProposal(false)){
+              goto end;
+            }
           // }else if(finish_scheme_==FINISH_PROPOSAL2){
  
           // }
-          if(FinishProposal2(false)){
-              goto end;
-          }
+          // if(FinishProposal2(false)){
+          //     goto end;
+          // }
         // }
         // }
         allocated_zone->Release();
