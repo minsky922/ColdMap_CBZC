@@ -505,7 +505,7 @@ void ZoneFile::PushExtent() {
 }
 
 IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
-  Zone* zone=nullptr;
+  Zone* zone = nullptr;
   // IOStatus s = zbd_->AllocateIOZone(lifetime_, io_type_, &zone);
   int try_n = 0;
   // (void)(min_capacity);  // 활성화할땐 지우기
@@ -1365,9 +1365,15 @@ IOStatus ZonedRandomAccessFile::Read(uint64_t offset, size_t n,
 
 IOStatus ZoneFile::MigrateData(uint64_t offset, uint32_t length,
                                Zone* target_zone) {
-  uint32_t step = 128 << 10;
+  // uint32_t step = 128 << 10;
+  uint32_t step = length;
   uint32_t read_sz = step;
   int block_sz = zbd_->GetBlockSize();
+  uint64_t align = step % block_sz;
+
+  if (align) {
+    step += (block_sz - align);
+  }
 
   assert(offset % block_sz == 0);
   if (offset % block_sz != 0) {
