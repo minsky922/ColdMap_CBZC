@@ -2716,6 +2716,9 @@ void ZenFS::GetZenFSSnapshot(ZenFSSnapshot& snapshot,
   마이그레이션이 성공적으로 완료되면 사용되지 않는 IO 존을 재설정*/
 IOStatus ZenFS::MigrateExtents(
     const std::vector<ZoneExtentSnapshot*>& extents) {
+  struct timespec start1, end1;
+  struct timespec start2, end2;
+  struct timespec start3, end3;
   clock_gettime(CLOCK_MONOTONIC, &start1);
   IOStatus s;
   // Group extents by their filename
@@ -2767,6 +2770,10 @@ IOStatus ZenFS::MigrateFileExtents(
 
   // The file may be deleted by other threads, better double check.
   // 파일을 가져옵니다
+  struct timespec start4, end4;
+  struct timespec start5, end5;
+  struct timespec start6, end6;
+  struct timespec start7, end7;
   clock_gettime(CLOCK_MONOTONIC, &start4);
   auto zfile = GetFile(fname);
   if (zfile == nullptr) {
