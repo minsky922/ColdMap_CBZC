@@ -102,7 +102,6 @@ class ZoneFile;
 #define IS_BIG_SSTABLE(file_size) \
   (bool)((uint64_t)(file_size) > (uint64_t)(63 << 20))
 
-
 #define FINISH_ENABLE 0
 #define FINISH_DISABLE 1
 #define FINISH_PROPOSAL 2
@@ -379,7 +378,15 @@ class ZonedBlockDevice {
   uint64_t tuning_point_;
   uint64_t cbzc_enabled_;
   uint64_t cumulative_io_blocking_ = 0;  // ms
-  uint64_t calculate_lapse = 0;          // ms
+  uint64_t cumulative_1_ = 0;
+  uint64_t cumulative_2_ = 0;
+  uint64_t cumulative_3_ = 0;
+  uint64_t cumulative_4_ = 0;
+  uint64_t cumulative_5_ = 0;
+  uint64_t cumulative_6_ = 0;
+  uint64_t cumulative_7_ = 0;
+
+  uint64_t calculate_lapse = 0;  // ms
 
   uint64_t default_extent_size_ = 256 << 20;
   enum {
@@ -583,6 +590,14 @@ class ZonedBlockDevice {
   void AddCumulativeIOBlocking(long ns) {
     cumulative_io_blocking_ += (ns / 1000) / 1000;
   }
+  void AddCumulative_1(long ns) { cumulative_1_ += (ns / 1000) / 1000; }
+  void AddCumulative_2(long ns) { cumulative_2_ += (ns / 1000) / 1000; }
+  void AddCumulative_3(long ns) { cumulative_3_ += (ns / 1000) / 1000; }
+  void AddCumulative_4(long ns) { cumulative_4_ += (ns / 1000) / 1000; }
+  void AddCumulative_5(long ns) { cumulative_5_ += (ns / 1000) / 1000; }
+  void AddCumulative_6(long ns) { cumulative_6_ += (ns / 1000) / 1000; }
+  void AddCumulative_7(long ns) { cumulative_7_ += (ns / 1000) / 1000; }
+
   void AddCalculatelifetimeLapse(long ns) {
     // if (zc_scheme_ == CBZC3) {
     //   // printf("calculate lifetime CBZC3!!\n");

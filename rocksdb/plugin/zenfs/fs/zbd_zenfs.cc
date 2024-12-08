@@ -279,8 +279,8 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   else
     max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
-  max_nr_active_io_zones_=6;
-  max_nr_open_io_zones_=6;
+  max_nr_active_io_zones_ = 6;
+  max_nr_open_io_zones_ = 6;
   // if (max_nr_active_zones == 0) {
   //   max_nr_active_zones = 13;
   //   max_nr_active_io_zones_ = 14 - 1;
@@ -533,7 +533,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     printf("FAR STAT 1-1 :: Runtime zone reset R_wp %lu\n",
            ((zone_sz * 100) - ((wwp * 100) / rc)) / zone_sz);
   }
-  printf("ZONE FINISH VALID(MB) %lu\n",finished_valid_data_.load()>>20);
+  printf("ZONE FINISH VALID(MB) %lu\n", finished_valid_data_.load() >> 20);
   printf("ZONE FINISH WWP(MB) : %lu\n", finished_wasted_wp_.load() / (1 << 20));
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
@@ -579,6 +579,14 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
   printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
   printf("Cumulative I/O Blocking(ms) %lu\n", cumulative_io_blocking_);
+  printf("Cumlative 1(ms) %lu\n", cumulative_1_);
+  printf("Cumlative 2(ms) %lu\n", cumulative_2_);
+  printf("Cumlative 3(ms) %lu\n", cumulative_3_);
+  printf("Cumlative 4(ms) %lu\n", cumulative_4_);
+  printf("Cumlative 5(ms) %lu\n", cumulative_5_);
+  printf("Cumlative 6(ms) %lu\n", cumulative_6_);
+  printf("Cumlative 7(ms) %lu\n", cumulative_7_);
+
   // if (zbd_->GetZCScheme() == 2) {
   //   printf("Calculate Lifetime Time(us) %lu\n", calculate_lapse);
   // } else {
@@ -609,15 +617,11 @@ unsigned int GetLifeTimeDiff(Env::WriteLifeTimeHint zone_lifetime,
 
   if ((file_lifetime == Env::WLTH_NOT_SET) ||
       (file_lifetime == Env::WLTH_NONE)) {
-
-    
     if (file_lifetime == zone_lifetime) {
       return 0;
     } else {
       return LIFETIME_DIFF_NOT_GOOD;
     }
-
-
   }
 
   // if (zone_lifetime > file_lifetime) return zone_lifetime - file_lifetime;
@@ -788,7 +792,6 @@ inline uint64_t ZonedBlockDevice::LazyExponential(uint64_t sz, uint64_t fr,
   return sz - (b * sz / 100);
 }
 
-
 void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
   uint64_t rt = 0;
   uint64_t max_capacity = io_zones[0]->max_capacity_;
@@ -801,9 +804,9 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
       rt = 0;
       break;
     case FINISH_PROPOSAL:  // Constant scale
-    // if very high free space ratio, no finish
-    // medium : do finish
-    // if very low free space ratio, no finish
+                           // if very high free space ratio, no finish
+                           // medium : do finish
+                           // if very low free space ratio, no finish
       rt = max_capacity - (max_capacity * free_percent) / 100;
       // if(free_percent>50){
       //   rt=(max_capacity-rt);
@@ -815,8 +818,8 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
     //   break;
     // case kNoRuntimeLinear:
     // case kLazy_Linear:
-      // rt = LazyLinear(max_capacity, free_percent, tuning_point_);
-      // break;
+    // rt = LazyLinear(max_capacity, free_percent, tuning_point_);
+    // break;
     // case kCustom:
     //   rt = Custom(max_capacity, free_percent, tuning_point_);
     //   break;
@@ -825,12 +828,12 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
     //   break;
     // case kLazyExponential:
     //   rt = LazyExponential(max_capacity, free_percent, tuning_point_);
-      // break;
+    // break;
     default:
       break;
   }
   // finish_threshold_ = rt;
-  printf("%lu : %lu\n",free_percent,rt);
+  printf("%lu : %lu\n", free_percent, rt);
   finish_threshold_arr_[free_percent] = rt;
 }
 
@@ -1176,12 +1179,12 @@ IOStatus ZonedBlockDevice::ApplyFinishThreshold() {
 }
 
 // get mininal valid data with upper threshold
-bool ZonedBlockDevice::FinishProposal(bool put_token){
+bool ZonedBlockDevice::FinishProposal(bool put_token) {
   IOStatus s;
   Zone *finish_victim = nullptr;
-  uint64_t finish_threshold_now=finish_threshold_arr_[cur_free_percent_];
+  uint64_t finish_threshold_now = finish_threshold_arr_[cur_free_percent_];
   // uint64_t finish_score;
-  
+
   for (const auto z : io_zones) {
     if (z->Acquire()) {
       if (z->IsEmpty() || z->IsFull()) {
@@ -1190,7 +1193,7 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
         if (!s.ok()) return false;
         continue;
       }
-      if((z->wp_-z->start_ )<finish_threshold_now){
+      if ((z->wp_ - z->start_) < finish_threshold_now) {
         z->Release();
         continue;
       }
@@ -1218,11 +1221,11 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
     // return IOStatus::OK();
     return false;
   }
-  uint64_t valid_data=finish_victim->used_capacity_;
+  uint64_t valid_data = finish_victim->used_capacity_;
   uint64_t cp = finish_victim->capacity_;
 
   s = finish_victim->Finish();
-  // IOStatus release_status = 
+  // IOStatus release_status =
   finish_victim->CheckRelease();
 
   // if (s.ok()) {
@@ -1239,7 +1242,7 @@ bool ZonedBlockDevice::FinishProposal(bool put_token){
   return true;
 }
 
-bool ZonedBlockDevice::FinishProposal2(bool put_token){
+bool ZonedBlockDevice::FinishProposal2(bool put_token) {
   IOStatus s;
   Zone *finish_victim = nullptr;
 
@@ -1274,13 +1277,14 @@ bool ZonedBlockDevice::FinishProposal2(bool put_token){
     // return IOStatus::OK();
     return false;
   }
-    uint64_t valid_data=finish_victim->used_capacity_;
+  uint64_t valid_data = finish_victim->used_capacity_;
   uint64_t cp = finish_victim->capacity_;
-  uint64_t written= finish_victim->wp_-finish_victim->start_;
-  // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free %lu\n",
+  uint64_t written = finish_victim->wp_ - finish_victim->start_;
+  // printf("written %lu finish_threshold_arr_[cur_free_percent_] %lu free
+  // %lu\n",
   //   written>>20,finish_threshold_arr_[cur_free_percent_]>>20,cur_free_percent_);
 
-  if(written<finish_threshold_arr_[cur_free_percent_]){
+  if (written < finish_threshold_arr_[cur_free_percent_]) {
     // printf("NO FINISH\n");
     finish_victim->CheckRelease();
     return false;
@@ -1312,7 +1316,8 @@ bool ZonedBlockDevice::FinishProposal2(bool put_token){
   finish_count_.fetch_add(1);
   // printf("Zone Finish!!! \n");
   // printf(
-  //     "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
+  //     "Finish complete: Zone start: 0x%lx, capacity left: %lu,
+  //     open_io_zones_: "
   //     "%ld\n",
   //     finish_victim->start_, cp, open_io_zones_.load());
 
@@ -1354,7 +1359,7 @@ bool ZonedBlockDevice::FinishCheapestIOZone(bool put_token) {
     // return IOStatus::OK();
     return false;
   }
-uint64_t valid_data=finish_victim->used_capacity_;
+  uint64_t valid_data = finish_victim->used_capacity_;
   uint64_t cp = finish_victim->GetCapacityLeft();
   // printf("1 finish_victim->capacity_: %lu\n",
   //        finish_victim->capacity_ / (1 << 20));
@@ -1380,10 +1385,11 @@ uint64_t valid_data=finish_victim->used_capacity_;
   finished_valid_data_.fetch_add(valid_data);
   finished_wasted_wp_.fetch_add(cp);
   finish_count_.fetch_add(1);
-  
+
   // printf("Zone Finish!!! \n");
   // printf(
-  //     "Finish complete: Zone start: 0x%lx, capacity left: %lu, open_io_zones_: "
+  //     "Finish complete: Zone start: 0x%lx, capacity left: %lu,
+  //     open_io_zones_: "
   //     "%ld\n",
   //     finish_victim->start_, cp, open_io_zones_.load());
 
@@ -1425,7 +1431,6 @@ IOStatus ZonedBlockDevice::GetAnyLargestRemainingZone(Zone **zone_out,
   return s;
 }
 
-
 IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
     Env::WriteLifeTimeHint file_lifetime, unsigned int *best_diff_out,
     Zone **zone_out, uint32_t min_capacity) {
@@ -1437,20 +1442,17 @@ IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
     if (z->Acquire()) {
       if ((z->used_capacity_ > 0) && !z->IsFull() &&
           z->capacity_ >= min_capacity) {
-            
-        
         unsigned int diff = GetLifeTimeDiff(z->lifetime_, file_lifetime);
 
-        if(diff==0){
-
-          allocated_zone=z;
+        if (diff == 0) {
+          allocated_zone = z;
           best_diff = diff;
 
           break;
         }
         // else{
-          z->Release();
-          continue;
+        z->Release();
+        continue;
         // }
 
         // if (diff < best_diff) {
@@ -1468,7 +1470,7 @@ IOStatus ZonedBlockDevice::GetBestOpenZoneMatch(
         //   s = z->CheckRelease();
         //   if (!s.ok()) return s;
         // }
-      } 
+      }
       // else {
 
       s = z->CheckRelease();
@@ -1718,7 +1720,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (finish_scheme_!=FINISH_ENABLE) {
+    if (finish_scheme_ != FINISH_ENABLE) {
       if (GetActiveIOZoneTokenIfAvailable()) {
         AllocateEmptyZone(out_zone);  // 빈 영역 할당
         if (*out_zone != nullptr) {
@@ -1736,7 +1738,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
         break;
       }
       // goto reset;
-    } else if(finish_scheme_==FINISH_ENABLE){
+    } else if (finish_scheme_ == FINISH_ENABLE) {
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -2118,8 +2120,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       return s;
     }
   } else if (is_sst && level >= 0 && allocation_scheme_ == CAZA_ADV) {
-    s = AllocateCompactionAwaredZoneV2(smallest, largest, level,
-    file_lifetime,
+    s = AllocateCompactionAwaredZoneV2(smallest, largest, level, file_lifetime,
                                        predicted_size, &allocated_zone,
                                        min_capacity);
     // // printf("allocateiozone-AllocateCompactionAwaredZoneV2\n");
@@ -2169,7 +2170,6 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
   }
 
   if (allocated_zone == nullptr) {
-
     if (finish_scheme_ == FINISH_DISABLE) {
       // printf("FINISH_DISABLE\n");
       if (GetActiveIOZoneTokenIfAvailable()) {
@@ -2180,7 +2180,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
         }
         PutActiveIOZoneToken();
       }
-      
+
       AllocateAllInvalidZone(&allocated_zone);
       if (allocated_zone) {
         goto end;
@@ -2193,7 +2193,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
 
       return IOStatus::OK();
 
-    } else if(finish_scheme_==FINISH_ENABLE){
+    } else if (finish_scheme_ == FINISH_ENABLE) {
       // printf("FINISH_ENABLE\n");
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
@@ -2222,44 +2222,42 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
       }
       PutOpenIOZoneToken();
       return IOStatus::OK();
-    }else{ // finish_scheme_ == FINISH_PROPOSAL 2 or 3
-    // printf("FINISH_PROPOSAL\n");
+    } else {  // finish_scheme_ == FINISH_PROPOSAL 2 or 3
+              // printf("FINISH_PROPOSAL\n");
       AllocateEmptyZone(&allocated_zone);
-      if(allocated_zone!=nullptr){
-        if(GetActiveIOZoneTokenIfAvailable()){
+      if (allocated_zone != nullptr) {
+        if (GetActiveIOZoneTokenIfAvailable()) {
           goto end;
         }
         // if(level>1){
         // if(PredictCompactionScore(level)>1.0){ // is cold level
-          // if(finish_scheme_==FINISH_PROPOSAL){
-            if(FinishProposal(false)){
-              goto end;
-            }
-          // }else if(finish_scheme_==FINISH_PROPOSAL2){
- 
-          // }
-          // if(FinishProposal2(false)){
-          //     goto end;
-          // }
+        // if(finish_scheme_==FINISH_PROPOSAL){
+        if (FinishProposal(false)) {
+          goto end;
+        }
+        // }else if(finish_scheme_==FINISH_PROPOSAL2){
+
+        // }
+        // if(FinishProposal2(false)){
+        //     goto end;
+        // }
         // }
         // }
         allocated_zone->Release();
-        allocated_zone=nullptr;
+        allocated_zone = nullptr;
       }
       // {
-        AllocateAllInvalidZone(&allocated_zone);
-        if (allocated_zone) {
-          goto end;
-        }
-        GetAnyLargestRemainingZone(&allocated_zone);
-        if (allocated_zone) {
-          goto end;
-        }
-        PutOpenIOZoneToken();
-        return IOStatus::OK();
+      AllocateAllInvalidZone(&allocated_zone);
+      if (allocated_zone) {
+        goto end;
+      }
+      GetAnyLargestRemainingZone(&allocated_zone);
+      if (allocated_zone) {
+        goto end;
+      }
+      PutOpenIOZoneToken();
+      return IOStatus::OK();
       // }
-
-
     }
   }
 
@@ -2736,7 +2734,7 @@ IOStatus ZonedBlockDevice::AllocateCompactionAwaredZone(
       if (!target_zone->Acquire()) {
         continue;
       }
-      if(target_zone->IsEmpty()){
+      if (target_zone->IsEmpty()) {
         target_zone->Release();
         continue;
       }

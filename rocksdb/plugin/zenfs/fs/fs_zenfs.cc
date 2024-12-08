@@ -731,7 +731,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
   if (zc_scheme == CBZC4) {
     Adv_ReCalculateLifetimes();
-  } else if(zc_scheme==CBZC3){
+  } else if (zc_scheme == CBZC3) {
     ReCalculateLifetimes();
   }
   // NormalizeZoneLifetimes();
@@ -778,10 +778,9 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
       if (zc_scheme == GREEDY) {
         // printf("GREEDY!!!!\n");
-        victim_candidate.push_back({0.0,
-        zone.start,garbage_percent_approx});
+        victim_candidate.push_back({0.0, zone.start, garbage_percent_approx});
       } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
-      // if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
+        // if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_age_ts);
         auto current_time = std::chrono::system_clock::now();
@@ -979,7 +978,8 @@ void ZenFS::ZoneCleaning(bool forced) {
   }
 
   // std::cout
-  //     << "-------------------------------------------------------------------"
+  //     <<
+  //     "-------------------------------------------------------------------"
   //     << std::endl;
   // for (const auto& candidate : victim_candidate) {
   //   std::cout << "cost-benefit score: " << candidate.score
@@ -1024,7 +1024,8 @@ void ZenFS::ZoneCleaning(bool forced) {
   }
 
   // std::cout
-  //     << "-------------------------------------------------------------------"
+  //     <<
+  //     "-------------------------------------------------------------------"
   //     << std::endl;
 
   // uint64_t threshold = 0;
@@ -2715,6 +2716,7 @@ void ZenFS::GetZenFSSnapshot(ZenFSSnapshot& snapshot,
   마이그레이션이 성공적으로 완료되면 사용되지 않는 IO 존을 재설정*/
 IOStatus ZenFS::MigrateExtents(
     const std::vector<ZoneExtentSnapshot*>& extents) {
+  clock_gettime(CLOCK_MONOTONIC, &start1);
   IOStatus s;
   // Group extents by their filename
   // file_extents는 파일 이름을 키로 하고, 해당 파일의 익스텐트 목록을 값으로
@@ -2727,13 +2729,28 @@ IOStatus ZenFS::MigrateExtents(
     file_extents[fname].emplace_back(ext);
     // }
   }
+  clock_gettime(CLOCK_MONOTONIC, &end1);
+  long elapsed1 = (end1.tv_sec - start1.tv_sec) * 1000000000 +
+                  (end1.tv_nsec - start1.tv_nsec);
+  zbd_->AddCumulative_1(elapsed1);
+
+  clock_gettime(CLOCK_MONOTONIC, &start2);
   // 파일 익스텐트 마이그레이션 및 존 재설정
   for (const auto& it : file_extents) {
     s = MigrateFileExtents(it.first, it.second);
-    if (!s.ok()) break;              // 마이 그레이션 실패하면 break
+    if (!s.ok()) break;  // 마이 그레이션 실패하면 break
   }
-    s = zbd_->ResetUnusedIOZones();  // 사용되지 않는 IO 존을 재설정
-    // if (!s.ok()) break;  // 재설정이 실패하면 루프를 중단합니다
+  clock_gettime(CLOCK_MONOTONIC, &end2);
+  long elapsed2 = (end2.tv_sec - start2.tv_sec) * 1000000000 +
+                  (end2.tv_nsec - start2.tv_nsec);
+  zbd_->AddCumulative_2(elapsed2);
+
+  clock_gettime(CLOCK_MONOTONIC, &start3);
+  s = zbd_->ResetUnusedIOZones();
+  clock_gettime(CLOCK_MONOTONIC, &end3);
+  long elapsed3 = (end3.tv_sec - start3.tv_sec) * 1000000000 +
+                  (end3.tv_nsec - start3.tv_nsec);
+  zbd_->AddCumulative_3(elapsed3);
   return s;
 }
 /* 주어진 파일의 익스텐트를 새로운 존으로 마이그레이션하는 작업을 수행 */
@@ -2750,6 +2767,7 @@ IOStatus ZenFS::MigrateFileExtents(
 
   // The file may be deleted by other threads, better double check.
   // 파일을 가져옵니다
+  clock_gettime(CLOCK_MONOTONIC, &start4);
   auto zfile = GetFile(fname);
   if (zfile == nullptr) {
     return IOStatus::OK();
@@ -2767,8 +2785,13 @@ IOStatus ZenFS::MigrateFileExtents(
     new_extent_list.push_back(
         new ZoneExtent(ext->start_, ext->length_, ext->zone_));
   }
+  clock_gettime(CLOCK_MONOTONIC, &end4);
+  long elapsed4 = (end4.tv_sec - start4.tv_sec) * 1000000000 +
+                  (end4.tv_nsec - start4.tv_nsec);
+  zbd_->AddCumulative_4(elapsed4);
   // 익스텐트 마이그레이션
   // Modify the new extent list
+  clock_gettime(CLOCK_MONOTONIC, &start5);
   for (ZoneExtent* ext : new_extent_list) {
     // Check if current extent need to be migrated
     // 유효 데이터(즉, 마이그레이션할 필요가 있는 익스텐트)를 확인
@@ -2788,10 +2811,15 @@ IOStatus ZenFS::MigrateFileExtents(
     // Allocate a new migration zone.
     // s = zbd_->TakeMigrateZone(&target_zone, zfile->GetWriteLifeTimeHint(),
     //                           ext->length_);
+    clock_gettime(CLOCK_MONOTONIC, &start7);
     s = zbd_->TakeMigrateZone(zfile->smallest_, zfile->largest_, zfile->level_,
                               &target_zone, zfile->GetWriteLifeTimeHint(),
                               zfile->predicted_size_, ext->length_,
                               &run_gc_worker_, zfile->IsSST());
+    clock_gettime(CLOCK_MONOTONIC, &end7);
+    long elapsed7 = (end7.tv_sec - start7.tv_sec) * 1000000000 +
+                    (end7.tv_nsec - start7.tv_nsec);
+    zbd_->AddCumulative_7(elapsed7);
     if (!run_gc_worker_) {
       printf("MigrateFileExtents - !run_gc_worker\n");
       return IOStatus::OK();
@@ -2837,10 +2865,19 @@ IOStatus ZenFS::MigrateFileExtents(
 
     zbd_->ReleaseMigrateZone(target_zone);
   }
+  clock_gettime(CLOCK_MONOTONIC, &end5);
+  long elapsed5 = (end5.tv_sec - start5.tv_sec) * 1000000000 +
+                  (end5.tv_nsec - start5.tv_nsec);
+  zbd_->AddCumulative_5(elapsed5);
+
+  clock_gettime(CLOCK_MONOTONIC, &start6);
   zbd_->AddGCBytesWritten(copied);
   SyncFileExtents(zfile.get(), new_extent_list);
   zfile->ReleaseWRLock();
-
+  clock_gettime(CLOCK_MONOTONIC, &end6);
+  long elapsed6 = (end6.tv_sec - start6.tv_sec) * 1000000000 +
+                  (end6.tv_nsec - start6.tv_nsec);
+  zbd_->AddCumulative_6(elapsed6);
   // printf(
   //     "MigrateFileExtents Finished, fname: %s, extent count: %lu, copied : "
   //     "%lu\n",
