@@ -804,11 +804,11 @@ void ZonedBlockDevice::CalculateFinishThreshold(uint64_t free_percent) {
     // if very high free space ratio, no finish
     // medium : do finish
     // if very low free space ratio, no finish
-      rt = max_capacity - (max_capacity * free_percent) / 100;
+      // rt = max_capacity - (max_capacity * free_percent) / 100;
       // if(free_percent>50){
       //   rt=(max_capacity-rt);
       // }
-      // rt = LazyLinear(max_capacity, free_percent, tuning_point_);
+      rt = LazyLinear(max_capacity, free_percent, tuning_point_);
       break;
     // case kLazy_Log:
     //   rt = LazyLog(max_capacity, free_percent, tuning_point_);
