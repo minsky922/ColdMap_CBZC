@@ -626,6 +626,10 @@ static std::unordered_map<std::string, OptionTypeInfo>
          {offsetof(struct ImmutableDBOptions, finish_scheme),
           OptionType::kUInt64T, OptionVerificationType::kNormal,
           OptionTypeFlags::kNone}},
+        {"open_zone_limit",
+         {offsetof(struct ImmutableDBOptions, open_zone_limit),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
 };
 
 const std::string OptionsHelper::kDBOptionsName = "DBOptions";
@@ -837,6 +841,7 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       alpha_value(options.alpha_value),
       sigma_value(options.sigma_value),
       finish_scheme(options.finish_scheme),
+      open_zone_limit(options.open_zone_limit),
       input_aware_scheme(options.input_aware_scheme),
       cbzc_enabled(options.cbzc_enabled),
       default_extent_size(options.default_extent_size),

@@ -120,6 +120,7 @@ struct ImmutableDBOptions {
   double alpha_value;
   double sigma_value;
   uint64_t finish_scheme;
+  uint64_t open_zone_limit;
 
   uint64_t input_aware_scheme;
   uint64_t cbzc_enabled;
