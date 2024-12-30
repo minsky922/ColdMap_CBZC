@@ -279,21 +279,8 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   else
     max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
-  max_nr_active_io_zones_ = 30;
-  max_nr_open_io_zones_ = 30;
-
-  // if (max_nr_active_zones == 0) {
-  //   max_nr_active_zones = 13;
-  //   max_nr_active_io_zones_ = 14 - 1;
-  // } else {
-  //   max_nr_active_io_zones_ = 14 - 1;
-  // }
-  // if (max_nr_open_zones == 0) {
-  //   max_nr_open_zones = 13;
-  //   max_nr_open_io_zones_ = 14 - 1;
-  // } else {
-  //   max_nr_open_io_zones_ = 14 - 1;
-  // }
+  // max_nr_active_io_zones_ = 30;
+  // max_nr_open_io_zones_ = 30;
 
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
