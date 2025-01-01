@@ -452,10 +452,9 @@ void ZenFS::CalculateHorizontalLifetimes(
       } else {
         // 정규화된 인덱스 계산
         normalized_index =
-            level == 0
-                ? 1.0
-                : 1.0 - static_cast<double>(non_compacting_index) /
-                            static_cast<double>(num_non_compacting_files - 1);
+            level == 0 ? 1.0
+                       : static_cast<double>(non_compacting_index) /
+                             static_cast<double>(num_non_compacting_files - 1);
         non_compacting_index++;
       }
 
