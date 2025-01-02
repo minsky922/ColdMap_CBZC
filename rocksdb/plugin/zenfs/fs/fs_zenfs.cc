@@ -1713,6 +1713,7 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
 
     /* RocksDB does not set the right io type(!)*/
     zoneFile->is_sst_ = ends_with(fname, ".sst");
+    // wal
     if (ends_with(fname, ".log")) {
       zoneFile->SetIOType(IOType::kWAL);
       zoneFile->is_wal_ = true;
