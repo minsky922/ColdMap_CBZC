@@ -297,12 +297,18 @@ void ZoneFile::ClearExtents() {
     zone->used_capacity_ -= (*e)->length_;
     if (zc_scheme == CBZC5) {
       zone->recent_inval_time_ = std::chrono::system_clock::now();
-      std::cout << "clearExtents->recent_inval_t : " << zone->recent_inval_time_
-                << std::endl;
+      auto recent_inval_time_ms =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              zone->recent_inval_time_.time_since_epoch())
+              .count();
+
+      std::cout << "clearExtents->recent_inval_t (ms since epoch): "
+                << recent_inval_time_ms << std::endl;
     }
-    delete *e;
   }
-  extents_.clear();
+  delete *e;
+}
+extents_.clear();
 }
 
 IOStatus ZoneFile::CloseActiveZone() {
