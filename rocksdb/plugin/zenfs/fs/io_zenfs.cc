@@ -305,10 +305,9 @@ void ZoneFile::ClearExtents() {
       std::cout << "clearExtents->recent_inval_t (ms since epoch): "
                 << recent_inval_time_ms << std::endl;
     }
+    delete *e;
   }
-  delete *e;
-}
-extents_.clear();
+  extents_.clear();
 }
 
 IOStatus ZoneFile::CloseActiveZone() {
