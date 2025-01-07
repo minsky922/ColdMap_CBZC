@@ -870,13 +870,15 @@ void ZenFS::ZoneCleaning(bool forced) {
               static_cast<double>(benefit) / static_cast<double>(cost);
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx});
+          std::cout << "cost_benefit_score : " << cost_benefit_score
+                    << std::endl;
         }
 
         std::cout << "cost : " << cost << std::endl;
         std::cout << "freeSpace : " << freeSpace << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
-        std::cout << "cost_benefit_score : " << cost_benefit_score << std::endl;
         std::cout << "garbage : " << garbage_percent_approx << std::endl;
+        printf("============================================");
       } else {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
