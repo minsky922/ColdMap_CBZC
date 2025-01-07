@@ -628,7 +628,7 @@ void ZenFS::ReCalculateLifetimes() {
     }
 
     if (zoneFile->is_wal_) {
-      printf("RecalculateLifetimes - WAL\n");
+      // printf("RecalculateLifetimes - WAL\n");
       double wal_lifetime_value = 0.0;
 
       for (const auto* extent : zoneFile->GetExtents()) {
@@ -917,7 +917,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         std::cout << "freeSpace : " << freeSpace << std::endl;
         std::cout << "benefit : " << benefit << std::endl;
         std::cout << "garbage : " << garbage_percent_approx << std::endl;
-        printf("============================================");
+        printf("============================================\n");
       } else {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
