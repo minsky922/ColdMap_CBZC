@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
@@ -160,6 +161,7 @@ class Zone {
   uint64_t finish_count_ = 0;
   enum State { EMPTY, OPEN, CLOSE, FINISH, RO, OFFLINE };
   State state_ = EMPTY;
+  std::chrono::time_point<std::chrono::system_clock> recent_inval_time_;
   //
   std::atomic<uint64_t> used_capacity_;
 

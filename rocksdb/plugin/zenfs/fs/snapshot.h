@@ -10,6 +10,7 @@
  * 복구하는 기능을 담당*/
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -64,6 +65,8 @@ class ZoneSnapshot {
   uint64_t used_capacity;  // 존에서 사용된 용량
   uint64_t max_capacity;   // 존의 최대 용량
 
+  std::chrono::time_point<std::chrono::system_clock> recent_inval_time;
+
  public:
   ZoneSnapshot(const Zone& zone)  // ZoneSnapshot의 각 멤버 변수는 Zone 객체의
                                   // 해당 멤버 변수 값으로 설정
@@ -71,7 +74,8 @@ class ZoneSnapshot {
         wp(zone.wp_),
         capacity(zone.capacity_),
         used_capacity(zone.used_capacity_),
-        max_capacity(zone.max_capacity_) {}
+        max_capacity(zone.max_capacity_),
+        recent_inval_time(zone.recent_inval_time_) {}
 };
 
 /* 각 존의 익스텐트(연속된 데이터 블록)의 시작 위치, 길이, 존의 시작 위치 등을

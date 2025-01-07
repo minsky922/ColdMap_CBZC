@@ -848,7 +848,35 @@ void ZenFS::ZoneCleaning(bool forced) {
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx});
         }
-        // } else if (zc_scheme == CBZC3 || zc_scheme == GREEDY ) {
+      } else if (zc_scheme == CBZC5) {
+        auto now = std::chrono::system_clock::now();
+        auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       now - zone.recent_inval_time)
+                       .count();
+
+        std::cout << "Zone age (ms): " << age << std::endl;
+
+        double cost = 2 * (static_cast<double>(zone.used_capacity) /
+                           static_cast<double>(zone.max_capacity));
+
+        double freeSpace =
+            static_cast<double>(zone.max_capacity - zone.used_capacity) /
+            static_cast<double>(zone.max_capacity);
+
+        double benefit = freeSpace * age;
+
+        if (cost != 0) {
+          double cost_benefit_score =
+              static_cast<double>(benefit) / static_cast<double>(cost);
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx});
+        }
+
+        std::cout << "cost : " << cost << std::endl;
+        std::cout << "freeSpace : " << freeSpace << std::endl;
+        std::cout << "benefit : " << benefit << std::endl;
+        std::cout << "cost_benefit_score : " << cost_benefit_score << std::endl;
+        std::cout << "garbage : " << garbage_percent_approx << std::endl;
       } else {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;

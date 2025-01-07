@@ -288,11 +288,17 @@ void ZoneFile::SetIOType(IOType io_type) { io_type_ = io_type; }
 ZoneFile::~ZoneFile() { ClearExtents(); }
 
 void ZoneFile::ClearExtents() {
+  // zoneFile 안에 extent들 순회
+  uint64_t zc_scheme = zbd_->GetZCScheme();
+  std::cout << "clearExtents->zc_scheme : " << zc_scheme << std::endl;
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
     Zone* zone = (*e)->zone_;
 
     assert(zone && zone->used_capacity_ >= (*e)->length_);
     zone->used_capacity_ -= (*e)->length_;
+    if (zc_scheme == CBZC5) {
+      zone->recent_inval_time_ = std::chrono::system_clock::now();
+    }
     delete *e;
   }
   extents_.clear();
