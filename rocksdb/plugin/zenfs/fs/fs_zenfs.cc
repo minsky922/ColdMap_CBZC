@@ -636,10 +636,11 @@ void ZenFS::ReCalculateLifetimes() {
 
         // 처음 본 zone이면 초기화
         if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
+          // printf("ReCalculateLifetimes-WAL : not found\n");
           zone_lifetime_map_[zone_start] = {
-              0.0,   // 총합
-              1,     // 파일 수
-              {0.0}  // 파일별 lifetime 리스트
+              0.0,  // 총합
+              1,    // 파일 수
+              {}    // 파일별 lifetime 리스트
           };
         }
 
