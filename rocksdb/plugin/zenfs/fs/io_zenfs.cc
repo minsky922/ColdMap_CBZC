@@ -297,13 +297,13 @@ void ZoneFile::ClearExtents() {
     zone->used_capacity_ -= (*e)->length_;
     if (zc_scheme == CBZC5) {
       zone->recent_inval_time_ = std::chrono::system_clock::now();
-      auto recent_inval_time_ms =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              zone->recent_inval_time_.time_since_epoch())
-              .count();
+      // auto recent_inval_time_ms =
+      //     std::chrono::duration_cast<std::chrono::milliseconds>(
+      //         zone->recent_inval_time_.time_since_epoch())
+      //         .count();
 
-      std::cout << "clearExtents->recent_inval_t (ms since epoch): "
-                << recent_inval_time_ms << std::endl;
+      // std::cout << "clearExtents->recent_inval_t (ms since epoch): "
+      //           << recent_inval_time_ms << std::endl;
     }
     delete *e;
   }
