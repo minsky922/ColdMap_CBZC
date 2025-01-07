@@ -290,7 +290,6 @@ ZoneFile::~ZoneFile() { ClearExtents(); }
 void ZoneFile::ClearExtents() {
   // zoneFile 안에 extent들 순회
   uint64_t zc_scheme = zbd_->GetZCScheme();
-  std::cout << "clearExtents->zc_scheme : " << zc_scheme << std::endl;
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
     Zone* zone = (*e)->zone_;
 
@@ -298,6 +297,8 @@ void ZoneFile::ClearExtents() {
     zone->used_capacity_ -= (*e)->length_;
     if (zc_scheme == CBZC5) {
       zone->recent_inval_time_ = std::chrono::system_clock::now();
+      std::cout << "clearExtents->recent_inval_t : " << zone->recent_inval_time_
+                << std::endl;
     }
     delete *e;
   }
