@@ -618,6 +618,7 @@ void ZenFS::ReCalculateLifetimes() {
   for (auto& kv : files_) {
     const std::string& fname = kv.first;
     std::shared_ptr<ZoneFile> zoneFile = kv.second;
+    (void)fname;
 
     if (!zoneFile) {
       continue;
