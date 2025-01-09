@@ -1314,6 +1314,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
   if ((zoneFile_->is_wal_ && zoneFile_->GetZCRunning_()) ||
       (zoneFile_->is_sst_ && zoneFile_->GetWriteLifeTimeHint() == 2 &&
        zoneFile_->GetZCRunning_())) {
+    printf("WAL || FLUSH\n");
     while (zoneFile_->GetZCRunning_()) {
       //
     }
