@@ -1299,15 +1299,23 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
   zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
                                                data.size());
   //
-
+  printf("positionedAppend!!\n");
   if (zoneFile_->is_wal_) {
     uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
-    std::cout << "WAL : " << lifetime << std::endl;
+    printf("WAL : %llu\n", (unsigned long long)lifetime);
   }
   if (zoneFile_->is_sst_) {
     uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
     if (lifetime == 2) {
-      std::cout << "SST : " << lifetime << std::endl;
+      printf("SST : %llu\n", (unsigned long long)lifetime);
+    }
+  }
+
+  if ((zoneFile_->is_wal_ && zoneFile_->GetZCRunning_()) ||
+      (zoneFile_->is_sst_ && zoneFile_->GetWriteLifeTimeHint() == 2 &&
+       zoneFile_->GetZCRunning_())) {
+    while (zoneFile_->GetZCRunning_()) {
+      //
     }
   }
 
@@ -1317,13 +1325,6 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
     return s;
   }
 
-  if ((zoneFile_->is_wal_ && zoneFile_->GetZCRunning_()) ||
-      (zoneFile_->is_sst_ && zoneFile_->GetWriteLifeTimeHint() == 2 &&
-       zoneFile_->GetZCRunning_())) {
-    while (zoneFile_->GetZCRunning_()) {
-      std::cout << "WAL?: " << std::endl;
-    }
-  }
   //
   if (offset != wp) {
     assert(false);
