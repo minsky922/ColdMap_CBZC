@@ -558,7 +558,7 @@ void ZenFS::ReCalculateLifetimes() {
     double vertical_lifetime_ = normalized_vertical_lifetimes[level];
     for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
       double sst_lifetime_value =
-          alpha_ * (1 - horizontal_lifetime) * beta_ * (1 - vertical_lifetime_);
+          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
 
       // std::cout << "Level: " << level
       //           << ", vertical Lifetime: " << vertical_lifetime_
