@@ -1304,8 +1304,8 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
     s = zoneFile_->CAZAAppend(data.data(), data.size(), true, offset);
     return s;
   }
-  if (zoneFile_->is_wal_ && zoneFile_->zbd_->GetZCRunning()) {
-    while (zoneFile_->Zbd_->GetZCRunning()) {
+  if (zoneFile_->is_wal_ && zoneFile_->GetZCRunning_()) {
+    while (zoneFile_->GetZCRunning_()) {
       std::cout << "WAL?: " << std::endl;
     }
   }
