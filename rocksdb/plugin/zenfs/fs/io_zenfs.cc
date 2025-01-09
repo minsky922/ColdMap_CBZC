@@ -1301,11 +1301,11 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
   //
 
   if (zoneFile_->is_wal_) {
-    uint64_t lifetime = zoneFile->GetWriteLifeTimeHint();
+    uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
     std::cout << "WAL : " << lifetime << std::endl;
   }
   if (zoneFile_->is_sst_) {
-    uint64_t lifetime = zoneFile->GetWriteLifeTimeHint();
+    uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
     if (lifetime == 2) {
       std::cout << "SST : " << lifetime << std::endl;
     }
