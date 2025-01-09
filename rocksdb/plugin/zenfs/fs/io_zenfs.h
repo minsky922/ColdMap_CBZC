@@ -108,6 +108,8 @@ class ZoneFile {
   FileSystemWrapper* zenfs_;
 
  public:
+  ZonedBlockDevice* Zbd_;
+
   bool is_sst_ = false;
   bool is_wal_ = false;
   uint64_t fno_;
