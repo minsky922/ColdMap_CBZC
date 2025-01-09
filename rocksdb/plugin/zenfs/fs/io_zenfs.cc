@@ -1312,7 +1312,7 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
   }
 
   if (zoneFile_->IsSST() && zoneFile_->GetAllocationScheme() != LIZA) {
-    // printf("append->CAZAAppend!!\n");
+    printf("append->CAZAAppend!!\n");
     s = zoneFile_->CAZAAppend(data.data(), data.size(), true, offset);
     return s;
   }
