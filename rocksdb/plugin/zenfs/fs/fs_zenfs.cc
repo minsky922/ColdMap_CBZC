@@ -850,9 +850,10 @@ void ZenFS::ZoneCleaning(bool forced) {
 
   struct timespec start_ts, end_ts;
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
-  if (zc_scheme == CBZC4) {
-    Adv_ReCalculateLifetimes();
-  } else if (zc_scheme == CBZC3) {
+  // if (zc_scheme == CBZC4) {
+  //   Adv_ReCalculateLifetimes();
+  // } else
+  if (zc_scheme == CBZC3) {
     ReCalculateLifetimes();
   }
   // NormalizeZoneLifetimes();
