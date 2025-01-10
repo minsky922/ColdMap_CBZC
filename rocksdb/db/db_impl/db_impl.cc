@@ -3000,7 +3000,7 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
                                  &downward_level_inputs.files);
   // printf("ajacent 2\n");
   for (const auto& f : downward_level_inputs.files) {
-    if (!f->being_compacted && f.empty()) {
+    if (!f->being_compacted) {
       fno_list.push_back(f->fd.GetNumber());
     }
   }
@@ -4671,7 +4671,7 @@ void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
 void DB::DownwardAdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::DownwardAdjacentFileList not Supported\n";
 }
-bool DB::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
+void DB::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
   std::cout << "DB::TrivialMoveFiles not Supported\n";
 }
 void DB::UpperLevelFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
