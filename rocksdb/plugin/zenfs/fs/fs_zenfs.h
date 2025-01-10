@@ -493,14 +493,14 @@ class ZenFS : public FileSystemWrapper {
                       double sigma_value, uint64_t finish_scheme,
                       uint64_t open_zone_limit,
                       std::vector<uint64_t>& other_options) override;
-  // void GiveZenFStoLSMTreeHint(
-  //     std::vector<uint64_t>& compaction_inputs_input_level_fno,
-  //     std::vector<uint64_t>& compaction_inputs_output_level_fno,
-  //     int output_level, bool trivial_move) override {
-  //   zbd_->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
-  //                                compaction_inputs_output_level_fno,
-  //                                output_level, trivial_move);
-  // }
+  void GiveZenFStoLSMTreeHint(
+      std::vector<uint64_t>& compaction_inputs_input_level_fno,
+      std::vector<uint64_t>& compaction_inputs_output_level_fno,
+      int output_level, bool trivial_move) override {
+    zbd_->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
+                                 compaction_inputs_output_level_fno,
+                                 output_level, trivial_move);
+  }
   double GetMaxInvalidateCompactionScore(std::vector<uint64_t>& file_candidates,
                                          uint64_t* candidate_size) override;
   bool IsZoneDevice() { return true; }

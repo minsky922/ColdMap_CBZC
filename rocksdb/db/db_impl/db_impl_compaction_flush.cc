@@ -3338,8 +3338,8 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         trivial_move_inputs.push_back(f->fd.GetNumber());
         //
       }
-      // c->immutable_options()->fs->GiveZenFStoLSMTreeHint(
-      //     trivial_move_inputs, none, c->output_level(), true);
+      c->immutable_options()->fs->GiveZenFStoLSMTreeHint(
+          trivial_move_inputs, none, c->output_level(), true);
     }
 
     status = versions_->LogAndApply(c->column_family_data(),

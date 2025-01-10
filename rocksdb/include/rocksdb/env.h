@@ -387,8 +387,8 @@ class Env : public Customizable {
                               uint64_t, uint64_t, double, double, uint64_t,
                               uint64_t, std::vector<uint64_t>&) {}
 
-  // virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
-  //                                     std::vector<uint64_t>&, int, bool) {}
+  virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
+                                      std::vector<uint64_t>&, int, bool) {}
 
   virtual double GetMaxInvalidateCompactionScore(std::vector<uint64_t>&,
                                                  uint64_t*) {
@@ -1504,14 +1504,14 @@ class EnvWrapper : public Env {
                                 other_options);
   }
 
-  // void GiveZenFStoLSMTreeHint(
-  //     std::vector<uint64_t>& compaction_inputs_input_level_fno,
-  //     std::vector<uint64_t>& compaction_inputs_output_level_fno,
-  //     int output_level, bool trivial_move) override {
-  //   target_.env->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
-  //                                       compaction_inputs_output_level_fno,
-  //                                       output_level, trivial_move);
-  // }
+  void GiveZenFStoLSMTreeHint(
+      std::vector<uint64_t>& compaction_inputs_input_level_fno,
+      std::vector<uint64_t>& compaction_inputs_output_level_fno,
+      int output_level, bool trivial_move) override {
+    target_.env->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
+                                        compaction_inputs_output_level_fno,
+                                        output_level, trivial_move);
+  }
 
   double GetMaxInvalidateCompactionScore(std::vector<uint64_t>& file_candidates,
                                          uint64_t* candidate_size) override {

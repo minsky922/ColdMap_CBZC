@@ -647,84 +647,82 @@ IOStatus ZonedBlockDevice::AllocateMetaZone(Zone **out_meta_zone) {
   return IOStatus::NoSpace("Out of metadata zones");
 }
 
-// void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
-//     std::vector<uint64_t> &compaction_inputs_input_level_fno,
-//     std::vector<uint64_t> &compaction_inputs_output_level_fno, int
-//     output_level, bool trivial_move) {
-//   ZoneFile *zfile = nullptr;
+void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
+    std::vector<uint64_t> &compaction_inputs_input_level_fno,
+    std::vector<uint64_t> &compaction_inputs_output_level_fno, int output_level,
+    bool trivial_move) {
+  ZoneFile *zfile = nullptr;
 
-//   if (allocation_scheme_ == LIZA) {
-//     return;
-//   }
-//   if (trivial_move) {
-//     if (output_level == 1) {
-//       printf("0->1 trivial move??\n");
-//     }
+  if (allocation_scheme_ == LIZA) {
+    return;
+  }
+  if (trivial_move) {
+    if (output_level == 1) {
+      printf("0->1 trivial move??\n");
+    }
 
-//     for (uint64_t fno : compaction_inputs_input_level_fno) {
-//       zfile = GetSSTZoneFileInZBDNoLock(fno);
+    for (uint64_t fno : compaction_inputs_input_level_fno) {
+      zfile = GetSSTZoneFileInZBDNoLock(fno);
 
-//       if (zfile == nullptr) {
-//         printf("why nullptr? %lu\n", fno);
-//         continue;
-//       }
-//       uint64_t file_size = zfile->predicted_size_;
-//       lsm_tree_[output_level - 1].fetch_sub(file_size);
-//       lsm_tree_[output_level].fetch_add(file_size);
-//     }
-//     return;
-//   }
+      if (zfile == nullptr) {
+        printf("why nullptr? %lu\n", fno);
+        continue;
+      }
+      uint64_t file_size = zfile->predicted_size_;
+      lsm_tree_[output_level - 1].fetch_sub(file_size);
+      lsm_tree_[output_level].fetch_add(file_size);
+    }
+    return;
+  }
 
-//   //////////////// invaldation compaction
+  //////////////// invaldation compaction
 
-//   for (uint64_t fno : compaction_inputs_input_level_fno) {
-//     zfile = GetSSTZoneFileInZBDNoLock(fno);
+  for (uint64_t fno : compaction_inputs_input_level_fno) {
+    zfile = GetSSTZoneFileInZBDNoLock(fno);
 
-//     if (zfile == nullptr) {
-//       printf("why nullptr? %lu\n", fno);
-//       continue;
-//     }
-//     uint64_t file_size = zfile->predicted_size_;
-//     lsm_tree_[output_level - 1].fetch_sub(file_size);
-//   }
-//   for (uint64_t fno : compaction_inputs_output_level_fno) {
-//     zfile = GetSSTZoneFileInZBDNoLock(fno);
+    if (zfile == nullptr) {
+      printf("why nullptr? %lu\n", fno);
+      continue;
+    }
+    uint64_t file_size = zfile->predicted_size_;
+    lsm_tree_[output_level - 1].fetch_sub(file_size);
+  }
+  for (uint64_t fno : compaction_inputs_output_level_fno) {
+    zfile = GetSSTZoneFileInZBDNoLock(fno);
 
-//     if (zfile == nullptr) {
-//       printf("why nullptr? %lu\n", fno);
-//       continue;
-//     }
-//     uint64_t file_size = zfile->predicted_size_;
-//     lsm_tree_[output_level].fetch_sub(file_size);
-//   }
+    if (zfile == nullptr) {
+      printf("why nullptr? %lu\n", fno);
+      continue;
+    }
+    uint64_t file_size = zfile->predicted_size_;
+    lsm_tree_[output_level].fetch_sub(file_size);
+  }
 
-//   std::vector<uint64_t> input_fno = compaction_inputs_input_level_fno;
-//   input_fno.insert(input_fno.end(),
-//   compaction_inputs_output_level_fno.begin(),
-//                    compaction_inputs_output_level_fno.end());
-//   if (input_aware_scheme_ == 1) {
-//     for (auto fno : input_fno) {
-//       auto zFile = GetSSTZoneFileInZBDNoLock(fno);
-//       if (!zFile) {
-//         zFile->selected_as_input_ = true;
-//       }
-//     }
-//   }
+  std::vector<uint64_t> input_fno = compaction_inputs_input_level_fno;
+  input_fno.insert(input_fno.end(), compaction_inputs_output_level_fno.begin(),
+                   compaction_inputs_output_level_fno.end());
+  if (input_aware_scheme_ == 1) {
+    for (auto fno : input_fno) {
+      auto zFile = GetSSTZoneFileInZBDNoLock(fno);
+      if (!zFile) {
+        zFile->selected_as_input_ = true;
+      }
+    }
+  }
 
-//   double score = GetMaxSameZoneScore(input_fno);
-//   uint64_t none;
-//   double inval_score = GetMaxInvalidateCompactionScore(input_fno, &none,
-//   true);
-//   {
-//     std::lock_guard<std::mutex> lg(same_zone_score_mutex_);
-//     same_zone_score_[output_level].push_back(score);
-//     invalidate_score_[output_level].push_back(inval_score);
+  double score = GetMaxSameZoneScore(input_fno);
+  uint64_t none;
+  double inval_score = GetMaxInvalidateCompactionScore(input_fno, &none, true);
+  {
+    std::lock_guard<std::mutex> lg(same_zone_score_mutex_);
+    same_zone_score_[output_level].push_back(score);
+    invalidate_score_[output_level].push_back(inval_score);
 
-//     same_zone_score_for_timelapse_[output_level].clear();
-//     same_zone_score_for_timelapse_[output_level] =
-//         same_zone_score_[output_level];
-//   }
-// }
+    same_zone_score_for_timelapse_[output_level].clear();
+    same_zone_score_for_timelapse_[output_level] =
+        same_zone_score_[output_level];
+  }
+}
 
 void ZonedBlockDevice::AddTimeLapse(int T) {
   far_stats_.emplace_back(cur_free_percent_, reset_count_.load(),

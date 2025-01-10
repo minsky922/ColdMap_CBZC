@@ -564,10 +564,10 @@ void CompactionJob::Prepare() {
     }
   }
 
-  // c->immutable_options()->fs->GiveZenFStoLSMTreeHint(
-  //     compaction_inputs_input_level_fno, compaction_inputs_output_level_fno,
-  //     compact_->compaction->output_level(), false);
-  //
+  c->immutable_options()->fs->GiveZenFStoLSMTreeHint(
+      compaction_inputs_input_level_fno, compaction_inputs_output_level_fno,
+      compact_->compaction->output_level(), false);
+
   write_hint_ =
       c->column_family_data()->CalculateSSTWriteHint(c->output_level());
   bottommost_level_ = c->bottommost_level();
