@@ -525,58 +525,55 @@ void ZenFS::CalculateHorizontalLifetimes(
     std::set<uint64_t> trivial_set;
     zbd_->TrivialMoveFiles(level, trivial_set);
 
-    // 이후 trivial_set을 사용
     for (auto fno : trivial_set) {
       std::cout << "Trivial move candidate => level " << level
                 << ", fno = " << fno << std::endl;
     }
+    const size_t total_files = fno_list.size();
+    const size_t compacting_count = compacting_files.size();
+    const size_t trivial_count = trivial_set.size();
 
-    size_t num_non_compacting_files = fno_list.size() - compacting_files.size();
+    const size_t num_normal_files =
+        total_files - compacting_count - trivial_count;
 
     std::vector<FileInfo_> file_info_vec;
-    file_info_vec.reserve(fno_list.size());
+    file_info_vec.reserve(total_files);
 
-    for (size_t i = 0, non_compacting_index = 0; i < fno_list.size(); ++i) {
-      uint64_t fno = fno_list[i];
+    size_t normal_index = 0;
+
+    for (uint64_t fno : fno_list) {
+      bool is_compacting =
+          (compacting_files.find(fno) != compacting_files.end());
+      bool is_trivial = (trivial_set.find(fno) != trivial_set.end());
+
       double normalized_index = 1.0;
-      bool is_compacting = false;
-      bool is_trivial = false;
 
-      // 1) 컴팩션 중인지?
-      if (compacting_files.find(fno) != compacting_files.end()) {
-        is_compacting = true;
-        // normalized_index = 1.0 그대로
-      } else {
-        // 2) 컴팩션 중 아닌 파일이면 정규화
+      if (!is_compacting && !is_trivial) {
         if (level == 0) {
+          // Level 0이면 무조건 1.0
           normalized_index = 1.0;
         } else {
-          if (num_non_compacting_files > 1) {
+          // Level > 0
+          if (num_normal_files > 1) {
             normalized_index =
-                1.0 - static_cast<double>(non_compacting_index) /
-                          static_cast<double>(num_non_compacting_files - 1);
+                1.0 - static_cast<double>(normal_index) /
+                          static_cast<double>(num_normal_files - 1);
           } else {
             normalized_index = 1.0;
           }
-          non_compacting_index++;
         }
+        normal_index++;
       }
 
-      if (trivial_set.find(fno) != trivial_set.end()) {
-        is_trivial = true;
-      }
-
-      // 4) 구조체 생성
       FileInfo_ sst;
       sst.fno = fno;
       sst.horizontal_lifetime = normalized_index;
       sst.is_compacting = is_compacting;
       sst.is_trivial = is_trivial;
 
-      file_info_vec.push_back(sst);
+      file_info_vec.push_back(std::move(sst));
     }
 
-    // 레벨별 map 저장
     level_file_map[level] = std::move(file_info_vec);
   }
 }
