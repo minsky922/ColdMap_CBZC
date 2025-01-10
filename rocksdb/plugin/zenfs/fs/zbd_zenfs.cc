@@ -3205,11 +3205,11 @@ double ZonedBlockDevice::GetMaxSameZoneScore(
 double ZonedBlockDevice::GetMaxInvalidateCompactionScore(
     std::vector<uint64_t> &file_candidates, uint64_t *candidate_size,
     bool stats) {
-  printf("io zones n %lu\n", io_zones.size());
+  // printf("io zones n %lu\n", io_zones.size());
   std::vector<bool> is_sst_in_zone(io_zones.size(), false);
   std::vector<uint64_t> sst_in_zone(io_zones.size(), 0);
   std::vector<uint64_t> zone_score(io_zones.size(), 0);
-  printf("io zones n %lu 22222222\n", io_zones.size());
+  // printf("io zones n %lu 22222222\n", io_zones.size());
   uint64_t total_size = 0;
   uint64_t zidx;
   uint64_t zone_size = io_zones[0]->max_capacity_;
