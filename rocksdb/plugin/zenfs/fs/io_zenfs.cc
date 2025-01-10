@@ -1299,29 +1299,29 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
   zoneFile_->GetZBDMetrics()->ReportThroughput(ZENFS_WRITE_THROUGHPUT,
                                                data.size());
   //
-  printf("positionedAppend!!\n");
+  // printf("positionedAppend!!\n");
   if (zoneFile_->is_wal_) {
     uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
-    printf("WAL : %llu\n", (unsigned long long)lifetime);
+    // printf("WAL : %llu\n", (unsigned long long)lifetime);
   }
   if (zoneFile_->is_sst_) {
     uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
     if (lifetime == 2) {
-      printf("SST : %llu\n", (unsigned long long)lifetime);
+      // printf("SST : %llu\n", (unsigned long long)lifetime);
     }
   }
 
   if ((zoneFile_->is_wal_ && zoneFile_->GetZCRunning_()) ||
       (zoneFile_->is_sst_ && zoneFile_->GetWriteLifeTimeHint() == 2 &&
        zoneFile_->GetZCRunning_())) {
-    printf("WAL || FLUSH\n");
+    // printf("WAL || FLUSH\n");
     while (zoneFile_->GetZCRunning_()) {
       //
     }
   }
 
   if (zoneFile_->IsSST() && zoneFile_->GetAllocationScheme() != LIZA) {
-    printf("append->CAZAAppend!!\n");
+    // printf("append->CAZAAppend!!\n");
     s = zoneFile_->CAZAAppend(data.data(), data.size(), true, offset);
     return s;
   }
