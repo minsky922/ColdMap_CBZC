@@ -390,7 +390,7 @@ class DB {
                                 std::vector<uint64_t>& fno_list);
   virtual void DownwardAdjacentFileList(Slice& s, Slice& l, int level,
                                         std::vector<uint64_t>& fno_list);
-  virtual bool OverlapCheck(int level, uint64_t fno);
+  virtual void TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set);
   virtual void UpperLevelFileList(Slice& s, Slice& l, int level,
                                   std::vector<uint64_t>& fno_list);
   virtual void ZenFSInstallSuperVersionAndScheduleWork(void);

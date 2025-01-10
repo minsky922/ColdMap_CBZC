@@ -3000,7 +3000,7 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
                                  &downward_level_inputs.files);
   // printf("ajacent 2\n");
   for (const auto& f : downward_level_inputs.files) {
-    if (!f->being_compacted) {
+    if (!f->being_compacted && f.empty()) {
       fno_list.push_back(f->fd.GetNumber());
     }
   }
@@ -3008,31 +3008,38 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
   return;
 }
 
-bool DBImpl::OverlapCheck(int level, uint64_t fno) {
+void DBImpl::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
   auto vstorage =
       versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
 
-  const auto& level_files = vstorage->LevelFiles(level);
+  const auto& current_level_files = vstorage->LevelFiles(level);
 
-  const FileMetaData* target_file = nullptr;
-  for (auto* fmd : level_files) {
-    if (fmd->fd.GetNumber() == fno) {
-      target_file = fmd;
-      break;
+  for (auto* file : current_level_files) {
+    if (file->being_compacted) {
+      continue;
+    }
+
+    CompactionInputFiles overlap_inputs;
+
+    vstorage->GetOverlappingInputs(level + 1, &file->smallest, &file->largest,
+                                   &overlap_inputs.files);
+    if (overlap_inputs.files.empty()) {
+      trivial_set.insert(file->fd.GetNumber());
     }
   }
+}
 
-  if (!target_file) {
-    return false;
-  }
+CompactionInputFiles overlap_inputs;
+InternalKey largest;
+InternalKey smallest;
+largest.DecodeFrom(l);
+smallest.DecodeFrom(s);
 
-  CompactionInputFiles overlap_inputs;
-  vstorage->GetOverlappingInputs(level + 1, &target_file->smallestkey,
-                                 &target_file->largestkey,
-                                 &overlap_inputs.files);
+vstorage->GetOverlappingInputs(level + 1, &target_file->smallestkey,
+                               &target_file->largestkey, &overlap_inputs.files);
 
-  bool has_overlap = !overlap_inputs.files.empty();
-  return has_overlap;
+bool has_overlap = !overlap_inputs.files.empty();
+return has_overlap;
 }
 
 void DBImpl::UpperLevelFileList(Slice& s, Slice& l, int level,
@@ -4677,8 +4684,8 @@ void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
 void DB::DownwardAdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::DownwardAdjacentFileList not Supported\n";
 }
-bool DB::OverlapCheck(int level, uint64_t fno) {
-  std::cout << "DB::OverlapCheck not Supported\n";
+bool DB::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
+  std::cout << "DB::TrivialMoveFiles not Supported\n";
 }
 void DB::UpperLevelFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::UpperLevelFileList not Supported\n";

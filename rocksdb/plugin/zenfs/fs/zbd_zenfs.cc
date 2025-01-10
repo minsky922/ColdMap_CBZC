@@ -3039,11 +3039,12 @@ void ZonedBlockDevice::DownwardAdjacentFileList(
   }
   db_ptr_->DownwardAdjacentFileList(s, l, level, fno_list);
 }
-bool ZonedBlockDevice::OverlapCheck(int level, uint64_t fno) {
+bool ZonedBlockDevice::TrivialMoveFiles(int level,
+                                        std::set<uint64_t> &trivial_set) {
   if (db_ptr_ == nullptr) {
     return;
   }
-  db_ptr_->OverlapCheck(level, fno);
+  db_ptr_->TrivialMoveFiles(level, trivial_set);
 }
 
 // return most large one

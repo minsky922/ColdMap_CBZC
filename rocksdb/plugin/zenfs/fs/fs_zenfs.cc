@@ -523,11 +523,12 @@ void ZenFS::CalculateHorizontalLifetimes(
     }
 
     std::set<uint64_t> trivial_set;
-    for (auto fno : fno_list) {
-      if (zbd_->OverlapCheck(level, fno) == false) {
-        std::cout << "overlapcheck: " << level << ", " << fno << std::endl;
-        trivial_set.insert(fno);
-      }
+    zbd_->TrivialMoveFiles(level, fno_list, trivial_set);
+
+    // 이후 trivial_set을 사용
+    for (auto fno : trivial_set) {
+      std::cout << "Trivial move candidate => level " << level
+                << ", fno = " << fno << std::endl;
     }
 
     size_t num_non_compacting_files = fno_list.size() - compacting_files.size();
