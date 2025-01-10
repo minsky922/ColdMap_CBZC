@@ -4671,7 +4671,7 @@ void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
 void DB::DownwardAdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::DownwardAdjacentFileList not Supported\n";
 }
-void DB::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
+void DB::TrivialMoveFiles(int, std::set<uint64_t>&) {
   std::cout << "DB::TrivialMoveFiles not Supported\n";
 }
 void DB::UpperLevelFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
