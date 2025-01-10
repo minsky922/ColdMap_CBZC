@@ -822,6 +822,7 @@ class ZonedBlockDevice {
 
   void SetZCRunning(bool v) { zc_running_.store(v); }
   bool GetZCRunning(void) { return zc_running_.load(); }
+  void TrivialMoveFiles(int level, std::set<uint64_t> &trivial_set);
   //
  private:
   std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(
@@ -879,7 +880,7 @@ class ZonedBlockDevice {
 
   void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
                                 std::vector<uint64_t> &fno_list);
-  void TrivialMoveFiles(int level, std::set<uint64_t> &trivial_set);
+
   uint64_t MostLargeUpperAdjacentFile(Slice &s, Slice &l, int level);
   uint64_t MostSmallDownwardAdjacentFile(Slice &s, Slice &l, int level);
   // void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
