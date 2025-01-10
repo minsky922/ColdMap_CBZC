@@ -1300,16 +1300,16 @@ IOStatus ZonedWritableFile::PositionedAppend(const Slice& data, uint64_t offset,
                                                data.size());
   //
   // printf("positionedAppend!!\n");
-  if (zoneFile_->is_wal_) {
-    uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
-    // printf("WAL : %llu\n", (unsigned long long)lifetime);
-  }
-  if (zoneFile_->is_sst_) {
-    uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
-    if (lifetime == 2) {
-      // printf("SST : %llu\n", (unsigned long long)lifetime);
-    }
-  }
+  // if (zoneFile_->is_wal_) {
+  //   uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
+  //   // printf("WAL : %llu\n", (unsigned long long)lifetime);
+  // }
+  // if (zoneFile_->is_sst_) {
+  //   uint64_t lifetime = zoneFile_->GetWriteLifeTimeHint();
+  //   if (lifetime == 2) {
+  //     // printf("SST : %llu\n", (unsigned long long)lifetime);
+  //   }
+  // }
 
   if ((zoneFile_->is_wal_ && zoneFile_->GetZCRunning_()) ||
       (zoneFile_->is_sst_ && zoneFile_->GetWriteLifeTimeHint() == 2 &&
