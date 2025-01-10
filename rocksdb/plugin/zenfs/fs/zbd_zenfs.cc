@@ -3039,6 +3039,12 @@ void ZonedBlockDevice::DownwardAdjacentFileList(
   }
   db_ptr_->DownwardAdjacentFileList(s, l, level, fno_list);
 }
+bool ZonedBlockDevice::OverlapCheck(int level, uint64_t fno) {
+  if (db_ptr_ == nullptr) {
+    return;
+  }
+  db_ptr_->OverlapCheck(level, fno);
+}
 
 // return most large one
 // uint64_t ZonedBlockDevice::MostLargeUpperAdjacentFile(Slice& smallest ,Slice&

@@ -529,6 +529,13 @@ class ZenFS : public FileSystemWrapper {
       const std::string& fname,
       const std::vector<ZoneExtentSnapshot*>& migrate_exts);
 
+  struct FileInfo_ {
+    uint64_t fno;
+    double horizontal_lifetime;
+    bool is_compacting;
+    bool is_trivial;
+  };
+
  private:
   // std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
   std::map<uint64_t, std::tuple<double, int, std::vector<double>>>

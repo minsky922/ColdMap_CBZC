@@ -879,6 +879,7 @@ class ZonedBlockDevice {
 
   void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
                                 std::vector<uint64_t> &fno_list);
+  bool OverlapCheck(int level, uint64_t fno);
   uint64_t MostLargeUpperAdjacentFile(Slice &s, Slice &l, int level);
   uint64_t MostSmallDownwardAdjacentFile(Slice &s, Slice &l, int level);
   // void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,

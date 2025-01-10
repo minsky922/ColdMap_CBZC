@@ -3008,6 +3008,33 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
   return;
 }
 
+bool DBImpl::OverlapCheck(int level, uint64_t fno) {
+  auto vstorage =
+      versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
+
+  const auto& level_files = vstorage->LevelFiles(level);
+
+  const FileMetaData* target_file = nullptr;
+  for (auto* fmd : level_files) {
+    if (fmd->fd.GetNumber() == fno) {
+      target_file = fmd;
+      break;
+    }
+  }
+
+  if (!target_file) {
+    return false;
+  }
+
+  CompactionInputFiles overlap_inputs;
+  vstorage->GetOverlappingInputs(level + 1, &target_file->smallestkey,
+                                 &target_file->largestkey,
+                                 &overlap_inputs.files);
+
+  bool has_overlap = !overlap_inputs.files.empty();
+  return has_overlap;
+}
+
 void DBImpl::UpperLevelFileList(Slice& s, Slice& l, int level,
                                 std::vector<uint64_t>& fno_list) {
   auto vstorage =
@@ -4649,6 +4676,9 @@ void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
 }
 void DB::DownwardAdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::DownwardAdjacentFileList not Supported\n";
+}
+bool DB::OverlapCheck(int level, uint64_t fno) {
+  std::cout << "DB::OverlapCheck not Supported\n";
 }
 void DB::UpperLevelFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::UpperLevelFileList not Supported\n";
