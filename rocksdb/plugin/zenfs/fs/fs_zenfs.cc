@@ -523,7 +523,7 @@ void ZenFS::CalculateHorizontalLifetimes(
     }
 
     std::set<uint64_t> trivial_set;
-    zbd_->TrivialMoveFiles(level, fno_list, trivial_set);
+    zbd_->TrivialMoveFiles(level, trivial_set);
 
     // 이후 trivial_set을 사용
     for (auto fno : trivial_set) {
