@@ -334,7 +334,7 @@ class DBImpl : public DB {
                                 std::vector<uint64_t>& fno_list) override;
   virtual void DownwardAdjacentFileList(
       Slice& s, Slice& l, int level, std::vector<uint64_t>& fno_list) override;
-  virtual bool DBImpl::OverlapCheck(int level, uint64_t fno) override;
+  virtual bool OverlapCheck(int level, uint64_t fno) override;
   virtual void UpperLevelFileList(Slice& s, Slice& l, int level,
                                   std::vector<uint64_t>& fno_list) override;
 
