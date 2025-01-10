@@ -3039,7 +3039,7 @@ void ZonedBlockDevice::DownwardAdjacentFileList(
   }
   db_ptr_->DownwardAdjacentFileList(s, l, level, fno_list);
 }
-bool ZonedBlockDevice::TrivialMoveFiles(int level,
+void ZonedBlockDevice::TrivialMoveFiles(int level,
                                         std::set<uint64_t> &trivial_set) {
   if (db_ptr_ == nullptr) {
     return;
