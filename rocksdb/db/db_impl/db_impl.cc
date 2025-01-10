@@ -3029,19 +3029,6 @@ void DBImpl::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
   }
 }
 
-CompactionInputFiles overlap_inputs;
-InternalKey largest;
-InternalKey smallest;
-largest.DecodeFrom(l);
-smallest.DecodeFrom(s);
-
-vstorage->GetOverlappingInputs(level + 1, &target_file->smallestkey,
-                               &target_file->largestkey, &overlap_inputs.files);
-
-bool has_overlap = !overlap_inputs.files.empty();
-return has_overlap;
-}
-
 void DBImpl::UpperLevelFileList(Slice& s, Slice& l, int level,
                                 std::vector<uint64_t>& fno_list) {
   auto vstorage =
