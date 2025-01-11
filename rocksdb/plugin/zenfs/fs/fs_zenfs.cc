@@ -525,10 +525,10 @@ void ZenFS::CalculateHorizontalLifetimes(
     std::set<uint64_t> trivial_set;
     zbd_->TrivialMoveFiles(level, trivial_set);
 
-    for (auto fno : trivial_set) {
-      // std::cout << "Trivial move candidate => level " << level
-      //           << ", fno = " << fno << std::endl;
-    }
+    // for (auto fno : trivial_set) {
+    //   // std::cout << "Trivial move candidate => level " << level
+    //   //           << ", fno = " << fno << std::endl;
+    // }
     const size_t total_files = fno_list.size();
     const size_t compacting_count = compacting_files.size();
     const size_t trivial_count = trivial_set.size();
