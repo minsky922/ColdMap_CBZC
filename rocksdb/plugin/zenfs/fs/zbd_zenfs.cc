@@ -1666,7 +1666,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
                                            min_capacity);
         // printf("AllocateCompactionAwaredZoneV2 - finished!!\n");
         if (s.ok() && (*out_zone) != nullptr) {
-          printf("AllocateCompactionAwaredZoneV2 - successed!!\n");
+          // printf("AllocateCompactionAwaredZoneV2 - successed!!\n");
           break;
         }
 
