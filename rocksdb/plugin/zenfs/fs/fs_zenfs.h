@@ -510,9 +510,8 @@ class ZenFS : public FileSystemWrapper {
   void Adv_ReCalculateLifetimes();
   void NormalizeZoneLifetimes();
   double CalculateZoneLifetimeVariance();
-  // void CalculateHorizontalLifetimes(
-  //     std::map<int, std::vector<std::pair<uint64_t, double>>>&
-  //     level_file_map);
+  void CalculateHorizontalLifetimes(
+      std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map);
   struct FileInfo_ {
     uint64_t fno;
     double horizontal_lifetime;
@@ -538,7 +537,7 @@ class ZenFS : public FileSystemWrapper {
       const std::string& fname,
       const std::vector<ZoneExtentSnapshot*>& migrate_exts);
 
-  private:
+ private:
   // std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
   std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
       zone_lifetime_map_;
