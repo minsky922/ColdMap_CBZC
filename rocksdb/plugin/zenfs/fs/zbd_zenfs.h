@@ -326,11 +326,11 @@ class ZonedBlockDevice {
     long long us;
     size_t copied;
     bool forced;
+    double zlv;
     uint64_t invalid_data_size;
     uint64_t valid_data_size;
     uint64_t invalid_ratio;
     uint64_t page_cache_hit_size;
-    double zlv;
   };
   std::vector<ZCStat> zc_timelapse_;
   std::vector<uint64_t> zc_copied_timelapse_;
