@@ -330,6 +330,7 @@ class ZonedBlockDevice {
     uint64_t valid_data_size;
     uint64_t invalid_ratio;
     uint64_t page_cache_hit_size;
+    double zlv;
   };
   std::vector<ZCStat> zc_timelapse_;
   std::vector<uint64_t> zc_copied_timelapse_;
@@ -584,11 +585,11 @@ class ZonedBlockDevice {
   //   return;
   // }
   void AddZCTimeLapse(int s, int e, long long us, size_t zc_z, size_t copied,
-                      bool forced) {
+                      bool forced, double zlv) {
     if (forced == true) {
       force_zc_should_triggered_.store(false);
     }
-    zc_timelapse_.push_back({zc_z, s, e, us, copied, forced});
+    zc_timelapse_.push_back({zc_z, s, e, us, copied, forced, zlv});
   }
   void AddTimeLapse(int T);
   void AddCumulativeIOBlocking(long ns) {

@@ -463,35 +463,31 @@ double ZenFS::CalculateZoneLifetimeVariance() {
 //         non_compacting_index++;
 //       }
 
-//       // 상위 레벨과 겹치는 파일은 최대 Lifetime으로 계산
-//       // if (level > 0) {
-//       //   Slice smallest, largest;
-//       //   if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
-//       //     std::vector<uint64_t> upper_fno_list;
-//       //     zbd_->UpperLevelFileList(smallest, largest, level,
-//       // upper_fno_list);
+// 상위 레벨과 겹치는 파일은 최대 Lifetime으로 계산 if (level > 0) {
+//   Slice smallest, largest;
+//   if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
+//     std::vector<uint64_t> upper_fno_list;
+//     zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
 
-//       //     for (uint64_t upper_fno : upper_fno_list) {
-//       //       auto it =
-//       //           std::find_if(level_file_map[level - 1].begin(),
-//       //                        level_file_map[level - 1].end(),
-//       //                        [&](const std::pair<uint64_t, double>& pair)
-//       // {
-//       //                          return pair.first == upper_fno;
-//       //                        });
-//       //       if (it != level_file_map[level - 1].end()) {
-//       //         // std::cout << "Level : " << level
-//       //         //           << "Comparing Lifetime: Current Max: "
-//       //         //           << max_upper_lifetime << ", Upper File: " <<
-//       //         //           upper_fno
-//       //         //           << ",fno : " << fno << ", Lifetime: " <<
-//       //         // it->second
-//       //         //           << std::endl;
-//       //         normalized_index = std::max(normalized_index, it->second);
-//       //       }
-//       //     }
-//       //   }
-//       // }
+//     for (uint64_t upper_fno : upper_fno_list) {
+//       auto it = std::find_if(level_file_map[level - 1].begin(),
+//                              level_file_map[level - 1].end(),
+//                              [&](const std::pair<uint64_t, double>& pair) {
+//                                return pair.first == upper_fno;
+//                              });
+//       if (it != level_file_map[level - 1].end()) {
+//         // std::cout << "Level : " << level
+//         //           << "Comparing Lifetime: Current Max: "
+//         //           << max_upper_lifetime << ", Upper File: " <<
+//         //           upper_fno
+//         //           << ",fno : " << fno << ", Lifetime: " <<
+//         // it->second
+//         //           << std::endl;
+//         normalized_index = std::max(normalized_index, it->second);
+//       }
+//     }
+//   }
+// }
 
 //       // 결과 저장
 //       file_with_normalized_index.emplace_back(fno, normalized_index);
@@ -1014,6 +1010,7 @@ void ZenFS::ZoneCleaning(bool forced) {
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   // uint64_t zone_size = zbd_->GetZoneSize();
   size_t should_be_copied = 0;
+  double ZLV = 0;
   int start = GetMountTime();
   struct timespec start_timespec, end_timespec;
 
@@ -1030,6 +1027,7 @@ void ZenFS::ZoneCleaning(bool forced) {
     double score;
     uint64_t zone_start;
     uint64_t garbage_percent_approx;
+    double ZoneLifetimeValue;
   };
   std::vector<ZoneInfo> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
@@ -1047,7 +1045,8 @@ void ZenFS::ZoneCleaning(bool forced) {
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
       if (zc_scheme == GREEDY) {
         // printf("GREEDY!!!!\n");
-        victim_candidate.push_back({0.0, zone.start, garbage_percent_approx});
+        victim_candidate.push_back(
+            {0.0, zone.start, garbage_percent_approx, 0.0});
       } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         // if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
@@ -1114,8 +1113,8 @@ void ZenFS::ZoneCleaning(bool forced) {
           // uint64_t cost_benefit_score = benefit / cost;
           double cost_benefit_score = benefit / cost;
           // victim_candidate.push_back({cost_benefit_score, zone.start});
-          victim_candidate.push_back(
-              {cost_benefit_score, zone.start, garbage_percent_approx});
+          victim_candidate.push_back({cost_benefit_score, zone.start,
+                                      garbage_percent_approx, total_age});
         }
       } else if (zc_scheme == CBZC5) {
         auto now = std::chrono::system_clock::now();
@@ -1138,16 +1137,16 @@ void ZenFS::ZoneCleaning(bool forced) {
           double cost_benefit_score =
               static_cast<double>(benefit) / static_cast<double>(cost);
           victim_candidate.push_back(
-              {cost_benefit_score, zone.start, garbage_percent_approx});
-          std::cout << "cost_benefit_score : " << cost_benefit_score
-                    << std::endl;
+              {cost_benefit_score, zone.start, garbage_percent_approx, age});
+          // std::cout << "cost_benefit_score : " << cost_benefit_score
+          //           << std::endl;
         }
 
-        std::cout << "cost : " << cost << std::endl;
-        std::cout << "freeSpace : " << freeSpace << std::endl;
-        std::cout << "benefit : " << benefit << std::endl;
-        std::cout << "garbage : " << garbage_percent_approx << std::endl;
-        printf("============================================\n");
+        // std::cout << "cost : " << cost << std::endl;
+        // std::cout << "freeSpace : " << freeSpace << std::endl;
+        // std::cout << "benefit : " << benefit << std::endl;
+        // std::cout << "garbage : " << garbage_percent_approx << std::endl;
+        // printf("============================================\n");
       } else {
         // printf("CBZC3!!");
         uint64_t zone_start = zone.start;
@@ -1233,8 +1232,9 @@ void ZenFS::ZoneCleaning(bool forced) {
           if (cost != 0) {
             double cost_benefit_score =
                 static_cast<double>(benefit) / static_cast<double>(cost);
-            victim_candidate.push_back(
-                {cost_benefit_score, zone.start, garbage_percent_approx});
+            victim_candidate.push_back({cost_benefit_score, zone.start,
+                                        garbage_percent_approx,
+                                        average_lifetime});
 
             // std::cout << "cost-benefit score: " << cost_benefit_score
             //           << ", zone start: " << zone_start
@@ -1261,8 +1261,6 @@ void ZenFS::ZoneCleaning(bool forced) {
     }
   }
 
-  // std::cout << "Sorting victim candidates..." << std::endl;
-  // sort(victim_candidate.rbegin(), victim_candidate.rend());
   if (zc_scheme == GREEDY) {
     // GREEDY에서는 garbage_percent_approx 를 기준으로 내림차순 정렬
     std::sort(victim_candidate.begin(), victim_candidate.end(),
@@ -1271,7 +1269,6 @@ void ZenFS::ZoneCleaning(bool forced) {
               });
   } else {
     // CBZC에서는 cost_benefit_score (score)를 기준으로 내림차순 정렬
-    // std::cout << "zc_scheme: " << zc_scheme << std::endl;
     std::sort(
         victim_candidate.begin(), victim_candidate.end(),
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
@@ -1291,29 +1288,8 @@ void ZenFS::ZoneCleaning(bool forced) {
 
   if (!victim_candidate.empty()) {
     for (const auto& candidate : victim_candidate) {
-      // auto it = zone_lifetime_map_.find(candidate.zone_start);
-      // if (it == zone_lifetime_map_.end()) {
-      //   continue;
-      // }
-
-      // const auto& lifetime_values = std::get<2>(it->second);
-
-      // bool contains_hot_value = std::any_of(
-      //     lifetime_values.begin(), lifetime_values.end(), [](double value)
-      //     {
-      //       return value * 100 >= 0.0 && value * 100 <= 1.0;
-      //     });
-
-      // if (contains_hot_value) {
-      //   std::cout << "[Skipped] cost-benefit score: " << candidate.score
-      //             << ", zone start: " << candidate.zone_start
-      //             << ", Garbage Percentage: "
-      //             << candidate.garbage_percent_approx << "%"
-      //             << " (Contains hot values in lifetime)" << std::endl;
-      //   continue;
-      // }
-
       migrate_zones_start.emplace(candidate.zone_start);
+      ZLV = candidate.ZoneLifetimeValue;
 
       // std::cout << "[Picked] cost-benefit score: " << candidate.score
       //           << ", zone start: " << candidate.zone_start
@@ -1324,11 +1300,6 @@ void ZenFS::ZoneCleaning(bool forced) {
       break;
     }
   }
-
-  // std::cout
-  //     <<
-  //     "-------------------------------------------------------------------"
-  //     << std::endl;
 
   // uint64_t threshold = 0;
   // uint64_t reclaimed_zone_n = 1;
@@ -1375,13 +1346,10 @@ void ZenFS::ZoneCleaning(bool forced) {
       //         .count();
       zbd_->AddCumulativeIOBlocking(elapsed_ns_timespec);
       zbd_->AddZCTimeLapse(start, end, (elapsed_ns_timespec / 1000),
-                           migrate_zones_start.size(), should_be_copied,
-                           forced);
+                           migrate_zones_start.size(), should_be_copied, forced,
+                           ZLV);
     }
     zc_triggerd_count_.fetch_add(1);
-    // std::cout << "after all invalid zone_n: " << all_inval_zone_n <<
-    // std::endl; zc_lock_.unlock(); return migrate_zones_start.size() +
-    // all_inval_zone_n;
   }
 }
 

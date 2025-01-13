@@ -533,6 +533,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   size_t rc_zc = 0;
   int io_blocking_sum = 0;
   long long io_blocking_ms_sum = 0;
+  double sum_zlv = 0.0;
   // for (size_t i = 0;
   //  i < zc_timelapse_.size() && i < zc_copied_timelapse_.size(); i++) {
   for (size_t i = 0; i < zc_timelapse_.size(); i++) {
@@ -541,14 +542,17 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     int s = zc_timelapse_[i].s;
     int e = zc_timelapse_[i].e;
     long long us = zc_timelapse_[i].us;
+    double zlv = zc_timelapse_[i].zlv;
     io_blocking_sum += e - s + 1;
     io_blocking_ms_sum += us / 1000;
-    printf("[%lu] :: %d ~ %d, %llu ms, %ld (MB), Reclaimed Zone : %lu [%s]\n",
-           i + 1, s, e, us / 1000, (zc_timelapse_[i].copied >> 20), zc_z,
-           forced ? "FORCED" : " ");
+    printf(
+        "[%lu] :: %d ~ %d, %llu ms, %ld (MB), Reclaimed Zone : %lu, ZLV: "
+        "%.4f\n",
+        i + 1, s, e, us / 1000, (zc_timelapse_[i].copied >> 20), zc_z, zlv);
     // total_copied += zc_copied_timelapse_[i];
     total_copied += zc_timelapse_[i].copied;
     rc_zc += zc_z;
+    sum_zlv += zlv;
   }
   printf("Total ZC Copied (MB) :: %lu, Recaimed by ZC :: %lu \n",
          total_copied / (1 << 20), rc_zc);
@@ -557,12 +561,12 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   printf("FAR STAT  :: Reset Count (R+ZC) : %ld+%ld=%ld\n", rc - rc_zc, rc_zc,
          rc);
   printf("Finish Count : %ld\n", finish_count_.load());
-  // for (size_t i = 0; i < io_block_timelapse_.size(); i++) {
-  //   int s = io_block_timelapse_[i].s;
-  //   int e = io_block_timelapse_[i].e;
-  //   pid_t tid = io_block_timelapse_[i].tid;
-  //   printf("[%lu] :: (%d) %d ~ %d\n", i + 1, tid % 100, s, e);
-  // }
+  double avg_zlv = 0.0;
+  size_t count = zc_timelapse_.size();
+  if (count > 0) {
+    avg_zlv = sum_zlv / static_cast<double>(count);
+  }
+  printf("Average ZLV :: %.4f\n", avg_zlv);
 
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
   printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
