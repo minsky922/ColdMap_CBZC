@@ -1147,6 +1147,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         // printf("============================================\n");
       } else {
         // printf("CBZC3!!");
+        std::cout << "zc_scheme: " << zc_scheme << std::endl;
         uint64_t zone_start = zone.start;
 
         double average_lifetime = 0;
