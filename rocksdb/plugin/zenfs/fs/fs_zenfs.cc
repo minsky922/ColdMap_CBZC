@@ -732,12 +732,6 @@ void ZenFS::CalculateHorizontalLifetimes(
 }
 
 void ZenFS::ReCalculateLifetimes() {
-  struct FileInfo_ {
-    uint64_t fno;
-    double horizontal_lifetime;
-    bool is_compacting;
-    bool is_trivial;
-  };
   std::map<int, std::vector<FileInfo_>> level_file_map;
 
   CalculateHorizontalLifetimes(level_file_map);
