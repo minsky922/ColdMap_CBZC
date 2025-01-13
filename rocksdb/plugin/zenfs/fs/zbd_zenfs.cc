@@ -537,7 +537,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   // for (size_t i = 0;
   //  i < zc_timelapse_.size() && i < zc_copied_timelapse_.size(); i++) {
   for (size_t i = 0; i < zc_timelapse_.size(); i++) {
-    bool forced = zc_timelapse_[i].forced;
+    // bool forced = zc_timelapse_[i].forced;
     size_t zc_z = zc_timelapse_[i].zc_z;
     int s = zc_timelapse_[i].s;
     int e = zc_timelapse_[i].e;

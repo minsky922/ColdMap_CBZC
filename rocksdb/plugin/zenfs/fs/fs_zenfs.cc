@@ -1113,8 +1113,8 @@ void ZenFS::ZoneCleaning(bool forced) {
           // uint64_t cost_benefit_score = benefit / cost;
           double cost_benefit_score = benefit / cost;
           // victim_candidate.push_back({cost_benefit_score, zone.start});
-          victim_candidate.push_back({cost_benefit_score, zone.start,
-                                      garbage_percent_approx, total_age});
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
         }
       } else if (zc_scheme == CBZC5) {
         auto now = std::chrono::system_clock::now();
@@ -1137,7 +1137,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           double cost_benefit_score =
               static_cast<double>(benefit) / static_cast<double>(cost);
           victim_candidate.push_back(
-              {cost_benefit_score, zone.start, garbage_percent_approx, age});
+              {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
           // std::cout << "cost_benefit_score : " << cost_benefit_score
           //           << std::endl;
         }
