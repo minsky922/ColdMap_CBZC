@@ -427,312 +427,94 @@ double ZenFS::CalculateZoneLifetimeVariance() {
   return variance * 1000;
 }
 
-void ZenFS::CalculateHorizontalLifetimes(
-    std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map) {
-  for (int level = 0; level < 6; level++) {
-    std::vector<uint64_t> fno_list;
-    std::set<uint64_t> compacting_files;
-
-    if (db_ptr_ != nullptr) {
-      zbd_->SameLevelFileList(level, fno_list, compacting_files);
-    }
-
-    std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
-
-    // 컴팩션 중이 아닌 파일 수 계산
-    size_t num_non_compacting_files = fno_list.size() - compacting_files.size();
-
-    for (size_t i = 0, non_compacting_index = 0; i < fno_list.size(); ++i) {
-      uint64_t fno = fno_list[i];
-      double normalized_index;
-      // fno = trial_move -> 0.0 (cold)
-
-      // 컴팩션 중인 파일은 인덱스를 1.0으로 설정
-      if (compacting_files.find(fno) != compacting_files.end()) {
-        normalized_index = 1.0;
-      } else {
-        // 정규화된 인덱스 계산
-        normalized_index =
-            level == 0
-                ? 1.0
-                : 1.0 - static_cast<double>(non_compacting_index) /
-                            static_cast<double>(num_non_compacting_files - 1);
-        non_compacting_index++;
-      }
-
-      // 상위 레벨과 겹치는 파일은 최대 Lifetime으로 계산
-      // if (level > 0) {
-      //   Slice smallest, largest;
-      //   if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
-      //     std::vector<uint64_t> upper_fno_list;
-      //     zbd_->UpperLevelFileList(smallest, largest, level,
-      // upper_fno_list);
-
-      //     for (uint64_t upper_fno : upper_fno_list) {
-      //       auto it =
-      //           std::find_if(level_file_map[level - 1].begin(),
-      //                        level_file_map[level - 1].end(),
-      //                        [&](const std::pair<uint64_t, double>& pair)
-      // {
-      //                          return pair.first == upper_fno;
-      //                        });
-      //       if (it != level_file_map[level - 1].end()) {
-      //         // std::cout << "Level : " << level
-      //         //           << "Comparing Lifetime: Current Max: "
-      //         //           << max_upper_lifetime << ", Upper File: " <<
-      //         //           upper_fno
-      //         //           << ",fno : " << fno << ", Lifetime: " <<
-      //         // it->second
-      //         //           << std::endl;
-      //         normalized_index = std::max(normalized_index, it->second);
-      //       }
-      //     }
-      //   }
-      // }
-
-      // 결과 저장
-      file_with_normalized_index.emplace_back(fno, normalized_index);
-    }
-    // 최종적으로 map에 저장
-    level_file_map[level] = std::move(file_with_normalized_index);
-  }
-
-  // for (const auto& level : level_file_map) {
-  //   std::cout << "Level " << level.first << ": [";
-  //   for (size_t i = 0; i < level.second.size(); ++i) {
-  //     std::cout << "(" << level.second[i].first << ", "
-  //               << level.second[i].second << ")";
-  //     if (i < level.second.size() - 1) {
-  //       std::cout << ", ";
-  //     }
-  //   }
-  //   std::cout << "]" << std::endl;
-  // }
-}
-
-void ZenFS::ReCalculateLifetimes() {
-  std::map<int, std::vector<std::pair<uint64_t, double>>> level_file_map;
-
-  CalculateHorizontalLifetimes(level_file_map);
-
-  zone_lifetime_map_.clear();
-
-  // 모든 level의 vertical_lifetime을 구하여 최소값과 최대값을 찾음
-  std::vector<double> vertical_lifetimes(6);
-  double max_vertical_lifetime = 0.0;
-  double min_vertical_lifetime = std::numeric_limits<double>::max();
-
-  for (int level = 0; level < 6; level++) {
-    double vertical_lifetime = zbd_->PredictCompactionScore(level);
-    vertical_lifetimes[level] = vertical_lifetime;
-    max_vertical_lifetime = std::max(max_vertical_lifetime, vertical_lifetime);
-    min_vertical_lifetime = std::min(min_vertical_lifetime, vertical_lifetime);
-  }
-
-  std::vector<double> normalized_vertical_lifetimes(6);
-  double range = max_vertical_lifetime - min_vertical_lifetime;
-  // std::cout << "==================================================="
-  // << std::endl;
-  for (int level = 0; level < 6; level++) {
-    normalized_vertical_lifetimes[level] =
-        (range > 0)
-            ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
-            : 0;  // 모든 값이 같으면 0으로 설정
-
-    // std::cout << "Level: " << level
-    //           << ", Original: " << vertical_lifetimes[level]
-    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
-    //           << std::endl;
-  }
-  // std::cout << "==================================================="
-  // << std::endl;
-
-  double alpha_value = zbd_->GetAlphaValue();
-  double alpha_ = alpha_value;
-  double beta_ = 1 - alpha_;
-
-  // double alpha_ = alpha_value * 2;
-  // double beta_ = 1;
-
-  // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
-  // for (const auto& file_pair : level_file_map[level]) {
-  //   uint64_t fno = file_pair.first;
-  //   double horizontal_lifetime = file_pair.second;
-  for (const auto& [level, file_lifetimes] : level_file_map) {
-    double vertical_lifetime_ = normalized_vertical_lifetimes[level];
-    for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
-      double sst_lifetime_value =
-          alpha_ * (1 - horizontal_lifetime) + beta_ * (1 - vertical_lifetime_);
-
-      // std::cout << "Level: " << level
-      //           << ", vertical Lifetime: " << vertical_lifetime_
-      //           << ", horizontal_lifetime: " << horizontal_lifetime
-      //           << ", sst_lifetime: " << sst_lifetime_value << std::endl;
-
-      ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
-      if (zone_file == nullptr) {
-        continue;
-      }
-      if (zone_file->IsDeleted()) {
-        continue;
-      }
-
-      // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
-      for (const auto* extent : zone_file->GetExtents()) {
-        uint64_t zone_start = extent->zone_->start_;  // 존의 시작 위치 사용
-
-        // 해당 존의 lifetime 합산 및 파일 수를 업데이트
-        if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-          // zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
-
-          zone_lifetime_map_[zone_start] = {
-              sst_lifetime_value, 1, {sst_lifetime_value}};
-
-        } else {
-          // zone_lifetime_map_[zone_start].first +=
-          //     sst_lifetime_value;                      // 수명 추가
-          // zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
-
-          auto& entry = zone_lifetime_map_[zone_start];
-          std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
-          std::get<1>(entry) += 1;                   // 파일 수 증가
-          std::get<2>(entry).push_back(
-              sst_lifetime_value);  // 각 파일의 lifetime 저장
-        }
-      }
-    }
-  }
-  // }
-
-  // 각 존의 평균 lifetime 계산 및 출력
-  // for (const auto& zone_entry : zone_lifetime_map_) {
-  //   uint64_t zone_start = zone_entry.first;
-  //   double total_lifetime = zone_entry.second.first;
-  //   int file_count = zone_entry.second.second;
-
-  //   double average_lifetime =
-  //       total_lifetime / file_count;  // 존의 평균 lifetime 계산
-
-  //   std::cout << "Zone starting at " << zone_start
-  //             << " has average lifetime: " << average_lifetime <<
-  //             std::endl;
-  // }
-
-  /* wal -> hottest */
-  for (auto& kv : files_) {
-    const std::string& fname = kv.first;
-    std::shared_ptr<ZoneFile> zoneFile = kv.second;
-    (void)fname;
-
-    if (!zoneFile) {
-      continue;
-    }
-    if (zoneFile->IsDeleted()) {
-      continue;
-    }
-
-    if (zoneFile->is_wal_) {
-      // printf("RecalculateLifetimes - WAL\n");
-      double wal_lifetime_value = 0.0;
-
-      for (const auto* extent : zoneFile->GetExtents()) {
-        uint64_t zone_start = extent->zone_->start_;
-
-        // 처음 본 zone이면 초기화
-        if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-          // printf("ReCalculateLifetimes-WAL : not found\n");
-          zone_lifetime_map_[zone_start] = {
-              0.0,  // 총합
-              1,    // 파일 수
-              {}    // 파일별 lifetime 리스트
-          };
-        }
-
-        auto& entry = zone_lifetime_map_[zone_start];
-        std::get<0>(entry) += wal_lifetime_value;
-        std::get<1>(entry) += 1;
-        std::get<2>(entry).push_back(wal_lifetime_value);
-      }
-    }
-  }
-}
-
-//==================================================================================//
-
 // void ZenFS::CalculateHorizontalLifetimes(
-//     std::map<int, std::vector<FileInfo_>>& level_file_map) {
+//     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map)
+//     {
 //   for (int level = 0; level < 6; level++) {
 //     std::vector<uint64_t> fno_list;
 //     std::set<uint64_t> compacting_files;
+
 //     if (db_ptr_ != nullptr) {
 //       zbd_->SameLevelFileList(level, fno_list, compacting_files);
 //     }
 
-//     std::set<uint64_t> trivial_set;
-//     zbd_->TrivialMoveFiles(level, trivial_set);
+//     std::vector<std::pair<uint64_t, double>> file_with_normalized_index;
 
-//     // for (auto fno : trivial_set) {
-//     //   // std::cout << "Trivial move candidate => level " << level
-//     //   //           << ", fno = " << fno << std::endl;
-//     // }
-//     const size_t total_files = fno_list.size();
-//     const size_t compacting_count = compacting_files.size();
-//     const size_t trivial_count = trivial_set.size();
+//     // 컴팩션 중이 아닌 파일 수 계산
+//     size_t num_non_compacting_files = fno_list.size() -
+//     compacting_files.size();
 
-//     const size_t num_normal_files =
-//         total_files - compacting_count - trivial_count;
+//     for (size_t i = 0, non_compacting_index = 0; i < fno_list.size(); ++i) {
+//       uint64_t fno = fno_list[i];
+//       double normalized_index;
+//       // fno = trial_move -> 0.0 (cold)
 
-//     std::vector<FileInfo_> file_info_vec;
-//     file_info_vec.reserve(total_files);
-
-//     size_t normal_index = 0;
-
-//     for (uint64_t fno : fno_list) {
-//       bool is_compacting =
-//           (compacting_files.find(fno) != compacting_files.end());
-//       bool is_trivial = (trivial_set.find(fno) != trivial_set.end());
-
-//       double normalized_index = 1.0;
-
-//       if (!is_compacting && !is_trivial) {
-//         if (level == 0) {
-//           // Level 0이면 무조건 1.0
-//           normalized_index = 1.0;
-//         } else {
-//           // Level > 0
-//           if (num_normal_files > 1) {
-//             normalized_index =
-//                 1.0 - static_cast<double>(normal_index) /
-//                           static_cast<double>(num_normal_files - 1);
-//           } else {
-//             normalized_index = 1.0;
-//           }
-//         }
-//         normal_index++;
+//       // 컴팩션 중인 파일은 인덱스를 1.0으로 설정
+//       if (compacting_files.find(fno) != compacting_files.end()) {
+//         normalized_index = 1.0;
+//       } else {
+//         // 정규화된 인덱스 계산
+//         normalized_index =
+//             level == 0
+//                 ? 1.0
+//                 : 1.0 - static_cast<double>(non_compacting_index) /
+//                             static_cast<double>(num_non_compacting_files -
+//                             1);
+//         non_compacting_index++;
 //       }
 
-//       FileInfo_ sst;
-//       sst.fno = fno;
-//       sst.horizontal_lifetime = normalized_index;
-//       sst.is_compacting = is_compacting;
-//       sst.is_trivial = is_trivial;
+//       // 상위 레벨과 겹치는 파일은 최대 Lifetime으로 계산
+//       // if (level > 0) {
+//       //   Slice smallest, largest;
+//       //   if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
+//       //     std::vector<uint64_t> upper_fno_list;
+//       //     zbd_->UpperLevelFileList(smallest, largest, level,
+//       // upper_fno_list);
 
-//       file_info_vec.push_back(std::move(sst));
+//       //     for (uint64_t upper_fno : upper_fno_list) {
+//       //       auto it =
+//       //           std::find_if(level_file_map[level - 1].begin(),
+//       //                        level_file_map[level - 1].end(),
+//       //                        [&](const std::pair<uint64_t, double>& pair)
+//       // {
+//       //                          return pair.first == upper_fno;
+//       //                        });
+//       //       if (it != level_file_map[level - 1].end()) {
+//       //         // std::cout << "Level : " << level
+//       //         //           << "Comparing Lifetime: Current Max: "
+//       //         //           << max_upper_lifetime << ", Upper File: " <<
+//       //         //           upper_fno
+//       //         //           << ",fno : " << fno << ", Lifetime: " <<
+//       //         // it->second
+//       //         //           << std::endl;
+//       //         normalized_index = std::max(normalized_index, it->second);
+//       //       }
+//       //     }
+//       //   }
+//       // }
+
+//       // 결과 저장
+//       file_with_normalized_index.emplace_back(fno, normalized_index);
 //     }
-
-//     level_file_map[level] = std::move(file_info_vec);
+//     // 최종적으로 map에 저장
+//     level_file_map[level] = std::move(file_with_normalized_index);
 //   }
+
+//   // for (const auto& level : level_file_map) {
+//   //   std::cout << "Level " << level.first << ": [";
+//   //   for (size_t i = 0; i < level.second.size(); ++i) {
+//   //     std::cout << "(" << level.second[i].first << ", "
+//   //               << level.second[i].second << ")";
+//   //     if (i < level.second.size() - 1) {
+//   //       std::cout << ", ";
+//   //     }
+//   //   }
+//   //   std::cout << "]" << std::endl;
+//   // }
 // }
 
 // void ZenFS::ReCalculateLifetimes() {
-//   // std::map<int, std::vector<std::pair<uint64_t, double>>> level_file_map;
-//   // struct FileInfo_ {
-//   //   uint64_t fno;
-//   //   double horizontal_lifetime;
-//   //   bool is_compacting;
-//   //   bool is_trivial;
-//   // };
-//   std::map<int, std::vector<FileInfo_>> level_file_map;
+//   std::map<int, std::vector<std::pair<uint64_t, double>>> level_file_map;
 
 //   CalculateHorizontalLifetimes(level_file_map);
 
@@ -753,7 +535,8 @@ void ZenFS::ReCalculateLifetimes() {
 
 //   std::vector<double> normalized_vertical_lifetimes(6);
 //   double range = max_vertical_lifetime - min_vertical_lifetime;
-
+//   // std::cout << "==================================================="
+//   // << std::endl;
 //   for (int level = 0; level < 6; level++) {
 //     normalized_vertical_lifetimes[level] =
 //         (range > 0)
@@ -765,33 +548,33 @@ void ZenFS::ReCalculateLifetimes() {
 //     //           << ", Normalized: " << normalized_vertical_lifetimes[level]
 //     //           << std::endl;
 //   }
+//   // std::cout << "==================================================="
+//   // << std::endl;
 
 //   double alpha_value = zbd_->GetAlphaValue();
 //   double alpha_ = alpha_value;
 //   double beta_ = 1 - alpha_;
 
-//   // for (const auto& [level, file_lifetimes] : level_file_map) {
-//   //   double vertical_lifetime_ = normalized_vertical_lifetimes[level];
-//   //   for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
-//   //     double sst_lifetime_value =
-//   //         alpha_ * (1 - horizontal_lifetime) + beta_ * (1 -
-//   //         vertical_lifetime_);
+//   // double alpha_ = alpha_value * 2;
+//   // double beta_ = 1;
 
-//   for (auto& [level, file_infos] : level_file_map) {
-//     double vertical_lifetime = normalized_vertical_lifetimes[level];
-//     for (auto& sst : file_infos) {
-//       // 컴팩션 중은 0.0, trivial move는 1.0, 그 외는 기존 계산
-//       double sst_lifetime_value = 0.0;
-//       if (sst.is_compacting) {
-//         sst_lifetime_value = 0.0;
-//       } else if (sst.is_trivial) {
-//         sst_lifetime_value = 1.0;
-//       } else {
-//         sst_lifetime_value = alpha_ * (1 - sst.horizontal_lifetime) +
-//                              beta_ * (1 - vertical_lifetime);
-//       }
+//   // 해당 레벨의 파일들에 대해 수평 및 수직 lifetime 계산
+//   // for (const auto& file_pair : level_file_map[level]) {
+//   //   uint64_t fno = file_pair.first;
+//   //   double horizontal_lifetime = file_pair.second;
+//   for (const auto& [level, file_lifetimes] : level_file_map) {
+//     double vertical_lifetime_ = normalized_vertical_lifetimes[level];
+//     for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
+//       double sst_lifetime_value =
+//           alpha_ * (1 - horizontal_lifetime) + beta_ * (1 -
+//           vertical_lifetime_);
 
-//       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
+//       // std::cout << "Level: " << level
+//       //           << ", vertical Lifetime: " << vertical_lifetime_
+//       //           << ", horizontal_lifetime: " << horizontal_lifetime
+//       //           << ", sst_lifetime: " << sst_lifetime_value << std::endl;
+
+//       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
 //       if (zone_file == nullptr) {
 //         continue;
 //       }
@@ -806,10 +589,16 @@ void ZenFS::ReCalculateLifetimes() {
 //         // 해당 존의 lifetime 합산 및 파일 수를 업데이트
 //         if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end())
 //         {
+//           // zone_lifetime_map_[zone_start] = {sst_lifetime_value, 1};
+
 //           zone_lifetime_map_[zone_start] = {
 //               sst_lifetime_value, 1, {sst_lifetime_value}};
 
 //         } else {
+//           // zone_lifetime_map_[zone_start].first +=
+//           //     sst_lifetime_value;                      // 수명 추가
+//           // zone_lifetime_map_[zone_start].second += 1;  // 파일 수 추가
+
 //           auto& entry = zone_lifetime_map_[zone_start];
 //           std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
 //           std::get<1>(entry) += 1;                   // 파일 수 증가
@@ -874,6 +663,220 @@ void ZenFS::ReCalculateLifetimes() {
 //     }
 //   }
 // }
+
+//==================================================================================//
+
+void ZenFS::CalculateHorizontalLifetimes(
+    std::map<int, std::vector<FileInfo_>>& level_file_map) {
+  for (int level = 0; level < 6; level++) {
+    std::vector<uint64_t> fno_list;
+    std::set<uint64_t> compacting_files;
+    if (db_ptr_ != nullptr) {
+      zbd_->SameLevelFileList(level, fno_list, compacting_files);
+    }
+
+    std::set<uint64_t> trivial_set;
+    zbd_->TrivialMoveFiles(level, trivial_set);
+
+    // for (auto fno : trivial_set) {
+    //   // std::cout << "Trivial move candidate => level " << level
+    //   //           << ", fno = " << fno << std::endl;
+    // }
+    const size_t total_files = fno_list.size();
+    const size_t compacting_count = compacting_files.size();
+    const size_t trivial_count = trivial_set.size();
+
+    const size_t num_normal_files =
+        total_files - compacting_count - trivial_count;
+
+    std::vector<FileInfo_> file_info_vec;
+    file_info_vec.reserve(total_files);
+
+    size_t normal_index = 0;
+
+    for (uint64_t fno : fno_list) {
+      bool is_compacting =
+          (compacting_files.find(fno) != compacting_files.end());
+      bool is_trivial = (trivial_set.find(fno) != trivial_set.end());
+
+      double normalized_index = 1.0;
+
+      if (!is_compacting && !is_trivial) {
+        if (level == 0) {
+          // Level 0이면 무조건 1.0
+          normalized_index = 1.0;
+        } else {
+          // Level > 0
+          if (num_normal_files > 1) {
+            normalized_index =
+                1.0 - static_cast<double>(normal_index) /
+                          static_cast<double>(num_normal_files - 1);
+          } else {
+            normalized_index = 1.0;
+          }
+        }
+        normal_index++;
+      }
+
+      FileInfo_ sst;
+      sst.fno = fno;
+      sst.horizontal_lifetime = normalized_index;
+      sst.is_compacting = is_compacting;
+      sst.is_trivial = is_trivial;
+
+      file_info_vec.push_back(std::move(sst));
+    }
+
+    level_file_map[level] = std::move(file_info_vec);
+  }
+}
+
+void ZenFS::ReCalculateLifetimes() {
+  struct FileInfo_ {
+    uint64_t fno;
+    double horizontal_lifetime;
+    bool is_compacting;
+    bool is_trivial;
+  };
+  std::map<int, std::vector<FileInfo_>> level_file_map;
+
+  CalculateHorizontalLifetimes(level_file_map);
+
+  zone_lifetime_map_.clear();
+
+  // 모든 level의 vertical_lifetime을 구하여 최소값과 최대값을 찾음
+  std::vector<double> vertical_lifetimes(6);
+  double max_vertical_lifetime = 0.0;
+  double min_vertical_lifetime = std::numeric_limits<double>::max();
+
+  for (int level = 0; level < 6; level++) {
+    double vertical_lifetime = zbd_->PredictCompactionScore(level);
+    vertical_lifetimes[level] = vertical_lifetime;
+    max_vertical_lifetime = std::max(max_vertical_lifetime, vertical_lifetime);
+    min_vertical_lifetime = std::min(min_vertical_lifetime, vertical_lifetime);
+  }
+
+  std::vector<double> normalized_vertical_lifetimes(6);
+  double range = max_vertical_lifetime - min_vertical_lifetime;
+
+  for (int level = 0; level < 6; level++) {
+    normalized_vertical_lifetimes[level] =
+        (range > 0)
+            ? (vertical_lifetimes[level] - min_vertical_lifetime) / range
+            : 0;  // 모든 값이 같으면 0으로 설정
+
+    // std::cout << "Level: " << level
+    //           << ", Original: " << vertical_lifetimes[level]
+    //           << ", Normalized: " << normalized_vertical_lifetimes[level]
+    //           << std::endl;
+  }
+
+  double alpha_value = zbd_->GetAlphaValue();
+  double alpha_ = alpha_value;
+  double beta_ = 1 - alpha_;
+
+  // for (const auto& [level, file_lifetimes] : level_file_map) {
+  //   double vertical_lifetime_ = normalized_vertical_lifetimes[level];
+  //   for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
+  //     double sst_lifetime_value =
+  //         alpha_ * (1 - horizontal_lifetime) + beta_ * (1 -
+  //         vertical_lifetime_);
+
+  for (auto& [level, file_infos] : level_file_map) {
+    double vertical_lifetime = normalized_vertical_lifetimes[level];
+    for (auto& sst : file_infos) {
+      // 컴팩션 중은 0.0, trivial move는 1.0, 그 외는 기존 계산
+      double sst_lifetime_value = 0.0;
+      if (sst.is_compacting) {
+        sst_lifetime_value = 0.0;
+      } else if (sst.is_trivial) {
+        sst_lifetime_value = 1.0;
+      } else {
+        sst_lifetime_value = alpha_ * (1 - sst.horizontal_lifetime) +
+                             beta_ * (1 - vertical_lifetime);
+      }
+
+      ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
+      if (zone_file == nullptr) {
+        continue;
+      }
+      if (zone_file->IsDeleted()) {
+        continue;
+      }
+
+      // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
+      for (const auto* extent : zone_file->GetExtents()) {
+        uint64_t zone_start = extent->zone_->start_;  // 존의 시작 위치 사용
+
+        // 해당 존의 lifetime 합산 및 파일 수를 업데이트
+        if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
+          zone_lifetime_map_[zone_start] = {
+              sst_lifetime_value, 1, {sst_lifetime_value}};
+
+        } else {
+          auto& entry = zone_lifetime_map_[zone_start];
+          std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
+          std::get<1>(entry) += 1;                   // 파일 수 증가
+          std::get<2>(entry).push_back(
+              sst_lifetime_value);  // 각 파일의 lifetime 저장
+        }
+      }
+    }
+  }
+  // }
+
+  // 각 존의 평균 lifetime 계산 및 출력
+  // for (const auto& zone_entry : zone_lifetime_map_) {
+  //   uint64_t zone_start = zone_entry.first;
+  //   double total_lifetime = zone_entry.second.first;
+  //   int file_count = zone_entry.second.second;
+
+  //   double average_lifetime =
+  //       total_lifetime / file_count;  // 존의 평균 lifetime 계산
+
+  //   std::cout << "Zone starting at " << zone_start
+  //             << " has average lifetime: " << average_lifetime <<
+  //             std::endl;
+  // }
+
+  /* wal -> hottest */
+  for (auto& kv : files_) {
+    const std::string& fname = kv.first;
+    std::shared_ptr<ZoneFile> zoneFile = kv.second;
+    (void)fname;
+
+    if (!zoneFile) {
+      continue;
+    }
+    if (zoneFile->IsDeleted()) {
+      continue;
+    }
+
+    if (zoneFile->is_wal_) {
+      // printf("RecalculateLifetimes - WAL\n");
+      double wal_lifetime_value = 0.0;
+
+      for (const auto* extent : zoneFile->GetExtents()) {
+        uint64_t zone_start = extent->zone_->start_;
+
+        // 처음 본 zone이면 초기화
+        if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
+          // printf("ReCalculateLifetimes-WAL : not found\n");
+          zone_lifetime_map_[zone_start] = {
+              0.0,  // 총합
+              1,    // 파일 수
+              {}    // 파일별 lifetime 리스트
+          };
+        }
+
+        auto& entry = zone_lifetime_map_[zone_start];
+        std::get<0>(entry) += wal_lifetime_value;
+        std::get<1>(entry) += 1;
+        std::get<2>(entry).push_back(wal_lifetime_value);
+      }
+    }
+  }
+}
 
 //====================================================================================//
 
