@@ -547,7 +547,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     io_blocking_ms_sum += us / 1000;
     printf(
         "[%lu] :: %d ~ %d, %llu ms, %ld (MB), Reclaimed Zone : %lu, ZLV: "
-        "%.4f\n",
+        "%f\n",
         i + 1, s, e, us / 1000, (zc_timelapse_[i].copied >> 20), zc_z, zlv);
     // total_copied += zc_copied_timelapse_[i];
     total_copied += zc_timelapse_[i].copied;
@@ -566,7 +566,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   if (count > 0) {
     avg_zlv = sum_zlv / static_cast<double>(count);
   }
-  printf("Average ZLV :: %.4f\n", avg_zlv);
+  printf("Average ZLV :: %f\n", avg_zlv);
 
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
   printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);

@@ -1290,6 +1290,7 @@ void ZenFS::ZoneCleaning(bool forced) {
     for (const auto& candidate : victim_candidate) {
       migrate_zones_start.emplace(candidate.zone_start);
       ZLV = candidate.ZoneLifetimeValue;
+      std::cout << "ZLV: " << ZLV << std::endl;
 
       // std::cout << "[Picked] cost-benefit score: " << candidate.score
       //           << ", zone start: " << candidate.zone_start
