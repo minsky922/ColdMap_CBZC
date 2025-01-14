@@ -1147,7 +1147,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         // printf("============================================\n");
       } else {
         // printf("CBZC3!!");
-        std::cout << "zc_scheme: " << zc_scheme << std::endl;
+        // std::cout << "zc_scheme: " << zc_scheme << std::endl;
         uint64_t zone_start = zone.start;
 
         double average_lifetime = 0;
@@ -1289,7 +1289,7 @@ void ZenFS::ZoneCleaning(bool forced) {
     for (const auto& candidate : victim_candidate) {
       migrate_zones_start.emplace(candidate.zone_start);
       ZLV = candidate.ZoneLifetimeValue;
-      std::cout << "ZLV: " << ZLV << std::endl;
+      // std::cout << "ZLV: " << ZLV << std::endl;
 
       // std::cout << "[Picked] cost-benefit score: " << candidate.score
       //           << ", zone start: " << candidate.zone_start
