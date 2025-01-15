@@ -3241,9 +3241,17 @@ void SortFileByOverlappingRatio(
     uint64_t ttl_boost_score = (ttl > 0) ? ttl_booster.GetBoostScore(file) : 1;
     assert(ttl_boost_score > 0);
     assert(file->compensated_file_size != 0);
+    uint64_t order_value = overlapping_bytes * 1024U /
+                           file->compensated_file_size / ttl_boost_score;
     file_to_order[file->fd.GetNumber()] = overlapping_bytes * 1024U /
                                           file->compensated_file_size /
                                           ttl_boost_score;
+
+    printf(
+        "File Number: %lu, Overlapping Bytes: %lu, Compensated File Size: %lu, "
+        "TTL Boost Score: %lu, Order Value: %lu\n",
+        file->fd.GetNumber(), overlapping_bytes, file->compensated_file_size,
+        ttl_boost_score, order_value);
   }
 
   std::sort(temp->begin(), temp->end(),
