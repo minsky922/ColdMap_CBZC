@@ -591,8 +591,8 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   }
 
   for (int i = 0; i < 5; i++) {
-    uint64_t denom = stats[i].denominator.load();
-    uint64_t numer = stats[i].numerator.load();
+    uint64_t denom = stats_[i].denominator.load();
+    uint64_t numer = stats_[i].numerator.load();
     double ratio = 0.0;
     if (denom != 0) {
       ratio = static_cast<double>(numer) / static_cast<double>(denom);
@@ -602,8 +602,8 @@ ZonedBlockDevice::~ZonedBlockDevice() {
 
   {
     int i = 5;
-    uint64_t denom = stats[i].denominator.load();
-    uint64_t numer = stats[i].numerator.load();
+    uint64_t denom = stats_[i].denominator.load();
+    uint64_t numer = stats_[i].numerator.load();
     double ratio = 0.0;
     if (denom != 0) {
       ratio = static_cast<double>(numer) / static_cast<double>(denom);
