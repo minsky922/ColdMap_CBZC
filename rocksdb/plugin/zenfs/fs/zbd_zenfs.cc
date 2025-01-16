@@ -720,7 +720,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
       continue;
     }
     uint64_t file_size = zfile->predicted_size_;
-    stats[output_level - 1].denominator.fetch_add(file_size);  // file_size
+    stats_[output_level - 1].denominator.fetch_add(file_size);  // file_size
     lsm_tree_[output_level - 1].fetch_sub(file_size);
   }
   for (uint64_t fno : compaction_inputs_output_level_fno) {
@@ -731,7 +731,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
       continue;
     }
     uint64_t file_size = zfile->predicted_size_;
-    stats[output_level - 1].numerator.fetch_add(file_size);  // overlapping
+    stats_[output_level - 1].numerator.fetch_add(file_size);  // overlapping
     lsm_tree_[output_level].fetch_sub(file_size);
   }
 
