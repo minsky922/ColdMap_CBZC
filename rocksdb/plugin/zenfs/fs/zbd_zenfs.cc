@@ -590,25 +590,27 @@ ZonedBlockDevice::~ZonedBlockDevice() {
            (gc_bytes_written_.load() * 100) / GetUserBytesWritten());
   }
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     uint64_t denom = stats_[i].denominator.load();
     uint64_t numer = stats_[i].numerator.load();
     double ratio = 0.0;
     if (denom != 0) {
       ratio = static_cast<double>(numer) / static_cast<double>(denom);
     }
-    printf("level[%d]: 분모 %lu / 분자 %lu = %.4f\n", i, denom, numer, ratio);
+    printf("level[%d]: 분자(overlapping) %lu / 분모(file size) %lu = %.4f\n", i,
+           numer, denom, ratio);
   }
 
   {
-    int i = 5;
+    int i = 4;
     uint64_t denom = stats_[i].denominator.load();
     uint64_t numer = stats_[i].numerator.load();
     double ratio = 0.0;
     if (denom != 0) {
       ratio = static_cast<double>(numer) / static_cast<double>(denom);
     }
-    printf("level[%d]: 분모 %lu / 분자 %lu = %.4f\n", i, denom, numer, ratio);
+    printf("level[%d]: 분자(overlapping) %lu / 분모(file size) %lu = %.4f\n", i,
+           numer, denom, ratio);
   }
 
   for (const auto z : meta_zones) {
@@ -693,6 +695,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
         continue;
       }
       uint64_t file_size = zfile->predicted_size_;
+      stats_[output_level - 1].denominator.fetch_add(file_size);
       lsm_tree_[output_level - 1].fetch_sub(file_size);
       lsm_tree_[output_level].fetch_add(file_size);
     }
