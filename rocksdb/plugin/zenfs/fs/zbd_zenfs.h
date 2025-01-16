@@ -474,7 +474,7 @@ class ZonedBlockDevice {
   };
   OverlappingStat stats[6];
   std::atomic<uint64_t> lsm_tree_[10];
-  std::atomic<uint64_t> uint64_t max_bytes_for_level_base_ = 256 << 20;
+  uint64_t max_bytes_for_level_base_ = 256 << 20;
 
   bool zc_until_set_ = false;
   uint64_t zc_ = 20;
