@@ -467,8 +467,14 @@ class ZonedBlockDevice {
   uint64_t GetOpenZoneLimit() const { return open_zone_limit_; }
 
   //
+
+  struct OverlappingStat {
+    std::atomic<uint64_t> numerator;
+    std::atomic<uint64_t> denominator;
+  };
+  OverlappingStat stats[6];
   std::atomic<uint64_t> lsm_tree_[10];
-  uint64_t max_bytes_for_level_base_ = 256 << 20;
+  std::atomic<uint64_t> uint64_t max_bytes_for_level_base_ = 256 << 20;
 
   bool zc_until_set_ = false;
   uint64_t zc_ = 20;

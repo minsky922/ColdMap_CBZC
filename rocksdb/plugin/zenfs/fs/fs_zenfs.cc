@@ -3042,13 +3042,13 @@ IOStatus ZenFS::MigrateFileExtents(
 
   // The file may be deleted by other threads, better double check.
   // 파일을 가져옵니다
-  struct timespec start1, end1;
-  struct timespec start2, end2;
-  struct timespec start3, end3;
-  struct timespec start4, end4;
-  struct timespec start5, end5;
-  struct timespec start6, end6;
-  struct timespec start7, end7;
+  // struct timespec start1, end1;
+  // struct timespec start2, end2;
+  // struct timespec start3, end3;
+  // struct timespec start4, end4;
+  // struct timespec start5, end5;
+  // struct timespec start6, end6;
+  // struct timespec start7, end7;
   // clock_gettime(CLOCK_MONOTONIC, &start4);
   auto zfile = GetFile(fname);
   if (zfile == nullptr) {
@@ -3073,20 +3073,20 @@ IOStatus ZenFS::MigrateFileExtents(
   // zbd_->AddCumulative_4(elapsed4);
 
   // Modify the new extent list
-  clock_gettime(CLOCK_MONOTONIC, &start5);
+  // clock_gettime(CLOCK_MONOTONIC, &start5);
   for (ZoneExtent* ext : new_extent_list) {
     // Check if current extent need to be migrated
     // 유효 데이터(즉, 마이그레이션할 필요가 있는 익스텐트)를 확인
-    clock_gettime(CLOCK_MONOTONIC, &start1);
+    // clock_gettime(CLOCK_MONOTONIC, &start1);
     auto it = std::find_if(migrate_exts.begin(), migrate_exts.end(),
                            [&](const ZoneExtentSnapshot* ext_snapshot) {
                              return ext_snapshot->start == ext->start_ &&
                                     ext_snapshot->length == ext->length_;
                            });
-    clock_gettime(CLOCK_MONOTONIC, &end1);
-    long elapsed1 = (end1.tv_sec - start1.tv_sec) * 1000000000 +
-                    (end1.tv_nsec - start1.tv_nsec);
-    zbd_->AddCumulative_1(elapsed1);
+    // clock_gettime(CLOCK_MONOTONIC, &end1);
+    // long elapsed1 = (end1.tv_sec - start1.tv_sec) * 1000000000 +
+    // (end1.tv_nsec - start1.tv_nsec);
+    // zbd_->AddCumulative_1(elapsed1);
 
     if (it == migrate_exts.end()) {
       Info(logger_, "Migrate extent not found, ext_start: %lu", ext->start_);
@@ -3098,15 +3098,15 @@ IOStatus ZenFS::MigrateFileExtents(
     // Allocate a new migration zone.
     // s = zbd_->TakeMigrateZone(&target_zone, zfile->GetWriteLifeTimeHint(),
     //                           ext->length_);
-    clock_gettime(CLOCK_MONOTONIC, &start7);
+    // clock_gettime(CLOCK_MONOTONIC, &start7);
     s = zbd_->TakeMigrateZone(zfile->smallest_, zfile->largest_, zfile->level_,
                               &target_zone, zfile->GetWriteLifeTimeHint(),
                               zfile->predicted_size_, ext->length_,
                               &run_gc_worker_, zfile->IsSST());
-    clock_gettime(CLOCK_MONOTONIC, &end7);
-    long elapsed7 = (end7.tv_sec - start7.tv_sec) * 1000000000 +
-                    (end7.tv_nsec - start7.tv_nsec);
-    zbd_->AddCumulative_7(elapsed7);
+    // clock_gettime(CLOCK_MONOTONIC, &end7);
+    // long elapsed7 = (end7.tv_sec - start7.tv_sec) * 1000000000 +
+    // (end7.tv_nsec - start7.tv_nsec);
+    // zbd_->AddCumulative_7(elapsed7);
     if (!run_gc_worker_) {
       printf("MigrateFileExtents - !run_gc_worker\n");
       return IOStatus::OK();
@@ -3115,19 +3115,19 @@ IOStatus ZenFS::MigrateFileExtents(
       printf("MigrateFileExtents - !s.ok\n");
       continue;
     }
-    clock_gettime(CLOCK_MONOTONIC, &start2);
+    // clock_gettime(CLOCK_MONOTONIC, &start2);
     if (target_zone == nullptr) {
       zbd_->ReleaseMigrateZone(target_zone);
       printf("MigrateFileExtents - Migrate Zone Acquire Failed, Ignore Task\n");
       Info(logger_, "Migrate Zone Acquire Failed, Ignore Task.");
       continue;
     }
-    clock_gettime(CLOCK_MONOTONIC, &end2);
-    long elapsed2 = (end2.tv_sec - start2.tv_sec) * 1000000000 +
-                    (end2.tv_nsec - start2.tv_nsec);
-    zbd_->AddCumulative_2(elapsed2);
+    // clock_gettime(CLOCK_MONOTONIC, &end2);
+    // long elapsed2 = (end2.tv_sec - start2.tv_sec) * 1000000000 +
+    // (end2.tv_nsec - start2.tv_nsec);
+    // zbd_->AddCumulative_2(elapsed2);
 
-    clock_gettime(CLOCK_MONOTONIC, &start3);
+    // clock_gettime(CLOCK_MONOTONIC, &start3);
     uint64_t target_start = target_zone->wp_;
     copied += ext->length_;
     if (zfile->IsSparse()) {
@@ -3143,12 +3143,12 @@ IOStatus ZenFS::MigrateFileExtents(
       zfile->MigrateData(ext->start_, ext->length_, target_zone);
       // zbd_->AddGCBytesWritten(ext->length_);
     }
-    clock_gettime(CLOCK_MONOTONIC, &end3);
-    long elapsed3 = (end3.tv_sec - start3.tv_sec) * 1000000000 +
-                    (end3.tv_nsec - start3.tv_nsec);
-    zbd_->AddCumulative_3(elapsed3);
+    // clock_gettime(CLOCK_MONOTONIC, &end3);
+    // long elapsed3 = (end3.tv_sec - start3.tv_sec) * 1000000000 +
+    // (end3.tv_nsec - start3.tv_nsec);
+    // zbd_->AddCumulative_3(elapsed3);
 
-    clock_gettime(CLOCK_MONOTONIC, &start4);
+    // clock_gettime(CLOCK_MONOTONIC, &start4);
     // If the file doesn't exist, skip
     if (GetFileNoLock(fname) == nullptr) {
       Info(logger_, "Migrate file not exist anymore.");
@@ -3161,24 +3161,24 @@ IOStatus ZenFS::MigrateFileExtents(
     ext->zone_->used_capacity_ += ext->length_;
 
     zbd_->ReleaseMigrateZone(target_zone);
-    clock_gettime(CLOCK_MONOTONIC, &end4);
-    long elapsed4 = (end4.tv_sec - start4.tv_sec) * 1000000000 +
-                    (end4.tv_nsec - start4.tv_nsec);
-    zbd_->AddCumulative_4(elapsed4);
+    // clock_gettime(CLOCK_MONOTONIC, &end4);
+    // long elapsed4 = (end4.tv_sec - start4.tv_sec) * 1000000000 +
+    // (end4.tv_nsec - start4.tv_nsec);
+    // zbd_->AddCumulative_4(elapsed4);
   }
-  clock_gettime(CLOCK_MONOTONIC, &end5);
-  long elapsed5 = (end5.tv_sec - start5.tv_sec) * 1000000000 +
-                  (end5.tv_nsec - start5.tv_nsec);
-  zbd_->AddCumulative_5(elapsed5);
+  // clock_gettime(CLOCK_MONOTONIC, &end5);
+  // long elapsed5 = (end5.tv_sec - start5.tv_sec) * 1000000000 +
+  // (end5.tv_nsec - start5.tv_nsec);
+  // zbd_->AddCumulative_5(elapsed5);
 
-  clock_gettime(CLOCK_MONOTONIC, &start6);
+  // clock_gettime(CLOCK_MONOTONIC, &start6);
   zbd_->AddGCBytesWritten(copied);
   SyncFileExtents(zfile.get(), new_extent_list);
   zfile->ReleaseWRLock();
-  clock_gettime(CLOCK_MONOTONIC, &end6);
-  long elapsed6 = (end6.tv_sec - start6.tv_sec) * 1000000000 +
-                  (end6.tv_nsec - start6.tv_nsec);
-  zbd_->AddCumulative_6(elapsed6);
+  // clock_gettime(CLOCK_MONOTONIC, &end6);
+  // long elapsed6 = (end6.tv_sec - start6.tv_sec) * 1000000000 +
+  // (end6.tv_nsec - start6.tv_nsec);
+  // zbd_->AddCumulative_6(elapsed6);
   // printf(
   //     "MigrateFileExtents Finished, fname: %s, extent count: %lu, copied :
   //     "

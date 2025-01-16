@@ -571,13 +571,13 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
   printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
   printf("Cumulative I/O Blocking(ms) %lu\n", cumulative_io_blocking_);
-  printf("Cumlative 1(ms) %lu\n", cumulative_1_);
-  printf("Cumlative 2(ms) %lu\n", cumulative_2_);
-  printf("Cumlative 3(ms) %lu\n", cumulative_3_);
-  printf("Cumlative 4(ms) %lu\n", cumulative_4_);
-  printf("Cumlative 5(ms) %lu\n", cumulative_5_);
-  printf("Cumlative 6(ms) %lu\n", cumulative_6_);
-  printf("Cumlative 7(ms) %lu\n", cumulative_7_);
+  // printf("Cumlative 1(ms) %lu\n", cumulative_1_);
+  // printf("Cumlative 2(ms) %lu\n", cumulative_2_);
+  // printf("Cumlative 3(ms) %lu\n", cumulative_3_);
+  // printf("Cumlative 4(ms) %lu\n", cumulative_4_);
+  // printf("Cumlative 5(ms) %lu\n", cumulative_5_);
+  // printf("Cumlative 6(ms) %lu\n", cumulative_6_);
+  // printf("Cumlative 7(ms) %lu\n", cumulative_7_);
 
   // if (zbd_->GetZCScheme() == 2) {
   //   printf("Calculate Lifetime Time(us) %lu\n", calculate_lapse);
@@ -589,7 +589,27 @@ ZonedBlockDevice::~ZonedBlockDevice() {
            GetUserBytesWritten(),
            (gc_bytes_written_.load() * 100) / GetUserBytesWritten());
   }
-  // printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
+
+  for (int i = 0; i < 5; i++) {
+    uint64_t denom = stats[i].denominator.load();
+    uint64_t numer = stats[i].numerator.load();
+    double ratio = 0.0;
+    if (denom != 0) {
+      ratio = static_cast<double>(numer) / static_cast<double>(denom);
+    }
+    printf("level[%d]: 분모 %lu / 분자 %lu = %.4f\n", i, denom, numer, ratio);
+  }
+
+  {
+    int i = 5;
+    uint64_t denom = stats[i].denominator.load();
+    uint64_t numer = stats[i].numerator.load();
+    double ratio = 0.0;
+    if (denom != 0) {
+      ratio = static_cast<double>(numer) / static_cast<double>(denom);
+    }
+    printf("level[%d]: 분모 %lu / 분자 %lu = %.4f\n", i, denom, numer, ratio);
+  }
 
   for (const auto z : meta_zones) {
     delete z;
@@ -681,6 +701,17 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
 
   //////////////// invaldation compaction
 
+  // struct overlapping stat {
+  //   std atomic 분모 std atomic 분자
+  // }
+
+  // overlapping stat[6] stat[0]
+  //     .분모 stat[0]
+  //     .분자
+
+  //     for (0 - 4){printf(분모 % lu / 분자 % lu = ratio)} printf(
+  //         분모 % lu / 분자 % lu = ratio)
+
   for (uint64_t fno : compaction_inputs_input_level_fno) {
     zfile = GetSSTZoneFileInZBDNoLock(fno);
 
@@ -689,6 +720,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
       continue;
     }
     uint64_t file_size = zfile->predicted_size_;
+    stats[output_level - 1].denominator.fetch_add(file_size);  // file_size
     lsm_tree_[output_level - 1].fetch_sub(file_size);
   }
   for (uint64_t fno : compaction_inputs_output_level_fno) {
@@ -699,6 +731,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
       continue;
     }
     uint64_t file_size = zfile->predicted_size_;
+    stats[output_level - 1].numerator.fetch_add(file_size);  // overlapping
     lsm_tree_[output_level].fetch_sub(file_size);
   }
 

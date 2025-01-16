@@ -3219,6 +3219,14 @@ void SortFileByOverlappingRatio(
   FileTtlBooster ttl_booster(static_cast<uint64_t>(curr_time), ttl,
                              num_non_empty_levels, level);
 
+  // struct OverlapInfo {
+  //   uint64_t overlapping_bytes;
+  //   uint64_t compensated_file_size;
+  //   int level;
+  // };
+
+  // std::unordered_map<uint64_t, OverlapInfo> overlap_map;
+
   for (auto& file : files) {
     uint64_t overlapping_bytes = 0;
     // Skip files in next level that is smaller than current file
@@ -3241,18 +3249,31 @@ void SortFileByOverlappingRatio(
     uint64_t ttl_boost_score = (ttl > 0) ? ttl_booster.GetBoostScore(file) : 1;
     assert(ttl_boost_score > 0);
     assert(file->compensated_file_size != 0);
-    uint64_t order_value = overlapping_bytes * 1024U /
-                           file->compensated_file_size / ttl_boost_score;
+
+    // OverlapInfo info;
+    // info.overlapping_bytes = overlapping_bytes;
+    // info.compensated_file_size = file->compensated_file_size;
+    // info.level = level;
+    // overlap_map[file->fd.GetNumber()] = info;
+
+    // uint64_t order_value = overlapping_bytes * 1024U /
+    //                        file->compensated_file_size / ttl_boost_score;
+
     file_to_order[file->fd.GetNumber()] = overlapping_bytes * 1024U /
                                           file->compensated_file_size /
                                           ttl_boost_score;
 
-    printf(
-        "File Number: %lu, Overlapping Bytes: %lu, Compensated File Size: %lu, "
-        "TTL Boost Score: %lu, Order Value: %lu\n",
-        file->fd.GetNumber(), overlapping_bytes, file->compensated_file_size,
-        ttl_boost_score, order_value);
+    // printf(
+    //     "File Number: %lu, Overlapping Bytes: %lu, Compensated File Size:
+    //     %lu, " "TTL Boost Score: %lu, Order Value: %lu\n",
+    //     file->fd.GetNumber(), overlapping_bytes, file->compensated_file_size,
+    //     ttl_boost_score, order_value);
   }
+  // std::unique_ptr<Compaction> c;
+  // c->immutable_options()->fs->GiveZenFStoLSMTreeHint(trivial_move_inputs,
+  // none,
+  //                                                    c->output_level(),
+  //                                                    true);
 
   std::sort(temp->begin(), temp->end(),
             [&](const Fsize& f1, const Fsize& f2) -> bool {
