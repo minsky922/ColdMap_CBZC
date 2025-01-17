@@ -474,6 +474,15 @@ class ZonedBlockDevice {
   };
   OverlappingStat stats_[6];
   std::atomic<uint64_t> lsm_tree_[10];
+  std::array<uint64_t, 10> GetCurrentLSMTree() {
+    std::array<uint64_t, 10> lsm_tree_snapshot;
+
+    for (int i = 0; i < 10; ++i) {
+      lsm_tree_snapshot[i] = lsm_tree_[i].load();
+    }
+
+    return lsm_tree_snapshot;
+  }
   uint64_t max_bytes_for_level_base_ = 256 << 20;
 
   bool zc_until_set_ = false;

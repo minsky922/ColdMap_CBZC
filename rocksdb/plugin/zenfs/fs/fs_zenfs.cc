@@ -765,13 +765,6 @@ void ZenFS::ReCalculateLifetimes() {
   double alpha_ = alpha_value;
   double beta_ = 1 - alpha_;
 
-  // for (const auto& [level, file_lifetimes] : level_file_map) {
-  //   double vertical_lifetime_ = normalized_vertical_lifetimes[level];
-  //   for (const auto& [fno, horizontal_lifetime] : file_lifetimes) {
-  //     double sst_lifetime_value =
-  //         alpha_ * (1 - horizontal_lifetime) + beta_ * (1 -
-  //         vertical_lifetime_);
-
   for (auto& [level, file_infos] : level_file_map) {
     double vertical_lifetime = normalized_vertical_lifetimes[level];
     for (auto& sst : file_infos) {
@@ -810,6 +803,13 @@ void ZenFS::ReCalculateLifetimes() {
           std::get<2>(entry).push_back(
               sst_lifetime_value);  // 각 파일의 lifetime 저장
         }
+        auto& zdata = zone_lifetime_map_[zone_start];
+        zdata.total_lifetime += sst_lifetime_value;  // 총합
+        zdata.file_count += 1;                       // 파일 개수 증가
+        zdata.file_lifetimes.push_back({
+            sst.fno,            // fno
+            sst_lifetime_value  // lifetime
+        });
       }
     }
   }
@@ -828,6 +828,20 @@ void ZenFS::ReCalculateLifetimes() {
   //             << " has average lifetime: " << average_lifetime <<
   //             std::endl;
   // }
+
+  for (const auto& [zone_start, zdata] : zone_lifetime_map_) {
+    std::cout << "=======================================" << std::endl;
+    std::cout << "Zone Start: " << zone_start << std::endl;
+    std::cout << "  Total Lifetime: " << zdata.total_lifetime << std::endl;
+    std::cout << "  File Count:     " << zdata.file_count << std::endl;
+
+    // file_lifetimes 벡터 출력
+    std::cout << "  File Lifetimes:" << std::endl;
+    for (const auto& fl : zdata.file_lifetimes) {
+      std::cout << "    - Fno: " << fl.fno << ", Lifetime: " << fl.lifetime
+                << std::endl;
+    }
+  }
 
   /* wal -> hottest */
   for (auto& kv : files_) {
@@ -867,6 +881,42 @@ void ZenFS::ReCalculateLifetimes() {
     }
   }
 }
+
+// void PredictCompaction(int step) {
+//   std::array<uint64_t, 10> tmp_lsm_tree = GetCurrentLSMTree();
+//   std::set fno_already_propagated;
+//   while (true) {
+//     PredictCompactionImpl(tmp_lsm_tree, pivot_fno, unpivot_fno);
+
+//     if (fno_already_propagated.find(pivot_fno) !=
+//         fno_already_propagated.end()) {
+//       continue;
+//     }
+
+//     bool skip_iteration = false;
+//     for (auto& f : unpivot_fno) {
+//       if (fno_already_propagated.find(f) != fno_already_propagated.end()) {
+//         skip_iteration = true;
+//         break;
+//       }
+//     }
+//     if (skip_iteration) {
+//       continue;
+//     }
+//     tmp_lsm_tree[pivot_fno.level] -= pivot_fno.size;
+//     fno_already_propagated.insert(pivot_fno);
+//     for (auto& f : unpivot_fno) {
+//       fno_already_propagated.insert(f);
+//     }
+//     Propagation(pivot_fno, unpivot_fno)
+//   }
+// }
+
+// void PredictCompactionImpl(lsm_Tree_Cur_statree, pivot_fno, unpivot_Fno) {
+//   int max_level = getmaxlevelscorelevel();
+//   pivot_fno = getmaxhorizontalfnoinLevel(max_level);
+//   unpivot_fno = GetOverlappingInput(pivot_fno, max_level + 1);
+// }
 
 //====================================================================================//
 

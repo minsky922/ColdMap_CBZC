@@ -536,6 +536,20 @@ class ZenFS : public FileSystemWrapper {
   IOStatus MigrateFileExtents(
       const std::string& fname,
       const std::vector<ZoneExtentSnapshot*>& migrate_exts);
+  struct FileLifetimeInfo {
+    uint64_t fno;
+    double lifetime;
+  };
+
+  struct ZoneLifetimeData {
+    double total_lifetime;  // 해당 존의 파일 lifetime 합계
+    int file_count;
+    std::vector<FileLifetimeInfo> file_lifetimes;  // (fno, lifetime) 쌍 목록
+
+    ZoneLifetimeData() : total_lifetime(0.0), file_count(0) {}
+  };
+
+  std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
 
  private:
   // std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
