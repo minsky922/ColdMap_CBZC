@@ -719,6 +719,7 @@ void ZenFS::CalculateHorizontalLifetimes(
       sst.horizontal_lifetime = normalized_index;
       sst.is_compacting = is_compacting;
       sst.is_trivial = is_trivial;
+      sst.sst_lifetime_value_ = 0;
 
       file_info_vec.push_back(std::move(sst));
     }
@@ -728,9 +729,9 @@ void ZenFS::CalculateHorizontalLifetimes(
 }
 
 void ZenFS::ReCalculateLifetimes() {
-  std::map<int, std::vector<FileInfo_>> level_file_map;
-
-  CalculateHorizontalLifetimes(level_file_map);
+  // std::map<int, std::vector<FileInfo_>> level_file_map;
+  level_file_map_.clear();
+  CalculateHorizontalLifetimes(level_file_map_);
 
   zone_lifetime_map_.clear();
 
@@ -765,7 +766,7 @@ void ZenFS::ReCalculateLifetimes() {
   double alpha_ = alpha_value;
   double beta_ = 1 - alpha_;
 
-  for (auto& [level, file_infos] : level_file_map) {
+  for (auto& [level, file_infos] : level_file_map_) {
     double vertical_lifetime = normalized_vertical_lifetimes[level];
     for (auto& sst : file_infos) {
       // 컴팩션 중은 0.0, trivial move는 1.0, 그 외는 기존 계산
@@ -787,6 +788,10 @@ void ZenFS::ReCalculateLifetimes() {
         continue;
       }
 
+      sst.sst_lifetime_value_ = sst_lifetime_value;
+
+      PredictCompaction(4);
+
       // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
       for (const auto* extent : zone_file->GetExtents()) {
         uint64_t zone_start = extent->zone_->start_;  // 존의 시작 위치 사용
@@ -803,13 +808,6 @@ void ZenFS::ReCalculateLifetimes() {
           std::get<2>(entry).push_back(
               sst_lifetime_value);  // 각 파일의 lifetime 저장
         }
-        auto& zdata = Zone_lifetime_map_[zone_start];
-        zdata.total_lifetime += sst_lifetime_value;  // 총합
-        zdata.file_count += 1;                       // 파일 개수 증가
-        zdata.file_lifetimes.emplace(FileLifetimeInfo{
-            sst.fno,            // fno
-            sst_lifetime_value  // lifetime
-        });
       }
     }
   }
@@ -828,20 +826,6 @@ void ZenFS::ReCalculateLifetimes() {
   //             << " has average lifetime: " << average_lifetime <<
   //             std::endl;
   // }
-
-  for (const auto& [zone_start, zdata] : Zone_lifetime_map_) {
-    std::cout << "=======================================" << std::endl;
-    std::cout << "Zone Start: " << zone_start << std::endl;
-    std::cout << "  Total Lifetime: " << zdata.total_lifetime << std::endl;
-    std::cout << "  File Count:     " << zdata.file_count << std::endl;
-
-    // file_lifetimes 벡터 출력
-    std::cout << "  File Lifetimes:" << std::endl;
-    for (const auto& fl : zdata.file_lifetimes) {
-      std::cout << "    - Fno: " << fl.fno << ", Lifetime: " << fl.lifetime
-                << std::endl;
-    }
-  }
 
   /* wal -> hottest */
   for (auto& kv : files_) {
@@ -882,41 +866,61 @@ void ZenFS::ReCalculateLifetimes() {
   }
 }
 
-// void PredictCompaction(int step) {
-//   std::array<uint64_t, 10> tmp_lsm_tree = GetCurrentLSMTree();
-//   std::set fno_already_propagated;
-//   while (true) {
-//     PredictCompactionImpl(tmp_lsm_tree, pivot_fno, unpivot_fno);
+void PredictCompaction(int step) {
+  std::array<uint64_t, 10> tmp_lsm_tree = GetCurrentLSMTree();
+  std::set<int> fno_already_propagated;
+  while (step-- > 0) {
+    uint64_t pivot_level = 0;
+    uint64_t pivot_fno = 0;
+    std::vector<uint64_t> unpivot_fno_list;
 
-//     if (fno_already_propagated.find(pivot_fno) !=
-//         fno_already_propagated.end()) {
-//       continue;
-//     }
+    PredictCompactionImpl(pivot_level, tmp_lsm_tree, pivot_fno,
+                          unpivot_fno_list);
 
-//     bool skip_iteration = false;
-//     for (auto& f : unpivot_fno) {
-//       if (fno_already_propagated.find(f) != fno_already_propagated.end()) {
-//         skip_iteration = true;
-//         break;
-//       }
-//     }
-//     if (skip_iteration) {
-//       continue;
-//     }
-//     tmp_lsm_tree[pivot_fno.level] -= pivot_fno.size;
-//     fno_already_propagated.insert(pivot_fno);
-//     for (auto& f : unpivot_fno) {
-//       fno_already_propagated.insert(f);
-//     }
-//     Propagation(pivot_fno, unpivot_fno)
-//   }
-// }
+    if (fno_already_propagated.find(pivot_fno) !=
+        fno_already_propagated.end()) {
+      continue;
+    }
 
-// void PredictCompactionImpl(lsm_Tree_Cur_statree, pivot_fno, unpivot_Fno) {
-//   int max_level = getmaxlevelscorelevel();
-//   pivot_fno = getmaxhorizontalfnoinLevel(max_level);
-//   unpivot_fno = GetOverlappingInput(pivot_fno, max_level + 1);
-// }
+    bool skip = false;
+    for (auto& f : unpivot_fno_list) {
+      if (fno_already_propagated.find(f) != fno_already_propagated.end()) {
+        skip = true;
+        break;
+      }
+    }
+    if (skip) {
+      continue;
+    }
+
+    tmp_lsm_tree[pivot_fno.level] -= pivot_fno.size;
+    fno_already_propagated.insert(pivot_fno);
+    for (auto& f : unpivot_fno) {
+      fno_already_propagated.insert(f);
+    }
+    Propagation(pivot_fno, unpivot_fno);
+  }
+}
+
+void PredictCompactionImpl(uint64_t pivot_level,
+                           std::array<uint64_t, 10>& tmp_lsm_tree,
+                           uint64_t pivot_fno,
+                           std::vector<uint64_t> unpivot_fno_list) {
+  pivot_level = GetMaxLevelScoreLevel();
+  pivot_fno = GetMaxHorizontalFno(pivot_level);
+  GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
+}
+
+void GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
+                       std::vector<uint64_t> unpivot_fno_list) {
+  Slice smallest, largest;
+  if (zbd_->GetMinMaxKey(pivot_fno, smallest, largest)) {
+    zbd_->DownwardAdjacentFileList(smallest, largest, pivot_level,
+                                   unpivot_fno_list);
+  }
+}
+
+void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list) {}
 
 //====================================================================================//
 
@@ -966,30 +970,31 @@ void ZenFS::ReCalculateLifetimes() {
 
 //       // std::cout << "Initial Lifetime (Level " << level << ", SSTable "
 //       << fno
-//       //           << "): " << sst_lifetime_value << std::endl;
+//           //           << "): " << sst_lifetime_value << std::endl;
 
-//       /*첫순회는 level0이라 upper 로직 패스 후 zone_lifetime_map에 Initial
-//        lifetime저장하고 previous_level_map에 Initial lifetime들 저장*/
+//           /*첫순회는 level0이라 upper 로직 패스 후 zone_lifetime_map에
+//           Initial
+//            lifetime저장하고 previous_level_map에 Initial lifetime들 저장*/
 
-//       /*이후 level i부터 upper level과 겹치는 파일들을 previous_level_map에
-//        저장된 level i-1의 Initial lifetime과 level i의 changable lifetime을
-//        비교해 Hottest value로 치환, 전파된 값은 zone_lifetime_map에 저장.*/
+//           /*이후 level i부터 upper level과 겹치는 파일들을
+//           previous_level_map에
+//            저장된 level i-1의 Initial lifetime과 level i의 changable
+//            lifetime을 비교해 Hottest value로 치환, 전파된 값은
+//            zone_lifetime_map에 저장.*/
 
-//       /* Initial lifetime 저장구조를 둠으로써 독립적인 전파를 시행*/
+//           /* Initial lifetime 저장구조를 둠으로써 독립적인 전파를 시행*/
 
-//       if (level > 0) {
+//           if (level > 0) {
 //         Slice smallest, largest;
 //         if (zbd_->GetMinMaxKey(fno, smallest, largest)) {
 //           std::vector<uint64_t> upper_fno_list;
-//           zbd_->UpperLevelFileList(smallest, largest, level,
-//           upper_fno_list);
+//           zbd_->UpperLevelFileList(smallest, largest, level, upper_fno_list);
 
 //           for (uint64_t upper_fno : upper_fno_list) {
 //             auto it = previous_level_map.find(upper_fno);
 //             if (it != previous_level_map.end()) {
 //               /* hottest value 선택 */
-//               sst_lifetime_value = std::min(sst_lifetime_value,
-//               it->second);
+//               sst_lifetime_value = std::min(sst_lifetime_value, it->second);
 //             }
 //           }
 //         }
@@ -997,9 +1002,9 @@ void ZenFS::ReCalculateLifetimes() {
 
 //       // std::cout << "Final Lifetime (Level " << level << ", SSTable " <<
 //       fno
-//       //           << "): " << sst_lifetime_value << std::endl;
+//           //           << "): " << sst_lifetime_value << std::endl;
 
-//       ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
+//           ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
 //       if (zone_file != nullptr) {
 //         for (const auto* extent : zone_file->GetExtents()) {
 //           uint64_t zone_start = extent->zone_->start_;
