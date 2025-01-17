@@ -803,7 +803,7 @@ void ZenFS::ReCalculateLifetimes() {
           std::get<2>(entry).push_back(
               sst_lifetime_value);  // 각 파일의 lifetime 저장
         }
-        auto& zdata = zone_lifetime_map_[zone_start];
+        auto& zdata = Zone_lifetime_map_[zone_start];
         zdata.total_lifetime += sst_lifetime_value;  // 총합
         zdata.file_count += 1;                       // 파일 개수 증가
         zdata.file_lifetimes.push_back({
@@ -829,7 +829,7 @@ void ZenFS::ReCalculateLifetimes() {
   //             std::endl;
   // }
 
-  for (const auto& [zone_start, zdata] : zone_lifetime_map_) {
+  for (const auto& [zone_start, zdata] : Zone_lifetime_map_) {
     std::cout << "=======================================" << std::endl;
     std::cout << "Zone Start: " << zone_start << std::endl;
     std::cout << "  Total Lifetime: " << zdata.total_lifetime << std::endl;

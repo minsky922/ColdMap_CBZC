@@ -549,7 +549,7 @@ class ZenFS : public FileSystemWrapper {
     ZoneLifetimeData() : total_lifetime(0.0), file_count(0) {}
   };
 
-  std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
+  std::map<uint64_t, ZoneLifetimeData> Zone_lifetime_map_;
   std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
       zone_lifetime_map_;
 
