@@ -806,7 +806,7 @@ void ZenFS::ReCalculateLifetimes() {
         auto& zdata = Zone_lifetime_map_[zone_start];
         zdata.total_lifetime += sst_lifetime_value;  // 총합
         zdata.file_count += 1;                       // 파일 개수 증가
-        zdata.file_lifetimes.push_back({
+        zdata.file_lifetimes.emplace(FileLifetimeInfo{
             sst.fno,            // fno
             sst_lifetime_value  // lifetime
         });

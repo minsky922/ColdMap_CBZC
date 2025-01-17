@@ -539,12 +539,21 @@ class ZenFS : public FileSystemWrapper {
   struct FileLifetimeInfo {
     uint64_t fno;
     double lifetime;
+
+    // lifetime이 작은 순서로 정렬, 같은 lifetime이면 fno로 정렬
+    bool operator<(const FileLifetimeInfo& other) const {
+      if (lifetime != other.lifetime) {
+        return lifetime < other.lifetime;
+      }
+      return fno < other.fno;
+    }
   };
 
   struct ZoneLifetimeData {
     double total_lifetime;  // 해당 존의 파일 lifetime 합계
     int file_count;
-    std::vector<FileLifetimeInfo> file_lifetimes;  // (fno, lifetime) 쌍 목록
+    std::set<FileLifetimeInfo>
+        file_lifetimes;  // lifetime 순으로 정렬된 (fno, lifetime)
 
     ZoneLifetimeData() : total_lifetime(0.0), file_count(0) {}
   };
