@@ -928,6 +928,7 @@ void ZenFS::PredictCompaction(int step) {
 
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
+      printf("fno_already_propagated\n");
       continue;
     }
 
@@ -1002,7 +1003,9 @@ void ZenFS::PredictCompactionImpl(uint64_t& pivot_level,
                                   uint64_t& pivot_fno,
                                   std::vector<uint64_t>& unpivot_fno_list) {
   pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree);
+  std::cout << "pivot_level: " << pivot_level << std::endl;
   pivot_fno = GetMaxHorizontalFno(pivot_level);
+  std::cout << "pivot_fno: " << pivot_fno << std::endl;
   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 }
 
@@ -1086,6 +1089,7 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
 
   for (const auto& file : files) {
     if (fno_already_propagated.find(file.fno) != fno_already_propagated.end()) {
+      printf("getmaxhorizontalfno skip\n");
       continue;
     }
     if (file.horizontal_lifetime > max_horizontal_lifetime) {
