@@ -784,6 +784,7 @@ void ZenFS::ReCalculateLifetimes() {
   }
 
   PredictCompaction(4);
+  printf("prdeictcompaction completed\n");
 
   for (auto& [level, file_infos] : level_file_map_) {
     for (auto& sst : file_infos) {
@@ -962,11 +963,13 @@ void ZenFS::PredictCompaction(int step) {
           l0_files.push_back(sst.fno);
         }
       }
-
+      std::cout << "total_l0_size: " << total_l0_size << std::endl;
+      std::cout << "tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
       tmp_lsm_tree[0] -= total_l0_size;
-
+      std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
+      std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
       tmp_lsm_tree[1] += total_l0_size;
-
+      std::cout << "After tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
       for (auto fno : l0_files) {
         fno_already_propagated.insert(fno);
       }
@@ -974,6 +977,7 @@ void ZenFS::PredictCompaction(int step) {
       Propagation(pivot_fno, unpivot_fno_list);
 
       step--;
+      printf("l0 step!\n");
       continue;  // L0는 전부 끝났으니 다음 루프
     }
     // !L0
@@ -988,6 +992,7 @@ void ZenFS::PredictCompaction(int step) {
     }
     Propagation(pivot_fno, unpivot_fno_list);
     step--;
+    printf("step!\n");
   }
 }
 
