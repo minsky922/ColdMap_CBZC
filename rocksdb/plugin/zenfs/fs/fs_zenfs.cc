@@ -913,7 +913,7 @@ void ZenFS::ReCalculateLifetimes() {
   }
 }
 
-void PredictCompaction(int step) {
+void ZenFS::PredictCompaction(int step) {
   std::array<uint64_t, 10> tmp_lsm_tree = zbd_->GetCurrentLSMTree();
   std::set<int> fno_already_propagated;
   while (step > 0) {
@@ -952,17 +952,17 @@ void PredictCompaction(int step) {
   }
 }
 
-void PredictCompactionImpl(uint64_t pivot_level,
-                           std::array<uint64_t, 10>& tmp_lsm_tree,
-                           uint64_t pivot_fno,
-                           std::vector<uint64_t> unpivot_fno_list) {
+void ZenFS::PredictCompactionImpl(uint64_t pivot_level,
+                                  std::array<uint64_t, 10>& tmp_lsm_tree,
+                                  uint64_t pivot_fno,
+                                  std::vector<uint64_t> unpivot_fno_list) {
   pivot_level = GetMaxLevelScoreLevel();
   pivot_fno = GetMaxHorizontalFno(pivot_level);
   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 }
 
-void GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
-                       std::vector<uint64_t> unpivot_fno_list) {
+void ZenFS::GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
+                              std::vector<uint64_t> unpivot_fno_list) {
   Slice smallest, largest;
   if (zbd_->GetMinMaxKey(pivot_fno, smallest, largest)) {
     zbd_->DownwardAdjacentFileList(smallest, largest, pivot_level,
@@ -970,7 +970,8 @@ void GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
   }
 }
 
-void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list) {
+void ZenFS::Propagation(uint64_t pivot_fno,
+                        std::vector<uint64_t> unpivot_fno_list) {
   double pivot_lifetime = 0.0;
   bool found_pivot = false;
 
@@ -1011,7 +1012,7 @@ void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list) {
   }
 }
 
-uint64_t GetMaxLevelScoreLevel() {
+uint64_t ZenFS::GetMaxLevelScoreLevel() {
   int max_level = -1;
   double max_score = std::numeric_limits<double>::lowest();
 
@@ -1027,7 +1028,7 @@ uint64_t GetMaxLevelScoreLevel() {
   return max_level;
 }
 
-uint64_t GetMaxHorizontalFno(int pivot_level) {
+uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
   auto it = level_file_map_.find(pivot_level);
   if (it == level_file_map_.end() || it->second.empty()) {
     printf("no level || no files");
