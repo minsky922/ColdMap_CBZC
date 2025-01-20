@@ -932,15 +932,25 @@ void ZenFS::PredictCompaction(int step) {
       continue;
     }
 
-    bool skip = false;
-    for (auto& f : unpivot_fno_list) {
-      if (fno_already_propagated.find(f) != fno_already_propagated.end()) {
-        skip = true;
-        break;
+    // bool skip = false;
+    // for (auto& f : unpivot_fno_list) {
+    //   if (fno_already_propagated.find(f) != fno_already_propagated.end()) {
+    //     skip = true;
+    //     break;
+    //   }
+    // }
+    // if (skip) {
+    //   continue;
+    // }
+
+    for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
+      if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
+        // 제거
+        it = unpivot_fno_list.erase(it);
+        printf("Removed an already propagated fno from unpivot_fno_list.\n");
+      } else {
+        ++it;
       }
-    }
-    if (skip) {
-      continue;
     }
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
@@ -1086,6 +1096,8 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
 
   uint64_t max_fno = 0;
   double max_horizontal_lifetime = -1.0;
+
+  printf("Files in level %d: %zu\n", pivot_level, files.size());
 
   for (const auto& file : files) {
     if (fno_already_propagated.find(file.fno) != fno_already_propagated.end()) {
