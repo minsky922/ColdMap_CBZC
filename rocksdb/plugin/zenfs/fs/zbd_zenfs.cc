@@ -684,7 +684,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
   }
   if (trivial_move) {
     if (output_level == 1) {
-      printf("0->1 trivial move??\n");
+      // printf("0->1 trivial move??\n");
     }
 
     for (uint64_t fno : compaction_inputs_input_level_fno) {
