@@ -527,15 +527,24 @@ class ZonedBlockDevice {
     }
 
     if (level == 0) {
-      return static_cast<double>(tmp_lsm_tree[0]) /
-             static_cast<double>(max_bytes_for_level_base_);
+      score = static_cast<double>(tmp_lsm_tree[0]) /
+              static_cast<double>(max_bytes_for_level_base_);
+      printf("  Calculating score for level 0: %lu / %lu = %.4f\n",
+             tmp_lsm_tree[0], max_bytes_for_level_base_, score);
     } else if (level == 1) {
-      return static_cast<double>(tmp_lsm_tree[1]) /
-             static_cast<double>(max_bytes_for_level_base_);
+      score = static_cast<double>(tmp_lsm_tree[1]) /
+              static_cast<double>(max_bytes_for_level_base_);
+      printf("  Calculating score for level 1: %lu / %lu = %.4f\n",
+             tmp_lsm_tree[1], max_bytes_for_level_base_, score);
     } else {
-      return static_cast<double>(tmp_lsm_tree[level]) /
-             static_cast<double>(GetLevelSizeLimit(level));
+      uint64_t level_size_limit = GetLevelSizeLimit(level);
+      score = static_cast<double>(tmp_lsm_tree[level]) /
+              static_cast<double>(level_size_limit);
+      printf("  Calculating score for level %d: %lu / %lu = %.4f\n", level,
+             tmp_lsm_tree[level], level_size_limit, score);
     }
+
+    return score;
   }
   inline uint64_t GetAllocationScheme() { return allocation_scheme_; }
 
