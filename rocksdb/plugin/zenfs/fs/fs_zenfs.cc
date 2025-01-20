@@ -914,7 +914,7 @@ void ZenFS::ReCalculateLifetimes() {
 }
 
 void PredictCompaction(int step) {
-  std::array<uint64_t, 10> tmp_lsm_tree = GetCurrentLSMTree();
+  std::array<uint64_t, 10> tmp_lsm_tree = zbd_->GetCurrentLSMTree();
   std::set<int> fno_already_propagated;
   while (step > 0) {
     uint64_t pivot_level = 0;
@@ -950,16 +950,6 @@ void PredictCompaction(int step) {
     Propagation(pivot_fno, unpivot_fno_list);
     step--;
   }
-}
-
-std::array<uint64_t, 10> GetCurrentLSMTree() {
-  std::array<uint64_t, 10> lsm_tree_snapshot;
-
-  for (int i = 0; i < 10; ++i) {
-    lsm_tree_snapshot[i] = lsm_tree_[i].load();
-  }
-
-  return lsm_tree_snapshot;
 }
 
 void PredictCompactionImpl(uint64_t pivot_level,

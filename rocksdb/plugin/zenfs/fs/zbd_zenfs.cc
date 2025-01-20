@@ -3357,6 +3357,16 @@ void ZonedBlockDevice::AllocateZoneBySortedScore(
   }
 }
 
+std::array<uint64_t, 10> GetCurrentLSMTree() {
+  std::array<uint64_t, 10> lsm_tree_snapshot;
+
+  for (int i = 0; i < 10; ++i) {
+    lsm_tree_snapshot[i] = lsm_tree_[i].load();
+  }
+
+  return lsm_tree_snapshot;
+}
+
 }  // namespace ROCKSDB_NAMESPACE
 
 #endif  // !defined(ROCKSDB_LITE) && !defined(OS_WIN)
