@@ -534,13 +534,15 @@ class ZenFS : public FileSystemWrapper {
 
   void PredictCompaction(int step);
 
-  uint64_t GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree);
+  uint64_t GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree,
+                                 int initial_l0_files_n);
 
   uint64_t GetMaxHorizontalFno(int pivot_level);
   void PredictCompactionImpl(uint64_t& pivot_level,
                              std::array<uint64_t, 10>& tmp_lsm_tree,
                              uint64_t& pivot_fno,
-                             std::vector<uint64_t>& unpivot_fno_list);
+                             std::vector<uint64_t>& unpivot_fno_list,
+                             int initial_l0_files_n);
   void GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
                          std::vector<uint64_t>& unpivot_fno_list);
   void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list);

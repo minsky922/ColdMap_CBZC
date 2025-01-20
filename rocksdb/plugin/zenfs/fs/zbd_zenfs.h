@@ -518,7 +518,8 @@ class ZonedBlockDevice {
   }
 
   double PredictCompactionScoreTmp(int level,
-                                   std::array<uint64_t, 10> &tmp_lsm_tree) {
+                                   std::array<uint64_t, 10> &tmp_lsm_tree,
+                                   int initial_l0_files_n) {
     if (cur_free_percent_ > 97) {
       return 0.0;
     }
@@ -527,13 +528,16 @@ class ZonedBlockDevice {
     }
 
     double score = 0.0;
+    double MaxScore = 0.0;
 
     if (level == 0) {
       score = static_cast<double>(tmp_lsm_tree[0]) /
               static_cast<double>(max_bytes_for_level_base_);
-      score = std::max(level_file_map_[0].size() / 4, score);
-      printf("  Calculating score for level 0: %lu / %lu = %.4f\n",
-             tmp_lsm_tree[0], max_bytes_for_level_base_, score);
+      MaxScore = std::max(initial_l0_files_n / 4, score);
+      printf(
+          "  Calculating score for level 0: %lu / %lu = %.4f, max socre: "
+          "%.4f\n",
+          tmp_lsm_tree[0], max_bytes_for_level_base_, score, MaxScore);
     } else if (level == 1) {
       score = static_cast<double>(tmp_lsm_tree[1]) /
               static_cast<double>(max_bytes_for_level_base_);

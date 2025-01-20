@@ -917,6 +917,14 @@ void ZenFS::ReCalculateLifetimes() {
 void ZenFS::PredictCompaction(int step) {
   std::array<uint64_t, 10> tmp_lsm_tree = zbd_->GetCurrentLSMTree();
   // std::set<uint64_t> fno_already_propagated;
+  int initial_l0_files_n = 0;
+  for (const auto& file : level_file_map_[0]) {
+    if (!file.is_compacting) {
+      initial_l0_files_n++;
+    }
+  }
+  printf("Initial L0 non-compacting files: %d\n", initial_l0_files_n);
+
   fno_already_propagated.clear();
   while (step > 0) {
     uint64_t pivot_level = 0;
@@ -924,7 +932,7 @@ void ZenFS::PredictCompaction(int step) {
     std::vector<uint64_t> unpivot_fno_list;
 
     PredictCompactionImpl(pivot_level, tmp_lsm_tree, pivot_fno,
-                          unpivot_fno_list);
+                          unpivot_fno_list, initial_l0_files_n);
 
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
@@ -977,6 +985,7 @@ void ZenFS::PredictCompaction(int step) {
       }
       std::cout << "total_l0_size: " << total_l0_size << std::endl;
       std::cout << "tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
+      initial_l0_files_n = 0;
       tmp_lsm_tree[0] -= total_l0_size;
       std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
       std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
@@ -1011,8 +1020,9 @@ void ZenFS::PredictCompaction(int step) {
 void ZenFS::PredictCompactionImpl(uint64_t& pivot_level,
                                   std::array<uint64_t, 10>& tmp_lsm_tree,
                                   uint64_t& pivot_fno,
-                                  std::vector<uint64_t>& unpivot_fno_list) {
-  pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree);
+                                  std::vector<uint64_t>& unpivot_fno_list,
+                                  int initial_l0_files_n) {
+  pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree, initial_l0_files_n);
   std::cout << "pivot_level: " << pivot_level << std::endl;
   pivot_fno = GetMaxHorizontalFno(pivot_level);
   std::cout << "pivot_fno: " << pivot_fno << std::endl;
@@ -1070,12 +1080,14 @@ void ZenFS::Propagation(uint64_t pivot_fno,
   }
 }
 
-uint64_t ZenFS::GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree) {
+uint64_t ZenFS::GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree,
+                                      int initial_l0_files_n) {
   int max_level = -1;
   double max_score = std::numeric_limits<double>::lowest();
 
   for (int level = 0; level < 6; ++level) {
-    double score = zbd_->PredictCompactionScoreTmp(level, tmp_lsm_tree);
+    double score = zbd_->PredictCompactionScoreTmp(level, tmp_lsm_tree,
+                                                   initial_l0_files_n);
 
     if (score > max_score) {
       max_score = score;
