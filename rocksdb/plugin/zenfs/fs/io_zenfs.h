@@ -122,8 +122,6 @@ class ZoneFile {
   bool selected_as_input_ = false;
   uint64_t buffer_size_;
 
-  uint64_t GetFileSize() { return file_size_; }
-
   explicit ZoneFile(ZonedBlockDevice* zbd, uint64_t file_id_,
                     MetadataWriter* metadata_writer, FileSystemWrapper* zenfs);
 
