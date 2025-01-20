@@ -941,9 +941,9 @@ void ZenFS::PredictCompaction(int step) {
     }
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
-    uint64_t file_size = pivot_file->GetFileSize();
-    tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
-    std::cout << "pivot_file size: " << file_size << std::endl;
+    if (pivot_file == nullptr) {
+      printf("no pivot file!\n");
+    }
 
     if (pivot_level == 0) {
       uint64_t total_l0_size = 0;
@@ -977,7 +977,9 @@ void ZenFS::PredictCompaction(int step) {
       continue;  // L0는 전부 끝났으니 다음 루프
     }
     // !L0
-    tmp_lsm_tree[pivot_level] -= file_size;
+    uint64_t file_size = pivot_file->GetFileSize();
+    std::cout << "pivot_file size: " << file_size << std::endl;
+    tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
     tmp_lsm_tree[pivot_level + 1] += file_size;
 
     fno_already_propagated.insert(pivot_fno);
@@ -989,17 +991,17 @@ void ZenFS::PredictCompaction(int step) {
   }
 }
 
-void ZenFS::PredictCompactionImpl(uint64_t pivot_level,
+void ZenFS::PredictCompactionImpl(uint64_t& pivot_level,
                                   std::array<uint64_t, 10>& tmp_lsm_tree,
-                                  uint64_t pivot_fno,
-                                  std::vector<uint64_t> unpivot_fno_list) {
+                                  uint64_t& pivot_fno,
+                                  std::vector<uint64_t>& unpivot_fno_list) {
   pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree);
   pivot_fno = GetMaxHorizontalFno(pivot_level);
   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 }
 
 void ZenFS::GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
-                              std::vector<uint64_t> unpivot_fno_list) {
+                              std::vector<uint64_t>& unpivot_fno_list) {
   Slice smallest, largest;
   if (zbd_->GetMinMaxKey(pivot_fno, smallest, largest)) {
     zbd_->DownwardAdjacentFileList(smallest, largest, pivot_level,
