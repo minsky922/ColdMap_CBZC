@@ -528,16 +528,16 @@ class ZonedBlockDevice {
     }
 
     double score = 0.0;
-    double MaxScore = 0.0;
+    double size_score = 0.0;
 
     if (level == 0) {
-      score = static_cast<double>(tmp_lsm_tree[0]) /
-              static_cast<double>(max_bytes_for_level_base_);
-      MaxScore = std::max(static_cast<double>(initial_l0_files_n) / 4, score);
+      size_score = static_cast<double>(tmp_lsm_tree[0]) /
+                   static_cast<double>(max_bytes_for_level_base_);
+      score = std::max(static_cast<double>(initial_l0_files_n) / 4, score);
       printf(
           "  Calculating score for level 0: %lu / %lu = %.4f, max socre: "
           "%.4f\n",
-          tmp_lsm_tree[0], max_bytes_for_level_base_, score, MaxScore);
+          tmp_lsm_tree[0], max_bytes_for_level_base_, size_score, score);
     } else if (level == 1) {
       score = static_cast<double>(tmp_lsm_tree[1]) /
               static_cast<double>(max_bytes_for_level_base_);
