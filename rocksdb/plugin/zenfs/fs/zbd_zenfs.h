@@ -516,6 +516,27 @@ class ZonedBlockDevice {
 
     // return db_ptr_->ReCalculateCompactionScore(level);
   }
+
+  double PredictCompactionScoreTmp(int level,
+                                   std::array<uint64_t, 10> &tmp_lsm_tree) {
+    if (cur_free_percent_ > 97) {
+      return 0.0;
+    }
+    if (db_ptr_ == nullptr) {
+      return 0.0;
+    }
+
+    if (level == 0) {
+      return static_cast<double>(tmp_lsm_tree[0]) /
+             static_cast<double>(max_bytes_for_level_base_);
+    } else if (level == 1) {
+      return static_cast<double>(tmp_lsm_tree[1]) /
+             static_cast<double>(max_bytes_for_level_base_);
+    } else {
+      return static_cast<double>(tmp_lsm_tree[level]) /
+             static_cast<double>(GetLevelSizeLimit(level));
+    }
+  }
   inline uint64_t GetAllocationScheme() { return allocation_scheme_; }
 
   uint64_t GetZoneCleaningKickingPoint() {

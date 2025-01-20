@@ -532,7 +532,7 @@ class ZenFS : public FileSystemWrapper {
 
   void PredictCompaction(int step);
 
-  uint64_t GetMaxLevelScoreLevel();
+  uint64_t GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree);
 
   uint64_t GetMaxHorizontalFno(int pivot_level);
   void PredictCompactionImpl(uint64_t pivot_level,

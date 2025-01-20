@@ -940,9 +940,46 @@ void ZenFS::PredictCompaction(int step) {
       continue;
     }
 
-    ZoneFile* pivot_file = GetSSTZoneFileInZBDNoLock(pivot_fno);
+    ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
+    uint64_t file_size = pivot_file->predicted_size_;
+    tmp_lsm_tree[pivot_level] -= pivot_file->predicted_size_;
+    std::cout << "pivot_file size: " << file_size << std::endl;
 
-    tmp_lsm_tree[pivot_level] -= pivot_file.predicted_size_;
+    if (pivot_level == 0) {
+      uint64_t total_l0_size = 0;
+      std::vector<uint64_t> l0_files;
+
+      auto it = level_file_map_.find(0);
+      if (it != level_file_map_.end()) {
+        auto& file_infos = it->second;
+        for (auto& sst : file_infos) {
+          uint64_t sst_size = 0;
+          ZoneFile* zf = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
+          if (zf) {
+            sst_size = zf->predicted_size_;
+          }
+          total_l0_size += sst_size;
+          l0_files.push_back(sst.fno);
+        }
+      }
+
+      tmp_lsm_tree[0] -= total_l0_size;
+
+      tmp_lsm_tree[1] += total_l0_size;
+
+      for (auto fno : l0_files) {
+        fno_already_propagated.insert(fno);
+      }
+
+      Propagation(pivot_fno, unpivot_fno_list);
+
+      step--;
+      continue;  // L0는 전부 끝났으니 다음 루프
+    }
+    // !L0
+    tmp_lsm_tree[pivot_level] -= file_size;
+    tmp_lsm_tree[pivot_level + 1] += file_size;
+
     fno_already_propagated.insert(pivot_fno);
     for (auto& f : unpivot_fno_list) {
       fno_already_propagated.insert(f);
@@ -956,7 +993,7 @@ void ZenFS::PredictCompactionImpl(uint64_t pivot_level,
                                   std::array<uint64_t, 10>& tmp_lsm_tree,
                                   uint64_t pivot_fno,
                                   std::vector<uint64_t> unpivot_fno_list) {
-  pivot_level = GetMaxLevelScoreLevel();
+  pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree);
   pivot_fno = GetMaxHorizontalFno(pivot_level);
   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 }
@@ -1012,12 +1049,12 @@ void ZenFS::Propagation(uint64_t pivot_fno,
   }
 }
 
-uint64_t ZenFS::GetMaxLevelScoreLevel() {
+uint64_t ZenFS::GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree) {
   int max_level = -1;
   double max_score = std::numeric_limits<double>::lowest();
 
   for (int level = 0; level < 6; ++level) {
-    double score = zbd_->PredictCompactionScore(level);
+    double score = zbd_->PredictCompactionScoreTmp(level, tmp_lsm_tree);
 
     if (score > max_score) {
       max_score = score;
