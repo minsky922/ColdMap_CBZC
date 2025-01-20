@@ -526,6 +526,8 @@ class ZonedBlockDevice {
       return 0.0;
     }
 
+    double score = 0.0;
+
     if (level == 0) {
       score = static_cast<double>(tmp_lsm_tree[0]) /
               static_cast<double>(max_bytes_for_level_base_);
