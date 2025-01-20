@@ -1083,7 +1083,7 @@ void ZenFS::Propagation(uint64_t pivot_fno,
 uint64_t ZenFS::GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree,
                                       int initial_l0_files_n) {
   int max_level = -1;
-  double max_score = std::numeric_limits<double>::lowest();
+  double max_score = -1;
 
   for (int level = 0; level < 6; ++level) {
     double score = zbd_->PredictCompactionScoreTmp(level, tmp_lsm_tree,
