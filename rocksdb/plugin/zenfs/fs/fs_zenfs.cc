@@ -768,8 +768,8 @@ void ZenFS::ReCalculateLifetimes() {
 
   for (auto& [level, file_infos] : level_file_map_) {
     double vertical_lifetime = normalized_vertical_lifetimes[level];
+
     for (auto& sst : file_infos) {
-      // 컴팩션 중은 0.0, trivial move는 1.0, 그 외는 기존 계산
       double sst_lifetime_value = 0.0;
       if (sst.is_compacting) {
         sst_lifetime_value = 0.0;
@@ -779,39 +779,81 @@ void ZenFS::ReCalculateLifetimes() {
         sst_lifetime_value = alpha_ * (1 - sst.horizontal_lifetime) +
                              beta_ * (1 - vertical_lifetime);
       }
-
-      ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
-      if (zone_file == nullptr) {
-        continue;
-      }
-      if (zone_file->IsDeleted()) {
-        continue;
-      }
-
       sst.sst_lifetime_value_ = sst_lifetime_value;
+    }
+  }
 
-      PredictCompaction(4);
+  PredictCompaction(4);
 
-      // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
+  for (auto& [level, file_infos] : level_file_map_) {
+    for (auto& sst : file_infos) {
+      ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
+      if (!zone_file || zone_file->IsDeleted()) {
+        continue;
+      }
+
+      // zone_lifetime_map_에 반영
+      double sst_lifetime_value = sst.sst_lifetime_value_;
       for (const auto* extent : zone_file->GetExtents()) {
-        uint64_t zone_start = extent->zone_->start_;  // 존의 시작 위치 사용
+        uint64_t zone_start = extent->zone_->start_;  // 존 시작 위치
 
-        // 해당 존의 lifetime 합산 및 파일 수를 업데이트
-        if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-          zone_lifetime_map_[zone_start] = {
-              sst_lifetime_value, 1, {sst_lifetime_value}};
+        auto& entry = zone_lifetime_map_[zone_start];
 
-        } else {
-          auto& entry = zone_lifetime_map_[zone_start];
-          std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
-          std::get<1>(entry) += 1;                   // 파일 수 증가
-          std::get<2>(entry).push_back(
-              sst_lifetime_value);  // 각 파일의 lifetime 저장
-        }
+        entry.total_lifetime += sst_lifetime_value;
+        entry.file_count += 1;
+        entry.file_lifetimes[sst.fno] = sst_lifetime_value;
       }
     }
   }
+
+  // ===========================legacy=========================================
+  // for (auto& [level, file_infos] : level_file_map_) {
+  //   double vertical_lifetime = normalized_vertical_lifetimes[level];
+  //   for (auto& sst : file_infos) {
+  //     // 컴팩션 중은 0.0, trivial move는 1.0, 그 외는 기존 계산
+  //     double sst_lifetime_value = 0.0;
+  //     if (sst.is_compacting) {
+  //       sst_lifetime_value = 0.0;
+  //     } else if (sst.is_trivial) {
+  //       sst_lifetime_value = 1.0;
+  //     } else {
+  //       sst_lifetime_value = alpha_ * (1 - sst.horizontal_lifetime) +
+  //                            beta_ * (1 - vertical_lifetime);
+  //     }
+
+  //     ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
+  //     if (zone_file == nullptr) {
+  //       continue;
+  //     }
+  //     if (zone_file->IsDeleted()) {
+  //       continue;
+  //     }
+
+  //     sst.sst_lifetime_value_ = sst_lifetime_value;
+
+  //     PredictCompaction(4);
+
+  //     // 각 ZoneFile의 extents를 순회하여 파일이 속한 존을 찾음
+  //     for (const auto* extent : zone_file->GetExtents()) {
+  //       uint64_t zone_start = extent->zone_->start_;  // 존의 시작 위치 사용
+
+  //       // 해당 존의 lifetime 합산 및 파일 수를 업데이트
+  //       if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end())
+  //       {
+  //         zone_lifetime_map_[zone_start] = {
+  //             sst_lifetime_value, 1, {sst_lifetime_value}};
+
+  //       } else {
+  //         auto& entry = zone_lifetime_map_[zone_start];
+  //         std::get<0>(entry) += sst_lifetime_value;  // 총합에 추가
+  //         std::get<1>(entry) += 1;                   // 파일 수 증가
+  //         std::get<2>(entry).push_back(
+  //             sst_lifetime_value);  // 각 파일의 lifetime 저장
+  //       }
+  //     }
+  //   }
   // }
+  // }===========================legacy=====================================
 
   // 각 존의 평균 lifetime 계산 및 출력
   // for (const auto& zone_entry : zone_lifetime_map_) {
@@ -847,20 +889,25 @@ void ZenFS::ReCalculateLifetimes() {
       for (const auto* extent : zoneFile->GetExtents()) {
         uint64_t zone_start = extent->zone_->start_;
 
-        // 처음 본 zone이면 초기화
-        if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end()) {
-          // printf("ReCalculateLifetimes-WAL : not found\n");
-          zone_lifetime_map_[zone_start] = {
-              0.0,  // 총합
-              1,    // 파일 수
-              {}    // 파일별 lifetime 리스트
-          };
-        }
+        // // 처음 본 zone이면 초기화
+        // if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end())
+        // {
+        //   // printf("ReCalculateLifetimes-WAL : not found\n");
+        //   zone_lifetime_map_[zone_start] = {
+        //       0.0,  // 총합
+        //       1,    // 파일 수
+        //       {}    // 파일별 lifetime 리스트
+        //   };
+        // }
 
         auto& entry = zone_lifetime_map_[zone_start];
-        std::get<0>(entry) += wal_lifetime_value;
-        std::get<1>(entry) += 1;
-        std::get<2>(entry).push_back(wal_lifetime_value);
+        entry.total_lifetime += wal_lifetime_value;
+        entry.file_count++;
+
+        // auto& entry = zone_lifetime_map_[zone_start];
+        // std::get<0>(entry) += wal_lifetime_value;
+        // std::get<1>(entry) += 1;
+        // std::get<2>(entry).push_back(wal_lifetime_value);
       }
     }
   }
@@ -893,12 +940,14 @@ void PredictCompaction(int step) {
       continue;
     }
 
-    tmp_lsm_tree[pivot_fno.level] -= pivot_fno.size;
+    ZoneFile* pivot_file = GetSSTZoneFileInZBDNoLock(pivot_fno);
+
+    tmp_lsm_tree[pivot_level] -= pivot_file.predicted_size_;
     fno_already_propagated.insert(pivot_fno);
-    for (auto& f : unpivot_fno) {
+    for (auto& f : unpivot_fno_list) {
       fno_already_propagated.insert(f);
     }
-    Propagation(pivot_fno, unpivot_fno);
+    Propagation(pivot_fno, unpivot_fno_list);
   }
 }
 
@@ -920,7 +969,46 @@ void GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
   }
 }
 
-void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list) {}
+void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list) {
+  double pivot_lifetime = 0.0;
+  bool found_pivot = false;
+
+  for (auto& [level, file_infos] : level_file_map_) {
+    for (auto& sst : file_infos) {
+      if (sst.fno == pivot_fno) {
+        pivot_lifetime = sst.sst_lifetime_value_;
+        found_pivot = true;
+        break;
+      }
+    }
+    if (found_pivot) break;
+  }
+
+  if (!found_pivot) {
+    std::cout << "[Propagation] pivot_fno(" << pivot_fno << ") not found.\n";
+    return;
+  }
+
+  // unpivot_fno_list에 있는 모든 파일의 sst_lifetime_value_를
+  // pivot_lifetime으로 설정
+  for (uint64_t unpivot_fno : unpivot_fno_list) {
+    bool found_unpivot = false;
+    for (auto& [level, file_infos] : level_file_map_) {
+      for (auto& sst : file_infos) {
+        if (sst.fno == unpivot_fno) {
+          sst.sst_lifetime_value_ = pivot_lifetime;
+          found_unpivot = true;
+          break;
+        }
+      }
+      if (found_unpivot) break;
+    }
+    if (!found_unpivot) {
+      std::cout << "[Propagation] unpivot_fno(" << unpivot_fno
+                << ") not found.\n";
+    }
+  }
+}
 
 //====================================================================================//
 
@@ -1208,20 +1296,21 @@ void ZenFS::ZoneCleaning(bool forced) {
         double average_lifetime = 0;
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
-          // double total_lifetime = zone_lifetime_map_[zone_start].first;
-          // int file_count = zone_lifetime_map_[zone_start].second;
           auto& entry = zone_lifetime_map_[zone_start];
-          double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
-          int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
-          const auto& lifetime_values =
-              std::get<2>(entry);  // 각 파일의 lifetime 값
-          average_lifetime = total_lifetime / file_count;
-          // ZoneLifetimeValue = zone_lifetime_map_[zone_start].first;
+          // double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
+          // int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
+          // const auto& lifetime_values =
+          //     std::get<2>(entry);  // 각 파일의 lifetime 값
 
-          std::map<double, int> value_counts;
-          for (const auto& value : lifetime_values) {
-            value_counts[value]++;
-          }
+          double total_lifetime = entry.total_lifetime;  // 존의 lifetime 총합
+          int file_count = entry.file_count;  // 존에 포함된 파일 수
+
+          average_lifetime = total_lifetime / file_count;
+
+          // std::map<double, int> value_counts;
+          // for (const auto& value : lifetime_values) {
+          //   value_counts[value]++;
+          // }
 
           /* benefit = sigma^ZLV * (1-simga)^(free space)
             0<ZLV<1, 0<free space<1

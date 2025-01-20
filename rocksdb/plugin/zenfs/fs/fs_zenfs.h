@@ -519,7 +519,16 @@ class ZenFS : public FileSystemWrapper {
     bool is_trivial;
     double sst_lifetime_value_;
   };
+  struct ZoneLifetimeData {
+    double total_lifetime;
+    int file_count;
+    // fno -> 해당 파일의 lifetime
+    std::map<uint64_t, double> file_lifetimes;
+
+    ZoneLifetimeData() : total_lifetime(0.0), file_count(0) {}
+  };
   std::map<int, std::vector<FileInfo_>> level_file_map_;
+  std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
 
   void PredictCompaction(int step);
 
@@ -599,19 +608,8 @@ class ZenFS : public FileSystemWrapper {
     }
   };
 
-  struct ZoneLifetimeData {
-    double total_lifetime;  // 해당 존의 파일 lifetime 합계
-    int file_count;
-    std::set<FileLifetimeInfo>
-        file_lifetimes;  // lifetime 순으로 정렬된 (fno, lifetime)
-
-    ZoneLifetimeData() : total_lifetime(0.0), file_count(0) {}
-  };
-
-  std::map<uint64_t, ZoneLifetimeData> Zone_lifetime_map_;
-
-  std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
-      zone_lifetime_map_;
+  // std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
+  //     zone_lifetime_map_;
 
  private:
   // std::map<uint64_t, std::pair<double, int>> zone_lifetime_map_;
