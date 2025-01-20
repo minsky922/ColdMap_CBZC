@@ -1084,8 +1084,8 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
 
   const auto& files = it->second;
 
-  uint64_t max_fno = files[0].fno;
-  double max_horizontal_lifetime = files[0].horizontal_lifetime;
+  uint64_t max_fno = 0;
+  double max_horizontal_lifetime = -1.0;
 
   for (const auto& file : files) {
     if (fno_already_propagated.find(file.fno) != fno_already_propagated.end()) {
