@@ -401,31 +401,31 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 //   return variance / lifetimes.size();
 // }
 
-double ZenFS::CalculateZoneLifetimeVariance() {
-  size_t n = zone_lifetime_map_.size();
-  if (n == 0) {
-    return 0;
-  }
+// double ZenFS::CalculateZoneLifetimeVariance() {
+//   size_t n = zone_lifetime_map_.size();
+//   if (n == 0) {
+//     return 0;
+//   }
 
-  double sum = 0;
-  double sum_of_squares = 0;
+//   double sum = 0;
+//   double sum_of_squares = 0;
 
-  for (const auto& [zone_start, entry] : zone_lifetime_map_) {
-    // double mean_lifetime = static_cast<double>(
-    //     static_cast<double>(entry.first) / entry.second * 100);
-    double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
-    int file_count = std::get<1>(entry);         // 존에 포함된 파일 수
-    double mean_lifetime = total_lifetime / file_count;
-    sum += mean_lifetime;
-    sum_of_squares += mean_lifetime * mean_lifetime;
-  }
+//   for (const auto& [zone_start, entry] : zone_lifetime_map_) {
+//     // double mean_lifetime = static_cast<double>(
+//     //     static_cast<double>(entry.first) / entry.second * 100);
+//     double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
+//     int file_count = std::get<1>(entry);         // 존에 포함된 파일 수
+//     double mean_lifetime = total_lifetime / file_count;
+//     sum += mean_lifetime;
+//     sum_of_squares += mean_lifetime * mean_lifetime;
+//   }
 
-  double mean = sum / n;
+//   double mean = sum / n;
 
-  double variance = (sum_of_squares / n) - (mean * mean);
+//   double variance = (sum_of_squares / n) - (mean * mean);
 
-  return variance * 1000;
-}
+//   return variance * 1000;
+// }
 
 // void ZenFS::CalculateHorizontalLifetimes(
 //     std::map<int, std::vector<std::pair<uint64_t, double>>>& level_file_map)
