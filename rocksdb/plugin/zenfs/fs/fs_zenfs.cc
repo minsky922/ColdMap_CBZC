@@ -916,7 +916,8 @@ void ZenFS::ReCalculateLifetimes() {
 
 void ZenFS::PredictCompaction(int step) {
   std::array<uint64_t, 10> tmp_lsm_tree = zbd_->GetCurrentLSMTree();
-  std::set<uint64_t> fno_already_propagated;
+  // std::set<uint64_t> fno_already_propagated;
+  fno_already_propagated.clear();
   while (step > 0) {
     uint64_t pivot_level = 0;
     uint64_t pivot_fno = 0;
@@ -1084,7 +1085,7 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
   double max_horizontal_lifetime = files[0].horizontal_lifetime;
 
   for (const auto& file : files) {
-    if (fno_already_propagated.find(sst.fno) != fno_already_propagated.end()) {
+    if (fno_already_propagated.find(file.fno) != fno_already_propagated.end()) {
       continue;
     }
     if (file.horizontal_lifetime > max_horizontal_lifetime) {

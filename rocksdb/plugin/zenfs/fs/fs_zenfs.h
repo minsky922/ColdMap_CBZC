@@ -530,6 +530,8 @@ class ZenFS : public FileSystemWrapper {
   std::map<int, std::vector<FileInfo_>> level_file_map_;
   std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
 
+  std::set<uint64_t> fno_already_propagated;
+
   void PredictCompaction(int step);
 
   uint64_t GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree);
@@ -561,18 +563,6 @@ class ZenFS : public FileSystemWrapper {
   IOStatus MigrateFileExtents(
       const std::string& fname,
       const std::vector<ZoneExtentSnapshot*>& migrate_exts);
-  struct FileLifetimeInfo {
-    uint64_t fno;
-    double lifetime;
-
-    // lifetime이 작은 순서로 정렬, 같은 lifetime이면 fno로 정렬
-    bool operator<(const FileLifetimeInfo& other) const {
-      if (lifetime != other.lifetime) {
-        return lifetime < other.lifetime;
-      }
-      return fno < other.fno;
-    }
-  };
 
   // std::map<uint64_t, std::tuple<double, int, std::vector<double>>>
   //     zone_lifetime_map_;
