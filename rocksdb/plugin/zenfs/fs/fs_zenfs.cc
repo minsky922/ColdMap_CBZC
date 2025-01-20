@@ -916,7 +916,7 @@ void ZenFS::ReCalculateLifetimes() {
 void PredictCompaction(int step) {
   std::array<uint64_t, 10> tmp_lsm_tree = GetCurrentLSMTree();
   std::set<int> fno_already_propagated;
-  while (step-- > 0) {
+  while (step > 0) {
     uint64_t pivot_level = 0;
     uint64_t pivot_fno = 0;
     std::vector<uint64_t> unpivot_fno_list;
@@ -948,7 +948,18 @@ void PredictCompaction(int step) {
       fno_already_propagated.insert(f);
     }
     Propagation(pivot_fno, unpivot_fno_list);
+    step--;
   }
+}
+
+std::array<uint64_t, 10> GetCurrentLSMTree() {
+  std::array<uint64_t, 10> lsm_tree_snapshot;
+
+  for (int i = 0; i < 10; ++i) {
+    lsm_tree_snapshot[i] = lsm_tree_[i].load();
+  }
+
+  return lsm_tree_snapshot;
 }
 
 void PredictCompactionImpl(uint64_t pivot_level,
@@ -1008,6 +1019,43 @@ void Propagation(uint64_t pivot_fno, std::vector<uint64_t> unpivot_fno_list) {
                 << ") not found.\n";
     }
   }
+}
+
+uint64_t GetMaxLevelScoreLevel() {
+  int max_level = -1;
+  double max_score = std::numeric_limits<double>::lowest();
+
+  for (int level = 0; level < 6; ++level) {
+    double score = zbd_->PredictCompactionScore(level);
+
+    if (score > max_score) {
+      max_score = score;
+      max_level = level;
+    }
+  }
+
+  return max_level;
+}
+
+uint64_t GetMaxHorizontalFno(int pivot_level) {
+  auto it = level_file_map_.find(pivot_level);
+  if (it == level_file_map_.end() || it->second.empty()) {
+    printf("no level || no files");
+  }
+
+  const auto& files = it->second;
+
+  uint64_t max_fno = files[0].fno;
+  double max_horizontal_lifetime = files[0].horizontal_lifetime;
+
+  for (const auto& file : files) {
+    if (file.horizontal_lifetime > max_horizontal_lifetime) {
+      max_horizontal_lifetime = file.horizontal_lifetime;
+      max_fno = file.fno;
+    }
+  }
+
+  return max_fno;
 }
 
 //====================================================================================//

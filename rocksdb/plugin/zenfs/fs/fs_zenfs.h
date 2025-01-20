@@ -532,43 +532,9 @@ class ZenFS : public FileSystemWrapper {
 
   void PredictCompaction(int step);
 
-  int GetMaxLevelScoreLevel() {
-    int max_level = -1;
-    double max_score = std::numeric_limits<double>::lowest();
+  uint64_t GetMaxLevelScoreLevel();
 
-    for (int level = 0; level < 6; ++level) {
-      double score = zbd_->PredictCompactionScore(level);
-
-      if (score > max_score) {
-        max_score = score;
-        max_level = level;
-      }
-    }
-
-    return max_level;
-  }
-
-  uint64_t GetMaxHorizontalFno(int pivot_level) {
-    auto it = level_file_map_.find(pivot_level);
-    if (it == level_file_map_.end() || it->second.empty()) {
-      printf("no level || no files");
-    }
-
-    const auto& files = it->second;
-
-    uint64_t max_fno = files[0].fno;
-    double max_horizontal_lifetime = files[0].horizontal_lifetime;
-
-    for (const auto& file : files) {
-      if (file.horizontal_lifetime > max_horizontal_lifetime) {
-        max_horizontal_lifetime = file.horizontal_lifetime;
-        max_fno = file.fno;
-      }
-    }
-
-    return max_fno;
-  }
-
+  uint64_t GetMaxHorizontalFno(int pivot_level);
   void PredictCompactionImpl(uint64_t pivot_level,
                              std::array<uint64_t, 10>& tmp_lsm_tree,
                              uint64_t pivot_fno,
