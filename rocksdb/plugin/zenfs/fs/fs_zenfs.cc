@@ -941,8 +941,8 @@ void ZenFS::PredictCompaction(int step) {
     }
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
-    uint64_t file_size = pivot_file->file_size_;
-    tmp_lsm_tree[pivot_level] -= pivot_file->file_size_;
+    uint64_t file_size = pivot_file->GetFileSize();
+    tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
     std::cout << "pivot_file size: " << file_size << std::endl;
 
     if (pivot_level == 0) {
@@ -956,7 +956,7 @@ void ZenFS::PredictCompaction(int step) {
           uint64_t sst_size = 0;
           ZoneFile* zf = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
           if (zf) {
-            sst_size = zf->file_size_;
+            sst_size = zf->GetFileSize();
           }
           total_l0_size += sst_size;
           l0_files.push_back(sst.fno);
