@@ -783,7 +783,7 @@ void ZenFS::ReCalculateLifetimes() {
     }
   }
 
-  PredictCompaction(8);
+  PredictCompaction(16);
 
   printf("prdeictcompaction completed\n");
 
