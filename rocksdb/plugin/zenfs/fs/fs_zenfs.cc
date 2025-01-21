@@ -783,7 +783,8 @@ void ZenFS::ReCalculateLifetimes() {
     }
   }
 
-  PredictCompaction(16);
+  PredictCompaction(32);
+
   printf("prdeictcompaction completed\n");
 
   for (auto& [level, file_infos] : level_file_map_) {
