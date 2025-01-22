@@ -1403,11 +1403,11 @@ IOStatus ZoneFile::MigrateData(uint64_t offset, uint32_t length,
   // uint32_t step = length;
   uint32_t read_sz = step;
   int block_sz = zbd_->GetBlockSize();
-  uint64_t align = step % block_sz;
+  // uint64_t align = step % block_sz;
 
-  if (align) {
-    step += (block_sz - align);
-  }
+  // if (align) {
+  //   step += (block_sz - align);
+  // }
 
   assert(offset % block_sz == 0);
   if (offset % block_sz != 0) {
