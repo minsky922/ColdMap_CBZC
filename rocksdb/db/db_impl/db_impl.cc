@@ -2993,7 +2993,7 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
   smallest.DecodeFrom(s);
   // printf("ajacent 1\n");
   if (level == 0) {
-    printf("no!!\n");
+    // printf("no!!\n");
   }
   vstorage->GetOverlappingInputs(level + 1, &smallest, &largest,
                                  &downward_level_inputs.files);
