@@ -376,7 +376,7 @@ class ZonedBlockDevice {
   double alpha_value_;
   double sigma_value_;
   uint64_t finish_scheme_;
-  uint64_t open_zone_limit_;
+  uint64_t predict_cnt_;
   uint32_t partial_reset_scheme_;
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
@@ -464,7 +464,7 @@ class ZonedBlockDevice {
   double GetAlphaValue() const { return alpha_value_; }
   double GetSigmaValue() const { return sigma_value_; }
   uint64_t GetDisableFinish() const { return finish_scheme_; }
-  uint64_t GetOpenZoneLimit() const { return open_zone_limit_; }
+  uint64_t GetPredictCnt() const { return predict_cnt_; }
 
   //
 
@@ -778,7 +778,7 @@ class ZonedBlockDevice {
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
                       double sigma_value, uint64_t finish_scheme,
-                      uint64_t open_zone_limit,
+                      uint64_t predict_cnt,
                       std::vector<uint64_t> &other_options) {
     reset_scheme_ = r;
     allocation_scheme_ = allocation_scheme;
@@ -786,7 +786,7 @@ class ZonedBlockDevice {
     alpha_value_ = alpha_value;
     sigma_value_ = sigma_value;
     finish_scheme_ = finish_scheme;
-    open_zone_limit_ = open_zone_limit;
+    predict_cnt_ = predict_cnt;
     partial_reset_scheme_ = partial_reset_scheme;
     tuning_point_ = T;
     input_aware_scheme_ = other_options[0];
@@ -797,7 +797,7 @@ class ZonedBlockDevice {
               << ", allocation_schme = " << allocation_scheme
               << ", zc_scheme = " << zc_scheme
               << ", finish_scheme = " << finish_scheme
-              << ", open_zone_limit = " << open_zone_limit << std::endl;
+              << ", predict_cnt = " << predict_cnt << std::endl;
 
     for (auto opt : other_options) {
       printf("other options %lu\n", opt);

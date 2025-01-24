@@ -491,7 +491,7 @@ class ZenFS : public FileSystemWrapper {
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
                       double sigma_value, uint64_t finish_scheme,
-                      uint64_t open_zone_limit,
+                      uint64_t predict_cnt,
                       std::vector<uint64_t>& other_options) override;
   void GiveZenFStoLSMTreeHint(
       std::vector<uint64_t>& compaction_inputs_input_level_fno,

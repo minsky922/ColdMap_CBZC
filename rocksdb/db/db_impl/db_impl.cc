@@ -298,7 +298,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       "reset_scheme %lu partial_reset_scheme %lu tuning_point %lu "
       "allocation_scheme %lu compaction_scheme %lu input_aware_scheme %lu "
       "zc_scheme %lu alpha_value %f sigma_value %f disable finish %lu "
-      "open_zone_limit %lu\n",
+      "predict_cnt %lu\n",
       immutable_db_options_.reset_scheme,
       immutable_db_options_.partial_reset_scheme,
       immutable_db_options_.tuning_point,
@@ -306,8 +306,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       immutable_db_options_.compaction_scheme,
       immutable_db_options_.input_aware_scheme, immutable_db_options_.zc_scheme,
       immutable_db_options_.alpha_value, immutable_db_options_.sigma_value,
-      immutable_db_options_.finish_scheme,
-      immutable_db_options_.open_zone_limit);
+      immutable_db_options_.finish_scheme, immutable_db_options_.predict_cnt);
   // fs_->reset_scheme_= immutable_db_options_.reset_scheme;
   std::vector<uint64_t> other_options;
   other_options.clear();
@@ -321,7 +320,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       immutable_db_options_.until, immutable_db_options_.allocation_scheme,
       immutable_db_options_.zc_scheme, immutable_db_options_.alpha_value,
       immutable_db_options_.sigma_value, immutable_db_options_.finish_scheme,
-      immutable_db_options_.open_zone_limit, other_options);
+      immutable_db_options_.predict_cnt, other_options);
 }
 
 Status DBImpl::Resume() {
