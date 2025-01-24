@@ -1707,7 +1707,7 @@ DEFINE_double(sigma_value, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(finish_scheme, 0, "0<Tuninig point<100");
 
-DEFINE_uint64(open_zone_limit, 0, "0<Tuninig point<100");
+DEFINE_uint64(predict_cnt, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(compaction_scheme, 0, "0<Tuninig point<100");
 
@@ -4077,7 +4077,7 @@ class Benchmark {
     options.alpha_value = FLAGS_alpha_value;
     options.sigma_value = FLAGS_sigma_value;
     options.finish_scheme = FLAGS_finish_scheme;
-    options.open_zone_limit = FLAGS_open_zone_limit;
+    options.predict_cnt = FLAGS_predict_cnt;
     options.compaction_scheme = FLAGS_compaction_scheme;
     options.max_compaction_kick = FLAGS_max_compaction_kick;
     options.partial_reset_scheme = FLAGS_partial_reset_scheme;
