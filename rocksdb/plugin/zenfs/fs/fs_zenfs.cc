@@ -950,6 +950,7 @@ void ZenFS::PredictCompaction(int step) {
 
     PredictCompactionImpl(pivot_level, tmp_lsm_tree, pivot_fno,
                           unpivot_fno_list, initial_l0_files_n);
+    printf("[Impl] no pivot file (fno=%lu)\n", pivot_fno);
 
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
@@ -1050,9 +1051,9 @@ void ZenFS::PredictCompactionImpl(uint64_t& pivot_level,
                                   std::vector<uint64_t>& unpivot_fno_list,
                                   int initial_l0_files_n) {
   pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree, initial_l0_files_n);
-  // std::cout << "pivot_level: " << pivot_level << std::endl;
+  std::cout << "pivot_level: " << pivot_level << std::endl;
   pivot_fno = GetMaxHorizontalFno(pivot_level);
-  // std::cout << "pivot_fno: " << pivot_fno << std::endl;
+  std::cout << "pivot_fno: " << pivot_fno << std::endl;
   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 }
 
