@@ -534,21 +534,21 @@ class ZonedBlockDevice {
       size_score = static_cast<double>(tmp_lsm_tree[0]) /
                    static_cast<double>(max_bytes_for_level_base_);
       score = std::max(static_cast<double>(initial_l0_files_n) / 4, size_score);
-      printf(
-          "  Calculating score for level 0: %lu / %lu = %.4f, max socre: "
-          "%.4f\n",
-          tmp_lsm_tree[0], max_bytes_for_level_base_, size_score, score);
+      // printf(
+      //     "  Calculating score for level 0: %lu / %lu = %.4f, max socre: "
+      //     "%.4f\n",
+      //     tmp_lsm_tree[0], max_bytes_for_level_base_, size_score, score);
     } else if (level == 1) {
       score = static_cast<double>(tmp_lsm_tree[1]) /
               static_cast<double>(max_bytes_for_level_base_);
-      printf("  Calculating score for level 1: %lu / %lu = %.4f\n",
-             tmp_lsm_tree[1], max_bytes_for_level_base_, score);
+      // printf("  Calculating score for level 1: %lu / %lu = %.4f\n",
+      //        tmp_lsm_tree[1], max_bytes_for_level_base_, score);
     } else {
       uint64_t level_size_limit = GetLevelSizeLimit(level);
       score = static_cast<double>(tmp_lsm_tree[level]) /
               static_cast<double>(level_size_limit);
-      printf("  Calculating score for level %d: %lu / %lu = %.4f\n", level,
-             tmp_lsm_tree[level], level_size_limit, score);
+      // printf("  Calculating score for level %d: %lu / %lu = %.4f\n", level,
+      //        tmp_lsm_tree[level], level_size_limit, score);
     }
 
     return score;

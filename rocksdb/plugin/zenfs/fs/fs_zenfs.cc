@@ -919,13 +919,25 @@ void ZenFS::ReCalculateLifetimes() {
   }
 }
 
+// trivial move -> iteration 포함 안함
+
 void ZenFS::PredictCompaction(int step) {
   std::array<uint64_t, 10> tmp_lsm_tree = zbd_->GetCurrentLSMTree();
   // std::set<uint64_t> fno_already_propagated;
   int initial_l0_files_n = 0;
-  for (const auto& file : level_file_map_[0]) {
-    if (!file.is_compacting) {
-      initial_l0_files_n++;
+  // for (const auto& file : level_file_map_[0]) {
+  //   if (!file.is_compacting) {
+  //     initial_l0_files_n++;
+  //   }
+  // }
+  {
+    auto it_l0 = level_file_map_.find(0);
+    if (it_l0 != level_file_map_.end()) {
+      for (const auto& file : it_l0->second) {
+        if (!file.is_compacting) {
+          initial_l0_files_n++;
+        }
+      }
     }
   }
   // printf("Initial L0 non-compacting files: %d\n", initial_l0_files_n);
@@ -945,17 +957,6 @@ void ZenFS::PredictCompaction(int step) {
       continue;
     }
 
-    // bool skip = false;
-    // for (auto& f : unpivot_fno_list) {
-    //   if (fno_already_propagated.find(f) != fno_already_propagated.end()) {
-    //     skip = true;
-    //     break;
-    //   }
-    // }
-    // if (skip) {
-    //   continue;
-    // }
-
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
       if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
         // 제거
@@ -968,7 +969,13 @@ void ZenFS::PredictCompaction(int step) {
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
     if (pivot_file == nullptr) {
-      // printf("no pivot file!\n");
+      printf("[PredictCompaction]no pivot file!\n");
+      continue;
+    }
+    if (pivot_file->IsDeleted()) {
+      printf("[PredictCompaction] pivot_file is deleted (fno=%lu)\n",
+             pivot_fno);
+      continue;
     }
 
     if (pivot_level == 0) {
@@ -981,9 +988,14 @@ void ZenFS::PredictCompaction(int step) {
         for (auto& sst : file_infos) {
           uint64_t sst_size = 0;
           ZoneFile* zf = zbd_->GetSSTZoneFileInZBDNoLock(sst.fno);
-          if (zf) {
-            sst_size = zf->GetFileSize();
+          if (zf == nullptr) {
+            continue;
           }
+          if (zf->IsDeleted()) {
+            continue;
+          }
+          sst_size = zf->GetFileSize();
+
           total_l0_size += sst_size;
           l0_files.push_back(sst.fno);
         }
@@ -991,7 +1003,12 @@ void ZenFS::PredictCompaction(int step) {
       // std::cout << "total_l0_size: " << total_l0_size << std::endl;
       // std::cout << "tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
       initial_l0_files_n = 0;
-      tmp_lsm_tree[0] -= total_l0_size;
+      // tmp_lsm_tree[0] -= total_l0_size;
+      if (tmp_lsm_tree[0] < total_l0_size) {
+        tmp_lsm_tree[0] = 0;
+      } else {
+        tmp_lsm_tree[0] -= total_l0_size;
+      }
       // std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
       // std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
       tmp_lsm_tree[1] += total_l0_size;
@@ -1009,7 +1026,12 @@ void ZenFS::PredictCompaction(int step) {
     // !L0
     uint64_t file_size = pivot_file->GetFileSize();
     // std::cout << "pivot_file size: " << file_size << std::endl;
-    tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
+    // tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
+    if (tmp_lsm_tree[pivot_level] < file_size) {
+      tmp_lsm_tree[pivot_level] = 0;
+    } else {
+      tmp_lsm_tree[pivot_level] -= file_size;
+    }
     tmp_lsm_tree[pivot_level + 1] += file_size;
 
     fno_already_propagated.insert(pivot_fno);
@@ -1106,7 +1128,7 @@ uint64_t ZenFS::GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree,
 uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
   auto it = level_file_map_.find(pivot_level);
   if (it == level_file_map_.end() || it->second.empty()) {
-    // printf("no level || no files");
+    printf("no level || no files");
   }
 
   const auto& files = it->second;
