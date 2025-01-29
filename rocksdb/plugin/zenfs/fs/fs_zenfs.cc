@@ -969,7 +969,7 @@ void ZenFS::PredictCompaction(int step) {
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
     if (pivot_file == nullptr) {
-      printf("[PredictCompaction]no pivot file!\n");
+      printf("[PredictCompaction] no pivot file (fno=%lu)\n", pivot_fno);
       continue;
     }
     if (pivot_file->IsDeleted()) {
