@@ -950,7 +950,7 @@ void ZenFS::PredictCompaction(int step) {
     //                       unpivot_fno_list, initial_l0_files_n);
     uint64_t pivot_level = GetMaxLevelScoreLevel(
         tmp_lsm_tree, initial_l0_files_n, excluded_levels);
-    if (pivot_level == -1) {
+    if (pivot_level == (uint64_t)-1) {
       printf("[PredictCompaction] No available level!\n");
       break;
     }
