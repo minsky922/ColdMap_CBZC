@@ -956,7 +956,8 @@ void ZenFS::PredictCompaction(int step) {
     }
 
     uint64_t pivot_fno = GetMaxHorizontalFno(pivot_level);
-    printf("[Impl] pivot_level=%lu, pivot_fno=%lu\n", pivot_level, pivot_fno);
+    // printf("[Impl] pivot_level=%lu, pivot_fno=%lu\n", pivot_level,
+    // pivot_fno);
 
     if (pivot_fno == 0) {
       excluded_levels.insert(pivot_level);
@@ -1122,6 +1123,7 @@ void ZenFS::Propagation(uint64_t pivot_fno,
         if (sst.fno == unpivot_fno) {
           sst.sst_lifetime_value_ = pivot_lifetime;
           found_unpivot = true;
+          zbd_->AddPropagationCount(1);
           break;
         }
       }

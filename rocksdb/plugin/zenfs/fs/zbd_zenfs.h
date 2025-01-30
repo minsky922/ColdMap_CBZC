@@ -466,6 +466,10 @@ class ZonedBlockDevice {
   uint64_t GetDisableFinish() const { return finish_scheme_; }
   uint64_t GetPredictCnt() const { return predict_cnt_; }
 
+  std::atomic<uint64_t> propagation_count_{0};
+  void AddPropagationCount(uint64_t val) {
+    propagation_count_.fetch_add(val, std::memory_order_relaxed);
+  }
   //
 
   struct OverlappingStat {

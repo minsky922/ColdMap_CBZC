@@ -567,6 +567,8 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     avg_zlv = sum_zlv / static_cast<double>(count);
   }
   printf("Average ZLV :: %f\n", avg_zlv);
+  printf("propagation count : %ld\n",
+         propagation_count_.load(std::memory_order_relaxed));
 
   printf("TOTAL I/O BLOKCING TIME %d\n", io_blocking_sum);
   printf("TOTAL I/O BLOCKING TIME(ms) %llu\n", io_blocking_ms_sum);
