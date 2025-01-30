@@ -529,13 +529,14 @@ class ZenFS : public FileSystemWrapper {
   };
   std::map<int, std::vector<FileInfo_>> level_file_map_;
   std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
-
+  // std::unordered_map<int, std::vector<FileInfo_>> simulated_file_map;
   std::set<uint64_t> fno_already_propagated;
 
   void PredictCompaction(int step);
 
   uint64_t GetMaxLevelScoreLevel(std::array<uint64_t, 10>& tmp_lsm_tree,
-                                 int initial_l0_files_n);
+                                 int initial_l0_files_n,
+                                 std::unordered_set<int>& excluded_levels);
 
   uint64_t GetMaxHorizontalFno(int pivot_level);
   void PredictCompactionImpl(uint64_t& pivot_level,
