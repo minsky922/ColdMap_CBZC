@@ -1154,8 +1154,8 @@ uint64_t ZenFS::GetMaxLevelScoreLevel(
     }
   }
 
-  if (max_score == 0) {
-    return -1;
+  if (max_score <= 0.0) {
+    return (uint64_t)-1;
   }
 
   return max_level;
