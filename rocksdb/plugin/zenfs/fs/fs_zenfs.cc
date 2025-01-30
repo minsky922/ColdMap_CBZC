@@ -941,8 +941,8 @@ void ZenFS::PredictCompaction(int step) {
 
   fno_already_propagated.clear();
   while (step > 0) {
-    uint64_t pivot_level = 0;
-    uint64_t pivot_fno = 0;
+    // uint64_t pivot_level = 0;
+    // uint64_t pivot_fno = 0;
     std::vector<uint64_t> unpivot_fno_list;
     unpivot_fno_list.clear();
 
@@ -1071,17 +1071,17 @@ void ZenFS::PredictCompaction(int step) {
   }
 }
 
-void ZenFS::PredictCompactionImpl(uint64_t& pivot_level,
-                                  std::array<uint64_t, 10>& tmp_lsm_tree,
-                                  uint64_t& pivot_fno,
-                                  std::vector<uint64_t>& unpivot_fno_list,
-                                  int initial_l0_files_n) {
-  // pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree, initial_l0_files_n);
-  std::cout << "pivot_level: " << pivot_level << std::endl;
-  pivot_fno = GetMaxHorizontalFno(pivot_level);
-  std::cout << "pivot_fno: " << pivot_fno << std::endl;
-  GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
-}
+// void ZenFS::PredictCompactionImpl(uint64_t& pivot_level,
+//                                   std::array<uint64_t, 10>& tmp_lsm_tree,
+//                                   uint64_t& pivot_fno,
+//                                   std::vector<uint64_t>& unpivot_fno_list,
+//                                   int initial_l0_files_n) {
+//   // pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree, initial_l0_files_n);
+//   std::cout << "pivot_level: " << pivot_level << std::endl;
+//   pivot_fno = GetMaxHorizontalFno(pivot_level);
+//   std::cout << "pivot_fno: " << pivot_fno << std::endl;
+//   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
+// }
 
 void ZenFS::GetOverlappingFno(uint64_t pivot_fno, uint64_t pivot_level,
                               std::vector<uint64_t>& unpivot_fno_list) {
@@ -1154,7 +1154,7 @@ uint64_t ZenFS::GetMaxLevelScoreLevel(
     }
   }
 
-  if (score == 0) {
+  if (max_score == 0) {
     return -1;
   }
 
