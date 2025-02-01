@@ -1094,7 +1094,7 @@ void ZenFS::PredictCompaction(int step) {
       }
       unpivot_total += zf->GetFileSize();
     }
-    uint64_t total_input_size = pivot_size + unpivot_total;
+    uint64_t total_input_size = file_size + unpivot_total;
 
     // std::cout << "pivot_file size: " << file_size << std::endl;
     // tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
