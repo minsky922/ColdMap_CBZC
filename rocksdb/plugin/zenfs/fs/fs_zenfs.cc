@@ -1060,8 +1060,8 @@ void ZenFS::PredictCompaction(int step) {
       } else {
         tmp_lsm_tree[0] -= total_l0_size;
       }
-      // std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
-      // std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
+      std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
+      std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
 
       if (tmp_lsm_tree[1] < unpivot_total) {
         tmp_lsm_tree[1] = 0;
@@ -1072,7 +1072,8 @@ void ZenFS::PredictCompaction(int step) {
       // tmp_lsm_tree[1] += total_l0_size;
       tmp_lsm_tree[1] += compressed_size;
 
-      // std::cout << "After tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
+      std::cout << "After tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
+
       for (auto fno : l0_files) {
         fno_already_propagated.insert(fno);
       }
