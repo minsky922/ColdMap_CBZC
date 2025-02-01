@@ -1686,7 +1686,6 @@ DEFINE_uint32(reset_scheme, 0, "Eager=0, Lazy=1, FAR=2");
 
 DEFINE_uint64(tuning_point, 100, "0<Tuninig point<100");
 
-DEFINE
 //
 DEFINE_bool(reset_at_foreground, false,
             "If true , reset at foreground only, else reset at background");
