@@ -940,6 +940,7 @@ void ZenFS::PredictCompaction(int step) {
   // printf("Initial L0 non-compacting files: %d\n", initial_l0_files_n);
 
   fno_already_propagated.clear();
+  fno_not_should_selected_as_pivot_again.clear();
   while (step > 0) {
     // uint64_t pivot_level = 0;
     // uint64_t pivot_fno = 0;
@@ -994,14 +995,33 @@ void ZenFS::PredictCompaction(int step) {
       continue;
     }
 
+    // for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
+    //   if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
+    //     // 제거
+    //     it = unpivot_fno_list.erase(it);
+    //     // printf("Removed an already propagated fno from
+    //     unpivot_fno_list.\n");
+    //   } else {
+    //     ++it;
+    //   }
+    // }
+    bool should_not_selected_again = false;
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
       if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
         // 제거
-        it = unpivot_fno_list.erase(it);
+        // it = unpivot_fno_list.erase(it);
         // printf("Removed an already propagated fno from unpivot_fno_list.\n");
+        // fno_not_should_selected_as_pivot_again.insert(pivot_fno);
+        should_not_selected_again = true;
+        // continue;
+        break;
       } else {
         ++it;
       }
+    }
+    if (should_not_selected_again == true) {
+      fno_not_should_selected_as_pivot_again.insert(pivot_fno);
+      continue;
     }
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
@@ -1244,6 +1264,12 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
 
   for (const auto& file : files) {
     if (fno_already_propagated.find(file.fno) != fno_already_propagated.end()) {
+      // printf("getmaxhorizontalfno skip\n");
+      continue;
+    }
+
+    if (fno_not_should_selected_as_pivot_again.find(file.fno) !=
+        fno_not_should_selected_as_pivot_again.end()) {
       // printf("getmaxhorizontalfno skip\n");
       continue;
     }

@@ -531,6 +531,7 @@ class ZenFS : public FileSystemWrapper {
   std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
   // std::unordered_map<int, std::vector<FileInfo_>> simulated_file_map;
   std::set<uint64_t> fno_already_propagated;
+  std::set<uint64_t> fno_not_should_selected_as_pivot_again;
 
   void PredictCompaction(int step);
 
