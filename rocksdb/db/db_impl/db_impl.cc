@@ -2932,7 +2932,7 @@ Status DBImpl::DropColumnFamilies(
 
 double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
   assert(output_level > 0);
-  InternalStats* stats = default_cf_internal_stats_;
+  // InternalStats* stats = default_cf_internal_stats_;
   VersionSet* versions = this->GetVersionSet();
   if (!versions) {
     printf("GetAvgCompressibilityOflevel :: !versions \n");
@@ -4736,9 +4736,7 @@ Status DB::DropColumnFamilies(
   return Status::NotSupported("");
 }
 
-double DB::GetAvgCompressibilityOflevel(int) {
-  std::cout << "DB::GetAvgCompressibilityOflevel not Supported\n";
-}
+double DB::GetAvgCompressibilityOflevel(int) { return 0; }
 
 // CAZA
 uint64_t DB::MostLargeUpperAdjacentFile(Slice&, Slice&, int) { return 0; }
