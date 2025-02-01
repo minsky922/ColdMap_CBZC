@@ -4089,7 +4089,8 @@ class Benchmark {
     options.zc = FLAGS_zc;
     options.until = FLAGS_until;
     options.tuning_point = FLAGS_tuning_point;
-    options.is_db_bench = true;
+    // options.is_db_bench = true;
+    options.is_db_bench = false;
 
     options.dump_malloc_stats = FLAGS_dump_malloc_stats;
     options.stats_dump_period_sec =

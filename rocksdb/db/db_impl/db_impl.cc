@@ -793,6 +793,13 @@ Status DBImpl::CloseImpl() { return CloseHelper(); }
 
 DBImpl::~DBImpl() {
   // TODO: remove this.
+  std::string stats;
+  if (immutable_db_options_.is_db_bench == false) {
+    GetProperty("rocksdb.stats", &stats);
+  }
+  printf("===================================\n");
+  printf("%s\n", stats.c_str());
+  printf("===================================\n");
   fs_->SetDBPtr(nullptr);
   init_logger_creation_s_.PermitUncheckedError();
 
