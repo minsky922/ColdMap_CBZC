@@ -874,6 +874,7 @@ class ZonedBlockDevice {
   void TrivialMoveFiles(int level, std::set<uint64_t> &trivial_set);
   void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
                                 std::vector<uint64_t> &fno_list);
+  double GetAvgCompressibilityOflevel(int output_level);
   //
  private:
   std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(

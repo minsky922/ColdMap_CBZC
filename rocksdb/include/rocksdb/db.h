@@ -379,7 +379,7 @@ class DB {
   // ListColumnFamilies to check the result.
   virtual Status DropColumnFamilies(
       const std::vector<ColumnFamilyHandle*>& column_families);
-
+  virtual double GetAvgCompressibilityOflevel(int output_level);
   // CAZA
   virtual std::set<uint64_t> GetAlreadyBeingCompactedSSTFileNo(void);
   virtual std::set<uint64_t> GetSoonCompactionInvalidatedSSTFileNo(

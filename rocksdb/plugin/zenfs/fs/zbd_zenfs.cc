@@ -3049,6 +3049,13 @@ IOStatus ZonedBlockDevice::AllocateSameLevelFilesZone(
   return s;
 }
 
+double ZonedBlockDevice::GetAvgCompressibilityOflevel(int output_level) {
+  if (db_ptr_ == nullptr) {
+    return 0;
+  }
+  return db_ptr_->GetAvgCompressibilityOflevel(output_level);
+}
+
 void ZonedBlockDevice::AdjacentFileList(Slice &smallest, Slice &largest,
                                         int level,
                                         std::vector<uint64_t> &fno_list) {

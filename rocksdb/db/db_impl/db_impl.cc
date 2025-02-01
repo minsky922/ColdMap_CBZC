@@ -2929,6 +2929,80 @@ Status DBImpl::DropColumnFamilies(
   }
   return s;
 }
+
+double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
+  assert(output_level > 0);
+  InternalStats* stats = default_cf_internal_stats_;
+  VersionSet* versions = this->GetVersionSet();
+  if (!versions) {
+    printf("GetAvgCompressibilityOflevel :: !versions \n");
+    return 0.0;
+  }
+
+  ColumnFamilySet* cfs = versions->GetColumnFamilySet();
+  if (!cfs) {
+    printf("GetAvgCompressibilityOflevel :: !cfs \n");
+    return 0.0;
+  }
+
+  ColumnFamilyData* cfd = cfs->GetDefault();
+  if (!cfd) {
+    printf("GetAvgCompressibilityOflevel :: !cfd \n");
+    return 0.0;
+  }
+
+  const InternalStats* internal_stats = cfd->internal_stats();
+  if (!internal_stats) {
+    printf("GetAvgCompressibilityOflevel :: !internal_stats \n");
+    return 0.0;
+  }
+
+  const std::vector<InternalStats::CompactionStats>& cs_vec =
+      internal_stats->TEST_GetCompactionStats();
+
+  if (output_level < 0 || static_cast<size_t>(output_level) >= cs_vec.size()) {
+    printf("GetAvgCompressibilityOflevel :: invalid level=%d\n", output_level);
+    return 0.0;
+  }
+
+  const InternalStats::CompactionStats& cstats = cs_vec[output_level];
+  uint64_t bytes_read_non_output_levels =
+      cstats.bytes_read_non_output_levels;  // input level
+  uint64_t bytes_read_output_level = cstats.bytes_read_output_level;
+  uint64_t bytes_written = cstats.bytes_written;
+
+  double denom = static_cast<double>(bytes_read_non_output_levels) +
+                 static_cast<double>(bytes_read_output_level);
+  if (denom == 0.0) {
+    printf("GetAvgCompressibilityOflevel :: denom is 0.0\n");
+    return 0.0;  // 분모 0
+  }
+
+  double avg_compressibility = static_cast<double>(bytes_written) / denom;
+
+  printf("=== [GetAvgCompressibilityOfLevel(%d)] ===\n", output_level);
+  printf(" bytes_read_non_output_levels : %lu\n", bytes_read_non_output_levels);
+  printf(" bytes_read_output_level      : %lu\n", bytes_read_output_level);
+  printf(" bytes_written                : %lu\n", bytes_written);
+  printf(" denom (sum of reads)         : %lf\n", denom);
+  printf(" avg_compressibility          : %lf\n", avg_compressibility);
+  printf("=========================================\n");
+
+  return avg_compressibility;
+
+  // // kyungwook : should implement GetCompactionStats on struct InternalStats.
+  // InternalStats::CompactionStats* comp_stats =
+  //     stats->GetCompactionStats(output_level);
+
+  // uint64_t bytes_read_non_output_levels =
+  //     comp_stats->bytes_read_non_output_levels;  // input level
+  // uint64_t bytes_read_output_level = comp_stats->bytes_read_output_level;
+  // uint64_t bytes_written = comp_stats->bytes_written;
+
+  // return bytes_written /
+  //        (bytes_read_non_output_levels + bytes_read_output_level);
+}
+
 // 아래 레벨에 있는 SST 파일들 중에서 가장 작은 파일을 찾는 함수
 uint64_t DBImpl::MostSmallDownwardAdjacentFile(Slice& s, Slice& l, int level) {
   InternalKey largest;
@@ -4660,6 +4734,10 @@ Status DB::DropColumnFamily(ColumnFamilyHandle* /*column_family*/) {
 Status DB::DropColumnFamilies(
     const std::vector<ColumnFamilyHandle*>& /*column_families*/) {
   return Status::NotSupported("");
+}
+
+double DB::GetAvgCompressibilityOflevel(int) {
+  std::cout << "DB::GetAvgCompressibilityOflevel not Supported\n";
 }
 
 // CAZA

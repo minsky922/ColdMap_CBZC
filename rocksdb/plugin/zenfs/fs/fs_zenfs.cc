@@ -1030,8 +1030,31 @@ void ZenFS::PredictCompaction(int step) {
       }
       // std::cout << "total_l0_size: " << total_l0_size << std::endl;
       // std::cout << "tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
+
+      uint64_t unpivot_total = 0;
+      for (auto fno : unpivot_fno_list) {
+        ZoneFile* zf = zbd_->GetSSTZoneFileInZBDNoLock(fno);
+        if (!zf || zf->IsDeleted()) {
+          continue;
+        }
+        unpivot_total += zf->GetFileSize();
+      }
+
+      uint64_t total_input_size = total_l0_size + unpivot_total;
+
+      double compressibility = 0.0;
+
+      compressibility = zbd_->GetAvgCompressibilityOflevel(pivot_level + 1);
+
+      if (compressibility <= 0.0) {
+        compressibility = 1.0;
+      }
+
+      uint64_t compressed_size = static_cast<uint64_t>(
+          static_cast<double>(total_input_size) * compressibility);
+
       initial_l0_files_n = 0;
-      // tmp_lsm_tree[0] -= total_l0_size;
+
       if (tmp_lsm_tree[0] < total_l0_size) {
         tmp_lsm_tree[0] = 0;
       } else {
@@ -1039,7 +1062,16 @@ void ZenFS::PredictCompaction(int step) {
       }
       // std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
       // std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
-      tmp_lsm_tree[1] += total_l0_size;
+
+      if (tmp_lsm_tree[1] < unpivot_total) {
+        tmp_lsm_tree[1] = 0;
+      } else {
+        tmp_lsm_tree[1] -= unpivot_total;
+      }
+
+      // tmp_lsm_tree[1] += total_l0_size;
+      tmp_lsm_tree[1] += compressed_size;
+
       // std::cout << "After tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
       for (auto fno : l0_files) {
         fno_already_propagated.insert(fno);
@@ -1053,14 +1085,42 @@ void ZenFS::PredictCompaction(int step) {
     }
     // !L0
     uint64_t file_size = pivot_file->GetFileSize();
+    uint64_t unpivot_total = 0;
+    for (auto fno : unpivot_fno_list) {
+      ZoneFile* zf = zbd_->GetSSTZoneFileInZBDNoLock(fno);
+      if (!zf || zf->IsDeleted()) {
+        continue;
+      }
+      unpivot_total += zf->GetFileSize();
+    }
+    uint64_t total_input_size = pivot_size + unpivot_total;
+
     // std::cout << "pivot_file size: " << file_size << std::endl;
     // tmp_lsm_tree[pivot_level] -= pivot_file->GetFileSize();
+
+    double compressibility = 0.0;
+
+    compressibility = zbd_->GetAvgCompressibilityOflevel(pivot_level + 1);
+
+    if (compressibility <= 0.0) {
+      compressibility = 1.0;
+    }
+
+    uint64_t compressed_size = static_cast<uint64_t>(
+        static_cast<double>(total_input_size) * compressibility);
+
     if (tmp_lsm_tree[pivot_level] < file_size) {
       tmp_lsm_tree[pivot_level] = 0;
     } else {
       tmp_lsm_tree[pivot_level] -= file_size;
     }
-    tmp_lsm_tree[pivot_level + 1] += file_size;
+    if (tmp_lsm_tree[pivot_level + 1] < unpivot_total) {
+      tmp_lsm_tree[pivot_level + 1] = 0;
+    } else {
+      tmp_lsm_tree[pivot_level + 1] -= unpivot_total;
+    }
+    // tmp_lsm_tree[pivot_level + 1] += file_size;
+    tmp_lsm_tree[pivot_level + 1] += compressed_size;
 
     fno_already_propagated.insert(pivot_fno);
     for (auto& f : unpivot_fno_list) {

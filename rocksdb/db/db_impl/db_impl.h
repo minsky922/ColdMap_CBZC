@@ -325,6 +325,7 @@ class DBImpl : public DB {
   virtual Status DropColumnFamily(ColumnFamilyHandle* column_family) override;
   virtual Status DropColumnFamilies(
       const std::vector<ColumnFamilyHandle*>& column_families) override;
+  virtual double GetAvgCompressibilityOflevel(int output_level) override;
   // CAZA
   virtual uint64_t MostLargeUpperAdjacentFile(Slice& s, Slice& l,
                                               int level) override;
