@@ -797,9 +797,9 @@ DBImpl::~DBImpl() {
   if (immutable_db_options_.is_db_bench == false) {
     GetProperty("rocksdb.stats", &stats);
   }
-  printf("===================================\n");
+  printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
   printf("%s\n", stats.c_str());
-  printf("===================================\n");
+  printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
   fs_->SetDBPtr(nullptr);
   init_logger_creation_s_.PermitUncheckedError();
 
