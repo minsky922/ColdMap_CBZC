@@ -2967,14 +2967,15 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
 
   const InternalStats::CompactionStats& cstats = cs_vec[output_level];
   uint64_t bytes_read_non_output_levels =
-      cstats.bytes_read_non_output_levels;  // input level
-  uint64_t bytes_read_output_level = cstats.bytes_read_output_level;
-  uint64_t bytes_written = cstats.bytes_written;
+      cstats.bytes_read_non_output_levels / 1024;  // input level
+  uint64_t bytes_read_output_level = cstats.bytes_read_output_level / 1024;
+  uint64_t bytes_written = cstats.bytes_written / 1024;
 
   double denom = static_cast<double>(bytes_read_non_output_levels) +
                  static_cast<double>(bytes_read_output_level);
   if (denom == 0.0) {
-    printf("GetAvgCompressibilityOflevel :: denom is 0.0\n");
+    printf("GetAvgCompressibilityOflevel(level=%d) :: denom is 0.0\n",
+           output_level);
     return 0.0;  // 분모 0
   }
 
