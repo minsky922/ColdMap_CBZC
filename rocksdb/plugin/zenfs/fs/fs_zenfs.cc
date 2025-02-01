@@ -979,6 +979,14 @@ void ZenFS::PredictCompaction(int step) {
 
     GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 
+    if (unpivot_fno_list.empty()) {
+      printf(
+          "[PredictCompaction] unpivot_fno_list is empty. pivot_fno=%lu, "
+          "level=%lu\n",
+          pivot_fno, pivot_level);
+      fno_already_propagated.insert(pivot_fno);
+    }
+
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
       // printf("fno_already_propagated\n");
@@ -1103,9 +1111,9 @@ void ZenFS::PredictCompaction(int step) {
 
     compressibility = zbd_->GetAvgCompressibilityOflevel(pivot_level + 1);
 
-    if (compressibility <= 0.0) {
-      compressibility = 1.0;
-    }
+    // if (compressibility == 1.0) {
+    //   compressibility = 1.0;
+    // }
 
     uint64_t compressed_size = static_cast<uint64_t>(
         static_cast<double>(total_input_size) * compressibility);
@@ -1189,10 +1197,6 @@ void ZenFS::Propagation(uint64_t pivot_fno,
         }
       }
       if (found_unpivot) break;
-    }
-    if (!found_unpivot) {
-      // std::cout << "[Propagation] unpivot_fno(" << unpivot_fno
-      // << ") not found.\n";
     }
   }
 }

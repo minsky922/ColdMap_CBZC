@@ -2962,7 +2962,7 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
 
   if (output_level < 0 || static_cast<size_t>(output_level) >= cs_vec.size()) {
     printf("GetAvgCompressibilityOflevel :: invalid level=%d\n", output_level);
-    return 0.0;
+    return 1.0;
   }
 
   const InternalStats::CompactionStats& cstats = cs_vec[output_level];
