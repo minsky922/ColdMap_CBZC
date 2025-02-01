@@ -980,11 +980,12 @@ void ZenFS::PredictCompaction(int step) {
     GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 
     if (unpivot_fno_list.empty()) {
-      printf(
-          "[PredictCompaction] unpivot_fno_list is empty. pivot_fno=%lu, "
-          "level=%lu\n",
-          pivot_fno, pivot_level);
-      fno_already_propagated.insert(pivot_fno);
+      // printf(
+      //     "[PredictCompaction] unpivot_fno_list is empty. pivot_fno=%lu, "
+      //     "level=%lu\n",
+      //     pivot_fno, pivot_level);
+      // fno_already_propagated.insert(pivot_fno);
+      return;
     }
 
     if (fno_already_propagated.find(pivot_fno) !=
