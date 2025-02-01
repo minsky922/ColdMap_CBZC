@@ -1685,6 +1685,8 @@ DEFINE_bool(track_and_verify_wals_in_manifest, false,
 DEFINE_uint32(reset_scheme, 0, "Eager=0, Lazy=1, FAR=2");
 
 DEFINE_uint64(tuning_point, 100, "0<Tuninig point<100");
+
+DEFINE
 //
 DEFINE_bool(reset_at_foreground, false,
             "If true , reset at foreground only, else reset at background");
@@ -1716,6 +1718,8 @@ DEFINE_uint64(max_compaction_kick, 25, "0<Tuninig point<100");
 DEFINE_bool(wait_for_compactions, false, "true or false");
 
 DEFINE_bool(enable_intraL0_compaction, true, "true or false");
+
+DEFINE_bool(is_db_bench, false, "true or false");
 
 DEFINE_int32(max_compaction_start_level, 2, "start level");
 
