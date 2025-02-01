@@ -2962,7 +2962,7 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
 
   if (output_level < 0 || static_cast<size_t>(output_level) >= cs_vec.size()) {
     printf("GetAvgCompressibilityOflevel :: invalid level=%d\n", output_level);
-    return 1.0;
+    return 0.0;
   }
 
   const InternalStats::CompactionStats& cstats = cs_vec[output_level];
@@ -2974,20 +2974,29 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
   double denom = static_cast<double>(bytes_read_non_output_levels) +
                  static_cast<double>(bytes_read_output_level);
   if (denom == 0.0) {
+    // printf("=== [GetAvgCompressibilityOfLevel(%d)] ===\n", output_level);
     printf("GetAvgCompressibilityOflevel(level=%d) :: denom is 0.0\n",
            output_level);
-    return 0.0;  // 분모 0
+    printf(" bytes_read_non_output_levels : %lu\n",
+           bytes_read_non_output_levels);
+    printf(" bytes_read_output_level      : %lu\n", bytes_read_output_level);
+    printf(" bytes_written                : %lu\n", bytes_written);
+    printf(" denom (sum of reads)         : %lf\n", denom);
+    printf("=========================================\n");
+    return 1.0;  // 분모 0
   }
 
   double avg_compressibility = static_cast<double>(bytes_written) / denom;
-
-  printf("=== [GetAvgCompressibilityOfLevel(%d)] ===\n", output_level);
-  printf(" bytes_read_non_output_levels : %lu\n", bytes_read_non_output_levels);
-  printf(" bytes_read_output_level      : %lu\n", bytes_read_output_level);
-  printf(" bytes_written                : %lu\n", bytes_written);
-  printf(" denom (sum of reads)         : %lf\n", denom);
   printf(" avg_compressibility          : %lf\n", avg_compressibility);
-  printf("=========================================\n");
+
+  // printf("=== [GetAvgCompressibilityOfLevel(%d)] ===\n", output_level);
+  // printf(" bytes_read_non_output_levels : %lu\n",
+  // bytes_read_non_output_levels); printf(" bytes_read_output_level      :
+  // %lu\n", bytes_read_output_level); printf(" bytes_written                :
+  // %lu\n", bytes_written); printf(" denom (sum of reads)         : %lf\n",
+  // denom); printf(" avg_compressibility          : %lf\n",
+  // avg_compressibility);
+  // printf("=========================================\n");
 
   return avg_compressibility;
 
