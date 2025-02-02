@@ -56,7 +56,7 @@ class ZoneExtent {
   uint64_t header_size_;
   ZoneFile* zfile_;
 
-  bool is_zc_copied = false;
+  bool is_zc_copied_ = false;
 
   std::chrono::time_point<std::chrono::system_clock> zc_copied_time_;
 
