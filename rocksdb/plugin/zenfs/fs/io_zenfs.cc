@@ -292,42 +292,32 @@ void ZoneFile::SetIOType(IOType io_type) { io_type_ = io_type; }
 ZoneFile::~ZoneFile() { ClearExtents(); }
 
 void ZoneFile::ClearExtents() {
-  // zoneFile 안에 extent들 순회
+  // zoneFile 안의 extent들을 순회합니다.
   uint64_t zc_scheme = zbd_->GetZCScheme();
   auto cur_deletion_time = std::chrono::system_clock::now();
-  // size_t deleted_extents_n = extents_.size();
-  // std::chrono::time_point<std::chrono::system_clock> sum_diff_time = 0;
-  // std::chrono::time_point<std::chrono::system_clock> sum_diff_time(
-  //     std::chrono::system_clock::duration::zero());
   std::chrono::microseconds sum_diff_time(0);
   uint64_t sum_diff_time_uint64t = 0;
   size_t deleted_after_copy_extents_n = 0;
+
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
     Zone* zone = (*e)->zone_;
 
     assert(zone && zone->used_capacity_ >= (*e)->length_);
     zone->used_capacity_ -= (*e)->length_;
+
     if (zc_scheme == CBZC5) {
       zone->recent_inval_time_ = std::chrono::system_clock::now();
-      // auto recent_inval_time_ms =
-      //     std::chrono::duration_cast<std::chrono::milliseconds>(
-      //         zone->recent_inval_time_.time_since_epoch())
-      //         .count();
-
-      // std::cout << "clearExtents->recent_inval_t (ms since epoch): "
-      //           << recent_inval_time_ms << std::endl;
     }
+
     if ((*e)->is_zc_copied_) {
-      // auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
-      //                now - zone.recent_inval_time)
-      //                .count();
       sum_diff_time += std::chrono::duration_cast<std::chrono::microseconds>(
-                           cur_deletion_time - (*e)->zc_copied_time_)
-                           .count();
+          cur_deletion_time - (*e)->zc_copied_time_);
       deleted_after_copy_extents_n++;
     }
     delete *e;
   }
+
+  // 최종 누적된 duration의 값을 정수형(uint64_t)로 변환합니다.
   sum_diff_time_uint64t = sum_diff_time.count();
   zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_time_uint64t);
   zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
