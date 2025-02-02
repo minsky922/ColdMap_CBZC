@@ -34,10 +34,7 @@
 namespace ROCKSDB_NAMESPACE {
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone)
-    : start_(start),
-      length_(length),
-      zone_(zone),
-      zc_copied_time_(std::chrono::system_clock::duration::zero()) {}
+    : start_(start), length_(length), zone_(zone), is_zc_copied_(false) {}
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
                        std::string fname, ZoneFile* zfile)
@@ -48,7 +45,9 @@ ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
       fname_(fname),
       header_size_(0),
       zfile_(zfile),
-      zc_copied_time_(std::chrono::system_clock::duration::zero()) {
+      is_zc_copied_(false) {
+  zc_copied_ts_.tv_sec = 0;
+  zc_copied_ts_.tv_nsec = 0;
   if (zone == nullptr) {
     return;
   }
