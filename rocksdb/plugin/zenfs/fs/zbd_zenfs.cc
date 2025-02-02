@@ -616,11 +616,14 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   }
 
   if (total_deletion_after_copy_n_.load()) {
-    printf("avg deletion after time %lu/%lu= %lu (us)",
-           total_deletion_after_copy_time_.load(),
-           total_deletion_after_copy_n_.load(),
-           total_deletion_after_copy_time_.load() /
-               total_deletion_after_copy_n_.load());
+    // 누적 시간은 마이크로초, 개수는 n개
+    // => 평균 시간도 마이크로초 단위
+    auto total_time_us = total_deletion_after_copy_time_.load();
+    auto total_count = total_deletion_after_copy_n_.load();
+    auto avg_us = total_time_us / total_count;
+
+    printf("avg deletion after time %lu us (total: %lu us, count: %lu)\n",
+           avg_us, total_time_us, total_count);
   }
 
   for (const auto z : meta_zones) {

@@ -2027,7 +2027,10 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
   zoneFile->MetadataUnsynced();
   s = SyncFileMetadata(zoneFile, true);
 
-  auto cur_zc_time = std::chrono::system_clock::now();
+  // auto cur_zc_time = std::chrono::system_clock::now();
+  struct timespec cur_zc_ts;
+  clock_gettime(CLOCK_MONOTONIC, &cur_zc_ts);
+
   if (!s.ok()) {
     return s;
   }
@@ -2038,10 +2041,10 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
     if (old_ext->start_ != new_extents[i]->start_) {
       if (old_ext->is_zc_copied_ == true) {
         new_extents[i]->is_zc_copied_ = true;
-        new_extents[i]->zc_copied_time_ = old_ext->zc_copied_time_;
+        new_extents[i]->zc_copied_ts_ = old_ext->zc_copied_ts_;
       } else {
         new_extents[i]->is_zc_copied_ = true;
-        new_extents[i]->zc_copied_time_ = cur_zc_time;
+        new_extents[i]->zc_copied_ts_ = cur_zc_ts;
       }
 
       old_ext->zone_->used_capacity_ -= old_ext->length_;

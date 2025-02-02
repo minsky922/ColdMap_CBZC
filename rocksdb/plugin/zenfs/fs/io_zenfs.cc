@@ -293,9 +293,15 @@ ZoneFile::~ZoneFile() { ClearExtents(); }
 
 void ZoneFile::ClearExtents() {
   uint64_t zc_scheme = zbd_->GetZCScheme();
-  auto cur_deletion_time = std::chrono::system_clock::now();
-  std::chrono::microseconds sum_diff_time(0);
-  uint64_t sum_diff_time_uint64t = 0;
+  // auto cur_deletion_time = std::chrono::system_clock::now();
+  // std::chrono::microseconds sum_diff_time(0);
+  // uint64_t sum_diff_time_uint64t = 0;
+  // size_t deleted_after_copy_extents_n = 0;
+
+  struct timespec cur_deletion_ts;
+  clock_gettime(CLOCK_MONOTONIC, &cur_deletion_ts);
+
+  uint64_t sum_diff_ns = 0;
   size_t deleted_after_copy_extents_n = 0;
 
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
@@ -309,17 +315,25 @@ void ZoneFile::ClearExtents() {
     }
 
     if ((*e)->is_zc_copied_) {
-      sum_diff_time += std::chrono::duration_cast<std::chrono::microseconds>(
-          cur_deletion_time - (*e)->zc_copied_time_);
+      // (현재삭제시각 - 복사시각) -> 나노초로 계산
+      long diff_ns =
+          (cur_deletion_ts.tv_sec - (*e)->zc_copied_ts_.tv_sec) * 1000000000L +
+          (cur_deletion_ts.tv_nsec - (*e)->zc_copied_ts_.tv_nsec);
+
+      if (diff_ns < 0) {
+        diff_ns = 0;
+      }
+      sum_diff_ns += diff_ns;
       deleted_after_copy_extents_n++;
     }
     delete *e;
   }
-
-  sum_diff_time_uint64t = sum_diff_time.count();
-  zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_time_uint64t);
-  zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
   extents_.clear();
+
+  uint64_t sum_diff_us = sum_diff_ns / 1000;
+
+  zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_us);
+  zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
 }
 
 IOStatus ZoneFile::CloseActiveZone() {
