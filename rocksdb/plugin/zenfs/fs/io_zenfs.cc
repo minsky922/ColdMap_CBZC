@@ -292,7 +292,6 @@ void ZoneFile::SetIOType(IOType io_type) { io_type_ = io_type; }
 ZoneFile::~ZoneFile() { ClearExtents(); }
 
 void ZoneFile::ClearExtents() {
-  // zoneFile 안의 extent들을 순회합니다.
   uint64_t zc_scheme = zbd_->GetZCScheme();
   auto cur_deletion_time = std::chrono::system_clock::now();
   std::chrono::microseconds sum_diff_time(0);
@@ -317,7 +316,6 @@ void ZoneFile::ClearExtents() {
     delete *e;
   }
 
-  // 최종 누적된 duration의 값을 정수형(uint64_t)로 변환합니다.
   sum_diff_time_uint64t = sum_diff_time.count();
   zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_time_uint64t);
   zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
