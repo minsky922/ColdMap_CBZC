@@ -146,9 +146,9 @@ class ZenFS : public FileSystemWrapper {
   std::shared_ptr<Logger> logger_;      // 로거 객체
   std::atomic<uint64_t> next_file_id_;  // 다음 파일 ID
 
-  Zone* cur_meta_zone_ = nullptr;         // 현재 메타 존
-  std::unique_ptr<ZenMetaLog> meta_log_;  // 메타 로그 객체
-  std::mutex metadata_sync_mtx_;          // 메타데이터 동기화 뮤텍스
+  Zone* cur_meta_zone_ = nullptr;           // 현재 메타 존
+  std::unique_ptr<ZenMetaLog> meta_log_;    // 메타 로그 객체
+  std::mutex metadata_sync_mtx_;            // 메타데이터 동기화 뮤텍스
   std::unique_ptr<Superblock> superblock_;  // 슈퍼블록 객체
 
   std::shared_ptr<Logger> GetLogger() { return logger_; }  // 로거 반환

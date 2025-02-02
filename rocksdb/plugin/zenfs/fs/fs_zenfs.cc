@@ -1575,7 +1575,7 @@ void ZenFS::ZoneCleaning(bool forced) {
           //     std::get<2>(entry);  // 각 파일의 lifetime 값
 
           double total_lifetime = entry.total_lifetime;  // 존의 lifetime 총합
-          int file_count = entry.file_count;  // 존에 포함된 파일 수
+          int file_count = entry.file_count;             // 존에 포함된 파일 수
 
           average_lifetime = total_lifetime / file_count;
 
@@ -2027,6 +2027,7 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
   zoneFile->MetadataUnsynced();
   s = SyncFileMetadata(zoneFile, true);
 
+  auto cur_zc_time = std::chrono::system_clock::now();
   if (!s.ok()) {
     return s;
   }
@@ -2035,6 +2036,13 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
   for (size_t i = 0; i < new_extents.size(); ++i) {
     ZoneExtent* old_ext = old_extents[i];
     if (old_ext->start_ != new_extents[i]->start_) {
+      if (old_ext->is_zc_copied_ == true) {
+        new_extents[i]->is_zc_copied_ = true;
+      } else {
+        new_extents[i]->is_zc_copied_ = true;
+        new_extents[i]->zc_copied_time_ = cur_zc_time;
+      }
+
       old_ext->zone_->used_capacity_ -= old_ext->length_;
     }
     delete old_ext;

@@ -480,6 +480,8 @@ class ZonedBlockDevice {
   std::atomic<uint64_t> lsm_tree_[10];
   std::array<uint64_t, 10> GetCurrentLSMTree();
   uint64_t max_bytes_for_level_base_ = 256 << 20;
+  std::atomic<uint64_t> total_deletion_after_copy_time_{0};
+  std::atomic<uint64_t> total_deletion_after_copy_n_{0};
 
   bool zc_until_set_ = false;
   uint64_t zc_ = 20;

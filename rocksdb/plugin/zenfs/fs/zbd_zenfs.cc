@@ -467,8 +467,8 @@ void ZonedBlockDevice::LogGarbageInfo() {
   // 데이터를 읽기만 하므로 io_zones를 잠글 필요가 없으며, 결과의 정확성을 높일
   // 필요도 없습니다.
   int zone_gc_stat[12] = {0};  // 각 쓰레기 비율 구간별 존의 수를 저장하는 배열
-  for (auto z : io_zones) {  // 모든 I/O 존에 대해 반복
-    if (!z->Acquire()) {     // 존이 사용 가능하지 않으면 건너뜀
+  for (auto z : io_zones) {    // 모든 I/O 존에 대해 반복
+    if (!z->Acquire()) {       // 존이 사용 가능하지 않으면 건너뜀
       continue;
     }
 
@@ -486,7 +486,7 @@ void ZonedBlockDevice::LogGarbageInfo() {
       garbage_rate =
           double(z->wp_ - z->start_ - z->used_capacity_) / z->max_capacity_;
     }
-    assert(garbage_rate >= 0);  // 쓰레기 비율이 0 이상인지 확인
+    assert(garbage_rate >= 0);                 // 쓰레기 비율이 0 이상인지 확인
     int idx = int((garbage_rate + 0.1) * 10);  // 쓰레기 비율을 인덱스로 변환
     zone_gc_stat[idx]++;  // 해당 쓰레기 비율 구간의 존 수 증가
 
@@ -613,6 +613,14 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     }
     printf("level[%d]: 분자(overlapping) %lu / 분모(file size) %lu = %.4f\n", i,
            numer, denom, ratio);
+  }
+
+  if (total_deletion_after_copy_n_.load()) {
+    printf("avg deletion after time %lu/%lu= %lu (us)",
+           total_deletion_after_copy_time_.load(),
+           total_deletion_after_copy_n_.load(),
+           total_deletion_after_copy_time_.load() /
+               total_deletion_after_copy_n_.load());
   }
 
   for (const auto z : meta_zones) {
@@ -1969,7 +1977,7 @@ IOStatus ZonedBlockDevice::AllocateIOZone(Env::WriteLifeTimeHint file_lifetime,
   // s = ResetUnusedIOZones();
   Zone *allocated_zone = nullptr;
   unsigned int best_diff = LIFETIME_DIFF_NOT_GOOD;  // 수명차이
-  int new_zone = 0;  // 새로운 영역인지 여부
+  int new_zone = 0;                                 // 새로운 영역인지 여부
   IOStatus s;
 
   // std::cout << "@@@ zbd::AllocateIOZone - life_time: " << file_lifetime
