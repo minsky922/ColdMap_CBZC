@@ -2038,6 +2038,7 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
     if (old_ext->start_ != new_extents[i]->start_) {
       if (old_ext->is_zc_copied_ == true) {
         new_extents[i]->is_zc_copied_ = true;
+        new_extents[i]->zc_copied_time_ = old_ext->zc_copied_time_;
       } else {
         new_extents[i]->is_zc_copied_ = true;
         new_extents[i]->zc_copied_time_ = cur_zc_time;
