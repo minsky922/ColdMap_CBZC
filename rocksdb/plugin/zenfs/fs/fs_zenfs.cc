@@ -1012,7 +1012,9 @@ void ZenFS::PredictCompaction(int step) {
         // it = unpivot_fno_list.erase(it);
         // printf("Removed an already propagated fno from unpivot_fno_list.\n");
         // fno_not_should_selected_as_pivot_again.insert(pivot_fno);
-        should_not_selected_again = true;
+
+        // should_not_selected_again = true;
+
         // continue;
         break;
       } else {
@@ -2046,16 +2048,17 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
         new_extents[i]->is_zc_copied_ = true;
         new_extents[i]->zc_copied_ts_ = cur_zc_ts;
       }
-      if(old_ext->zone_->this_zone_motivation_check_){
-        std::lock_guard<std::mutex> lg(old_ext->zone_->motivation_lifetime_diffs_lock_);
+      if (old_ext->zone_->this_zone_motivation_check_) {
+        std::lock_guard<std::mutex> lg(
+            old_ext->zone_->motivation_lifetime_diffs_lock_);
 
-        old_ext->zone_->motivation_lifetime_diffs.push_back({zoneFile->created_time_,cur_zc_ts,true});
+        old_ext->zone_->motivation_lifetime_diffs.push_back(
+            {zoneFile->created_time_, cur_zc_ts, true});
       }
 
-      if(new_extents[i]->zone_->this_zone_motivation_check_){
-        zoneFile->created_time_=cur_zc_ts;
+      if (new_extents[i]->zone_->this_zone_motivation_check_) {
+        zoneFile->created_time_ = cur_zc_ts;
       }
-
 
       old_ext->zone_->used_capacity_ -= old_ext->length_;
     }
