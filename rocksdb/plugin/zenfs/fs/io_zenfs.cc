@@ -302,12 +302,16 @@ void ZoneFile::ClearExtents() {
 
   uint64_t sum_diff_ns = 0;
   size_t deleted_after_copy_extents_n = 0;
-
+  // bool motivation_check_=false;
+  Zone* motivation_check_zone =nullptr;
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
     Zone* zone = (*e)->zone_;
 
     assert(zone && zone->used_capacity_ >= (*e)->length_);
     zone->used_capacity_ -= (*e)->length_;
+    if(zone->this_zone_motivation_check_){
+      motivation_check_zone=zone;
+    }
 
     if (zc_scheme == CBZC5) {
       zone->recent_inval_time_ = std::chrono::system_clock::now();
@@ -329,17 +333,40 @@ void ZoneFile::ClearExtents() {
   }
   extents_.clear();
 
+
+
   uint64_t sum_diff_us = sum_diff_ns / 1000;
+
+  if(motivation_check_zone){
+    std::lock_guard<std::mutex> lg(motivation_check_zone->motivation_lifetime_diffs_lock_);
+
+    motivation_check_zone->motivation_lifetime_diffs.push_back({created_time_,cur_deletion_ts,false});
+  }
 
   zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_us);
   zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
 }
 
 IOStatus ZoneFile::CloseActiveZone() {
+  struct timespec timespec;
+  clock_gettime(CLOCK_MONOTONIC,&timespec);
   IOStatus s = IOStatus::OK();
   if (active_zone_) {
     bool full = active_zone_->IsFull();
     s = active_zone_->Close();
+
+
+    if(active_zone_->this_zone_motivation_check_){
+      if(active_zone_->is_allocated_==false){
+        active_zone_->is_allocated_=true;
+        active_zone_->allocated_time_=timespec;
+      }
+      created_time_=timespec;
+    }
+
+
+
+
     ReleaseActiveZone();
     if (!s.ok()) {
       return s;
@@ -535,7 +562,7 @@ void ZoneFile::PushExtent() {
   extents_.push_back(new ZoneExtent(extent_start_, length, active_zone_));
   // extents_.push_back(
   //     new ZoneExtent(extent_start_, length, active_zone_, filename, this));
-
+  // if(active_zone_->wp_==)
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = file_size_;

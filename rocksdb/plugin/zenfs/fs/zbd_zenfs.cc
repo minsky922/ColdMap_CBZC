@@ -107,6 +107,23 @@ IOStatus Zone::Reset() {
   assert(!IsUsed());
   // assert(IsBusy());
   // is_finished_ = false;
+  // struct{
+  //   initial_allocated_time_;
+  //   reset_time;
+  //   std::vector<time> a;
+
+  // }
+
+  if(this_zone_motivation_check_){
+    struct timespec motivation_reset_time;
+    clock_gettime(CLOCK_MONOTONIC,&motivation_reset_time);
+    motivation_zone_lifetime_diff tmp;
+    tmp.zone_allocated_time_=allocated_time_;
+    tmp.zone_resetted_time_=motivation_reset_time;
+    tmp.motivation_lifetime_diffs=motivation_lifetime_diffs;
+    zbd_->motivation_zone_lifetime_diffs_.push_back(tmp);
+    is_allocated_=false;
+  }
 
   IOStatus ios = zbd_be_->Reset(start_, &offline, &max_capacity);
   if (ios != IOStatus::OK()) return ios;
@@ -228,7 +245,7 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
     Info(logger_, "New zonefs backing: %s", zbd_be_->GetFilename().c_str());
   }
   zone_sz_ = zbd_be_->GetZoneSize();
-
+  clock_gettime(CLOCK_MONOTONIC,&motivation_mount_time_);
   sst_file_bitmap_ = new ZoneFile *[1 << 20];
   memset(sst_file_bitmap_, 0, (1 << 20));
 }
@@ -279,8 +296,8 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   else
     max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
-  max_nr_active_io_zones_ = 14;
-  max_nr_open_io_zones_ = 14;
+  max_nr_active_io_zones_ = 10;
+  max_nr_open_io_zones_ = 10;
 
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
@@ -354,6 +371,10 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
       }
     }
   }
+  // io_zones[20]->this_zone_motivation_check_=true;
+
+
+
   // uint64_t device_free_space = (ZENFS_IO_ZONES) * (ZONE_SIZE);
   // printf("device free space : %ld\n", device_free_space);
   // device_free_space_.store(device_free_space);
@@ -630,7 +651,48 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     delete z;
   }
 
+
+  // motivation_mount_time_/
+
+
+
+   long mount_mili = (motivation_mount_time_.tv_sec * 1000) + (motivation_mount_time_.tv_nsec / 1000000);
   for (const auto z : io_zones) {
+    if(z->this_zone_motivation_check_){
+      // motivation_zone_lifetime_diffs_
+      int i=0;
+      printf("z->this_zone_motivation_check_ at index  %lu\n",z->zidx_);
+      for(auto res : motivation_zone_lifetime_diffs_){
+        printf("zone alloc/delete time %d\n",i++);
+        long start_milliseconds = (res.zone_allocated_time_.tv_sec * 1000) + (res.zone_allocated_time_.tv_nsec / 1000000);
+        long end_milliseconds = (res.zone_resetted_time_.tv_sec * 1000) + (res.zone_resetted_time_.tv_nsec / 1000000);
+          
+        printf("%lu\t%lu\n",start_milliseconds-mount_mili,end_milliseconds-mount_mili);
+        printf("------------------\n");
+
+        // std::vector< std::pair<long,long> > sorted;
+        std::vector<start_end_to_be_sorted> sorted;
+        sorted.clear();
+        for(auto file_time : res.motivation_lifetime_diffs){
+          
+           start_milliseconds = (file_time.file_created_time_.tv_sec * 1000) + (file_time.file_created_time_.tv_nsec / 1000000);
+           end_milliseconds = (file_time.file_deleted_time_.tv_sec * 1000) + (file_time.file_deleted_time_.tv_nsec / 1000000);
+          bool zcied= file_time.zcied_;
+          start_milliseconds-=mount_mili;
+          end_milliseconds-=mount_mili;
+          sorted.push_back({start_milliseconds,end_milliseconds,zcied});
+          // printf("%lu\t%lu\n",start_milliseconds-mount_mili,end_milliseconds-mount_mili);
+
+        }
+
+        std::sort(sorted.begin(),sorted.end(),start_end_to_be_sorted::compare_start_end_to_be_sorted);
+
+        for(auto s: sorted){
+          printf("%lu\t%lu\t%s\n",s.start_milliseconds,s.end_milliseconds, s.end_milliseconds ? "zcied": "");
+        }
+        printf("------------------\n");
+      }
+    }
     delete z;
   }
 }
@@ -1621,6 +1683,14 @@ IOStatus ZonedBlockDevice::ReleaseMigrateZone(Zone *zone) {
     migrating_ = false;
     if (zone != nullptr) {
       // bool full = zone->IsFull();
+      if(zone->this_zone_motivation_check_){
+        struct timespec timespec;
+        clock_gettime(CLOCK_MONOTONIC,&timespec);
+        if(zone->is_allocated_==false){
+          zone->is_allocated_=true;
+          zone->allocated_time_=timespec;
+        }
+      }
       s = zone->CheckRelease();
       // PutOpenIOZoneToken();
       // if (full) {
@@ -1658,10 +1728,15 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Zone **out_zone,
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
     }
-    s = AllocateEmptyZone(out_zone);
-    if (s.ok() && (*out_zone) != nullptr) {
-      Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
-      break;
+    if(GetActiveIOZoneTokenIfAvailable()){
+      s = AllocateEmptyZone(out_zone);
+      if (s.ok() && (*out_zone) != nullptr) {
+        Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
+        break;
+      }
+      if((*out_zone) == nullptr){
+        PutActiveIOZoneToken();
+      }
     }
 
     s = GetAnyLargestRemainingZone(out_zone, min_capacity);

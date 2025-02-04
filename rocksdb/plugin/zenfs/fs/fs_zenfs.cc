@@ -2046,6 +2046,16 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
         new_extents[i]->is_zc_copied_ = true;
         new_extents[i]->zc_copied_ts_ = cur_zc_ts;
       }
+      if(old_ext->zone_->this_zone_motivation_check_){
+        std::lock_guard<std::mutex> lg(old_ext->zone_->motivation_lifetime_diffs_lock_);
+
+        old_ext->zone_->motivation_lifetime_diffs.push_back({zoneFile->created_time_,cur_zc_ts,true});
+      }
+
+      if(new_extents[i]->zone_->this_zone_motivation_check_){
+        zoneFile->created_time_=cur_zc_ts;
+      }
+
 
       old_ext->zone_->used_capacity_ -= old_ext->length_;
     }

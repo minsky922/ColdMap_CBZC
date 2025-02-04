@@ -136,6 +136,33 @@ class ZoneList {
 //   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 // }
 
+  struct start_end_to_be_sorted{
+    long start_milliseconds;
+    long end_milliseconds;
+    bool zcied;
+    static bool compare_start_end_to_be_sorted(const start_end_to_be_sorted &a, const start_end_to_be_sorted &b) {
+      if (a.start_milliseconds == b.start_milliseconds) {
+          return a.end_milliseconds < b.end_milliseconds;
+      }
+      return a.start_milliseconds < b.start_milliseconds;
+    }
+
+  };
+  
+
+  struct motivation_lifetime_diff{
+  struct timespec file_created_time_;
+  struct timespec file_deleted_time_;
+  bool zcied_=false;
+};
+
+struct motivation_zone_lifetime_diff{
+  
+  struct timespec zone_allocated_time_;
+  struct timespec zone_resetted_time_;
+  struct std::vector<motivation_lifetime_diff> motivation_lifetime_diffs;
+};
+
 class Zone {
   ZonedBlockDevice *zbd_;
   ZonedBlockDeviceBackend *zbd_be_;
@@ -164,6 +191,15 @@ class Zone {
   std::chrono::time_point<std::chrono::system_clock> recent_inval_time_;
   //
   std::atomic<uint64_t> used_capacity_;
+
+  bool is_allocated_=false;
+  struct timespec allocated_time_;
+  bool this_zone_motivation_check_=false;
+  
+
+  struct std::vector<motivation_lifetime_diff> motivation_lifetime_diffs;
+  std::mutex motivation_lifetime_diffs_lock_;
+
 
   IOStatus Reset();
   IOStatus Finish();
@@ -240,6 +276,8 @@ enum class ZbdBackendType {
   kBlockDev,
   kZoneFS,
 };
+
+
 
 class ZonedBlockDevice {
  private:
@@ -470,8 +508,8 @@ class ZonedBlockDevice {
   void AddPropagationCount(uint64_t val) {
     propagation_count_.fetch_add(val, std::memory_order_relaxed);
   }
-  //
-
+  struct timespec motivation_mount_time_;
+  std::vector<motivation_zone_lifetime_diff> motivation_zone_lifetime_diffs_;
   struct OverlappingStat {
     std::atomic<uint64_t> numerator;
     std::atomic<uint64_t> denominator;

@@ -55,7 +55,8 @@ class ZoneExtent {
   std::string fname_;
   uint64_t header_size_;
   ZoneFile* zfile_;
-
+  // struct timespec created_time_;
+  // struct timespec deleted_time_;
   bool is_zc_copied_ = false;
 
   // std::chrono::time_point<std::chrono::system_clock> zc_copied_time_;
@@ -88,6 +89,7 @@ class ZoneFile {
   std::vector<std::string> linkfiles_;
 
   Zone* active_zone_;
+
   uint64_t extent_start_ = NO_EXTENT;
   uint64_t extent_filepos_ = 0;
 
@@ -126,7 +128,7 @@ class ZoneFile {
   static const int SPARSE_HEADER_SIZE = 8;
   bool selected_as_input_ = false;
   uint64_t buffer_size_;
-
+  struct timespec created_time_;
   explicit ZoneFile(ZonedBlockDevice* zbd, uint64_t file_id_,
                     MetadataWriter* metadata_writer, FileSystemWrapper* zenfs);
 
