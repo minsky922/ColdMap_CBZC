@@ -16,7 +16,7 @@
 #include <iostream>
 #include <numeric>
 
-///
+/// cur_ops_
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -334,8 +334,30 @@ void ZenFS::BackgroundStatTimeLapse() {
   while (run_bg_reset_worker_) {
     free_percent_ = zbd_->CalculateFreePercent();
     zbd_->AddTimeLapse(mount_time_);
+    /*
+    stressed test
+    1. cur ops
+    2. 10 second throughput
+    3. COPY
+    4. BLOCKING
+    5. RESET COUNT
+
+    */
     sleep(1);
-    mount_time_.fetch_add(1);
+    int cur_time = mount_time_.fetch_add(1);
+    if (cur_time % 50 == 0) {
+      uint64_t gc_bytes_written = zbd_->GetGCBytesWritten();
+      uint64_t rc = zbd_->GetRC();
+      uint64_t cur_ops = cur_ops_.load();
+      uint64_t cur_io_blocking = zbd_->GetBlocking();
+      printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t", cur_time,
+             zbd_->CalculateFreePercent(), cur_ops, gc_bytes_written,
+             cur_io_blocking, rc);
+      printf("\n");
+      // puts("");
+      fflush(stdout);
+      fflush(stderr);
+    }
   }
 }
 
@@ -764,7 +786,7 @@ void ZenFS::ReCalculateLifetimes() {
 
   double alpha_value = zbd_->GetAlphaValue();
   double alpha_ = alpha_value;
-  double beta_ = 1 - alpha_;
+  double beta_ = 1.0 - alpha_;
 
   for (auto& [level, file_infos] : level_file_map_) {
     double vertical_lifetime = normalized_vertical_lifetimes[level];
@@ -785,7 +807,7 @@ void ZenFS::ReCalculateLifetimes() {
 
   uint64_t predict_cnt = zbd_->GetPredictCnt();
 
-  std::cout << "predict cnt : " << predict_cnt << std::endl;
+  // std::cout << "predict cnt : " << predict_cnt << std::endl;
 
   PredictCompaction(predict_cnt);
 
@@ -952,7 +974,7 @@ void ZenFS::PredictCompaction(int step) {
     uint64_t pivot_level = GetMaxLevelScoreLevel(
         tmp_lsm_tree, initial_l0_files_n, excluded_levels);
     if (pivot_level == (uint64_t)-1) {
-      printf("[PredictCompaction] No available level!\n");
+      // printf("[PredictCompaction] No available level!\n");
       break;
     }
 
@@ -966,13 +988,13 @@ void ZenFS::PredictCompaction(int step) {
                                           excluded_levels);
 
       pivot_fno = GetMaxHorizontalFno(pivot_level);
-      printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
-             pivot_level, pivot_fno);
+      // printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
+      //        pivot_level, pivot_fno);
 
       if (pivot_fno != 0) {
         GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
       } else {
-        printf("[Fix] Still no pivot fno => reduce step, go next loop\n");
+        // printf("[Fix] Still no pivot fno => reduce step, go next loop\n");
         step--;
         continue;
       }
@@ -980,14 +1002,18 @@ void ZenFS::PredictCompaction(int step) {
 
     GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 
-    if (unpivot_fno_list.empty()) {
-      // printf(
-      //     "[PredictCompaction] unpivot_fno_list is empty. pivot_fno=%lu, "
-      //     "level=%lu\n",
-      //     pivot_fno, pivot_level);
-      // fno_already_propagated.insert(pivot_fno);
-      return;
-    }
+    // if (unpivot_fno_list.empty()) {
+    //   // if trivial move, return
+    //   // printf(
+    //   //     "[PredictCompaction] unpivot_fno_list is empty. pivot_fno=%lu, "
+    //   //     "level=%lu\n",
+    //   // //     pivot_fno, pivot_level);
+
+    //   // fno_already_propagated.insert(pivot_fno);
+
+    //   // continue;
+    //   // return;
+    // }
 
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
@@ -1006,6 +1032,7 @@ void ZenFS::PredictCompaction(int step) {
     //   }
     // }
     bool should_not_selected_again = false;
+
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
       if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
         // 제거
@@ -1013,7 +1040,7 @@ void ZenFS::PredictCompaction(int step) {
         // printf("Removed an already propagated fno from unpivot_fno_list.\n");
         // fno_not_should_selected_as_pivot_again.insert(pivot_fno);
 
-        // should_not_selected_again = true;
+        should_not_selected_again = true;
 
         // continue;
         break;
@@ -1021,6 +1048,7 @@ void ZenFS::PredictCompaction(int step) {
         ++it;
       }
     }
+
     if (should_not_selected_again == true) {
       fno_not_should_selected_as_pivot_again.insert(pivot_fno);
       continue;
@@ -1028,12 +1056,12 @@ void ZenFS::PredictCompaction(int step) {
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
     if (pivot_file == nullptr) {
-      printf("[PredictCompaction] no pivot file (fno=%lu)\n", pivot_fno);
+      // printf("[PredictCompaction] no pivot file (fno=%lu)\n", pivot_fno);
       continue;
     }
     if (pivot_file->IsDeleted()) {
-      printf("[PredictCompaction] pivot_file is deleted (fno=%lu)\n",
-             pivot_fno);
+      // printf("[PredictCompaction] pivot_file is deleted (fno=%lu)\n",
+      //  pivot_fno);
       continue;
     }
 
@@ -1091,8 +1119,8 @@ void ZenFS::PredictCompaction(int step) {
       } else {
         tmp_lsm_tree[0] -= total_l0_size;
       }
-      std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
-      std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
+      // std::cout << "After tmplsmtree[0]" << tmp_lsm_tree[0] << std::endl;
+      // std::cout << "tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
 
       if (tmp_lsm_tree[1] < unpivot_total) {
         tmp_lsm_tree[1] = 0;
@@ -1103,10 +1131,14 @@ void ZenFS::PredictCompaction(int step) {
       // tmp_lsm_tree[1] += total_l0_size;
       tmp_lsm_tree[1] += compressed_size;
 
-      std::cout << "After tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
+      // std::cout << "After tmplsmtree[1]" << tmp_lsm_tree[1] << std::endl;
 
       for (auto fno : l0_files) {
         fno_already_propagated.insert(fno);
+      }
+
+      for (auto& f : unpivot_fno_list) {
+        fno_already_propagated.insert(f);
       }
 
       Propagation(pivot_fno, unpivot_fno_list);
@@ -1133,7 +1165,9 @@ void ZenFS::PredictCompaction(int step) {
     double compressibility = 0.0;
 
     compressibility = zbd_->GetAvgCompressibilityOflevel(pivot_level + 1);
-
+    if (unpivot_total == 0) {
+      compressibility = 1.0;
+    }
     // if (compressibility == 1.0) {
     //   compressibility = 1.0;
     // }
@@ -1254,7 +1288,7 @@ uint64_t ZenFS::GetMaxLevelScoreLevel(
 uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
   auto it = level_file_map_.find(pivot_level);
   if (it == level_file_map_.end() || it->second.empty()) {
-    printf("no level || no files");
+    // printf("no level || no files");
   }
 
   const auto& files = it->second;
@@ -1537,7 +1571,7 @@ void ZenFS::ZoneCleaning(bool forced) {
                        now - zone.recent_inval_time)
                        .count();
 
-        std::cout << "Zone age (ms): " << age << std::endl;
+        // std::cout << "Zone age (ms): " << age << std::endl;
 
         double cost = 2 * (static_cast<double>(zone.used_capacity) /
                            static_cast<double>(zone.max_capacity));
@@ -1749,6 +1783,7 @@ void ZenFS::ZoneCleaning(bool forced) {
     clock_gettime(CLOCK_MONOTONIC, &start_timespec);
     s = MigrateExtents(migrate_exts);
     clock_gettime(CLOCK_MONOTONIC, &end_timespec);
+    // printf("GetGCBytesWritten %lu\n",zbd_->GetGCBytesWritten());
     if (!s.ok()) {
       printf("Garbage collection failed\n");
       Error(logger_, "Garbage collection failed");
@@ -1778,16 +1813,52 @@ void ZenFS::ZoneCleaning(bool forced) {
  이를 통해 ZenFS의 여유 공간을 확보하고 성능을 유지합니다.*/
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
-    free_percent_ = zbd_->CalculateFreePercent();
-    if (free_percent_ > 20) {
+    // free_percent_ = zbd_->CalculateFreePercent();
+    // if (free_percent_ > 20) {
+    //   usleep(100 * 1000);
+    // }
+    // zbd_->SetZCRunning(false);
+    // // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
+    // while (zbd_->CalculateFreePercent() < zbd_->zc_) {
+    //   zbd_->SetZCRunning(true);
+    //   ZoneCleaning(true);
+    // }
+
+    // zbd_->SetZCRunning(false);
+
+    // free_percent_ = zbd_->CalculateFreePercent();
+    // if (!zbd_->ShouldZCByEmptyZoneN()) {
+    //   usleep(100 * 1000);
+    //   continue;
+    // }
+    bool shoudl_zc = zbd_->zc_ > zbd_->CalculateFreePercent() ||
+                     zbd_->ShouldZCByEmptyZoneN();
+    if (!shoudl_zc) {
       usleep(100 * 1000);
+      continue;
     }
+
     zbd_->SetZCRunning(false);
     // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
-    if (free_percent_ < 20) {
+    int try_n = 0;
+    while (zbd_->ShouldZCByEmptyZoneN()) {
       zbd_->SetZCRunning(true);
       ZoneCleaning(true);
+      try_n++;
+      if (try_n > 8) {
+        break;
+      }
     }
+    try_n = 0;
+    while (zbd_->CalculateFreePercent() < zbd_->zc_) {
+      zbd_->SetZCRunning(true);
+      ZoneCleaning(true);
+      try_n++;
+      if (try_n > 8) {
+        break;
+      }
+    }
+
     zbd_->SetZCRunning(false);
 
     //   usleep(1000 * 1000 * 10);  // 10초 동안 대기

@@ -306,6 +306,8 @@ class ZonedBlockDevice {
   std::atomic<long> migration_io_zones_{0};
   ///
   std::atomic<size_t> reset_count_{0};
+  std::atomic<size_t> reset_count_before_full_{0};
+  std::atomic<size_t> reset_size_before_full_{0};
   std::atomic<size_t> finish_count_{0};
 
   std::atomic<size_t> erase_size_{0};
@@ -711,7 +713,35 @@ class ZonedBlockDevice {
       ret += z->capacity_;
     }
     return ret;
+  } 
+  uint64_t GetEmptyZoneN(){
+    uint64_t ret=0;
+    for(auto z : io_zones){
+      if(z->IsEmpty()){
+        ret++;
+      }
+    }
+    return ret;
   }
+
+  uint64_t GetFullZoneN(){
+    uint64_t ret=0;
+    for(auto z : io_zones){
+      if(z->IsFull()){
+        ret++;
+      }
+    }
+    return ret;
+  }
+
+  bool ShouldZCByEmptyZoneN(){
+    if(GetEmptyZoneN()<zc_){
+      return true;
+    }
+    return false;
+  }
+
+
 
   uint64_t CalculateFreePercent(void) {
     // uint64_t device_size = (uint64_t)ZENFS_IO_ZONES * (uint64_t)ZONE_SIZE;
@@ -796,6 +826,8 @@ class ZonedBlockDevice {
     zc_copied_timelapse_.push_back(written);
   };
   uint64_t GetGCBytesWritten(void) { return gc_bytes_written_.load(); }
+  uint64_t GetRC(void) { return reset_count_.load(); }
+    uint64_t GetBlocking(void) { return cumulative_io_blocking_; }
   uint64_t GetUserBytesWritten() {
     return bytes_written_.load() - gc_bytes_written_.load();
   };

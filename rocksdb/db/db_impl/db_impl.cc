@@ -2935,25 +2935,25 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
   // InternalStats* stats = default_cf_internal_stats_;
   VersionSet* versions = this->GetVersionSet();
   if (!versions) {
-    printf("GetAvgCompressibilityOflevel :: !versions \n");
+    // printf("GetAvgCompressibilityOflevel :: !versions \n");
     return 0.0;
   }
 
   ColumnFamilySet* cfs = versions->GetColumnFamilySet();
   if (!cfs) {
-    printf("GetAvgCompressibilityOflevel :: !cfs \n");
+    // printf("GetAvgCompressibilityOflevel :: !cfs \n");
     return 0.0;
   }
 
   ColumnFamilyData* cfd = cfs->GetDefault();
   if (!cfd) {
-    printf("GetAvgCompressibilityOflevel :: !cfd \n");
+    // printf("GetAvgCompressibilityOflevel :: !cfd \n");
     return 0.0;
   }
 
   const InternalStats* internal_stats = cfd->internal_stats();
   if (!internal_stats) {
-    printf("GetAvgCompressibilityOflevel :: !internal_stats \n");
+    // printf("GetAvgCompressibilityOflevel :: !internal_stats \n");
     return 0.0;
   }
 
@@ -2961,7 +2961,7 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
       internal_stats->TEST_GetCompactionStats();
 
   if (output_level < 0 || static_cast<size_t>(output_level) >= cs_vec.size()) {
-    printf("GetAvgCompressibilityOflevel :: invalid level=%d\n", output_level);
+    // printf("GetAvgCompressibilityOflevel :: invalid level=%d\n", output_level);
     return 0.0;
   }
 
@@ -2975,19 +2975,19 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
                  static_cast<double>(bytes_read_output_level);
   if (denom == 0.0) {
     // printf("=== [GetAvgCompressibilityOfLevel(%d)] ===\n", output_level);
-    printf("GetAvgCompressibilityOflevel(level=%d) :: denom is 0.0\n",
-           output_level);
-    printf(" bytes_read_non_output_levels : %lu\n",
-           bytes_read_non_output_levels);
-    printf(" bytes_read_output_level      : %lu\n", bytes_read_output_level);
-    printf(" bytes_written                : %lu\n", bytes_written);
-    printf(" denom (sum of reads)         : %lf\n", denom);
-    printf("=========================================\n");
+    // printf("GetAvgCompressibilityOflevel(level=%d) :: denom is 0.0\n",
+    //        output_level);
+    // printf(" bytes_read_non_output_levels : %lu\n",
+    //        bytes_read_non_output_levels);
+    // printf(" bytes_read_output_level      : %lu\n", bytes_read_output_level);
+    // printf(" bytes_written                : %lu\n", bytes_written);
+    // printf(" denom (sum of reads)         : %lf\n", denom);
+    // printf("=========================================\n");
     return 1.0;  // 분모 0
   }
 
   double avg_compressibility = static_cast<double>(bytes_written) / denom;
-  printf(" avg_compressibility          : %lf\n", avg_compressibility);
+  // printf(" avg_compressibility          : %lf\n", avg_compressibility);
 
   // printf("=== [GetAvgCompressibilityOfLevel(%d)] ===\n", output_level);
   // printf(" bytes_read_non_output_levels : %lu\n",
@@ -3025,7 +3025,7 @@ uint64_t DBImpl::MostSmallDownwardAdjacentFile(Slice& s, Slice& l, int level) {
       versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
   CompactionInputFiles downward_level_sstable;
   if (level == 0) {
-    printf("MostSmallDownwardAdjacentFile ? %d\n", level);
+    // printf("MostSmallDownwardAdjacentFile ? %d\n", level);
     return 0;
   }
   vstorage->GetOverlappingInputs(level + 1, &smallest, &largest,

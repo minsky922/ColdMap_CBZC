@@ -111,6 +111,7 @@ Status DBImpl::Write(const WriteOptions& write_options, WriteBatch* my_batch) {
     s = WriteBatchInternal::UpdateProtectionInfo(
         my_batch, write_options.protection_bytes_per_key);
   }
+  immutable_db_options_.fs->cur_ops_++;
   if (s.ok()) {
     s = WriteImpl(write_options, my_batch, /*callback=*/nullptr,
                   /*log_used=*/nullptr);

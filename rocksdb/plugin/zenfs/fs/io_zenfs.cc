@@ -338,6 +338,7 @@ void ZoneFile::ClearExtents() {
   uint64_t sum_diff_us = sum_diff_ns / 1000;
 
   if(motivation_check_zone){
+              printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs CLEAREXTENTS\n");
     std::lock_guard<std::mutex> lg(motivation_check_zone->motivation_lifetime_diffs_lock_);
 
     motivation_check_zone->motivation_lifetime_diffs.push_back({created_time_,cur_deletion_ts,false});
@@ -357,6 +358,7 @@ IOStatus ZoneFile::CloseActiveZone() {
 
 
     if(active_zone_->this_zone_motivation_check_){
+          printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs ALLOC %s\n",linkfiles_[0].c_str());
       if(active_zone_->is_allocated_==false){
         active_zone_->is_allocated_=true;
         active_zone_->allocated_time_=timespec;
