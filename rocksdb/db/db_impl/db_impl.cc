@@ -3100,13 +3100,15 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
 }
 
 void DBImpl::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
-  InstrumentedMutexLock l(&mutex_);
   auto vstorage =
       versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
 
   const auto& current_level_files = vstorage->LevelFiles(level);
 
   for (auto* file : current_level_files) {
+    if (file == nullptr) {
+      continue;
+    }
     if (file->being_compacted) {
       continue;
     }
