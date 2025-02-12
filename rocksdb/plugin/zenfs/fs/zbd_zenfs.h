@@ -136,28 +136,26 @@ class ZoneList {
 //   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 // }
 
-  struct start_end_to_be_sorted{
-    long start_milliseconds;
-    long end_milliseconds;
-    bool zcied;
-    static bool compare_start_end_to_be_sorted(const start_end_to_be_sorted &a, const start_end_to_be_sorted &b) {
-      if (a.start_milliseconds == b.start_milliseconds) {
-          return a.end_milliseconds < b.end_milliseconds;
-      }
-      return a.start_milliseconds < b.start_milliseconds;
+struct start_end_to_be_sorted {
+  long start_milliseconds;
+  long end_milliseconds;
+  bool zcied;
+  static bool compare_start_end_to_be_sorted(const start_end_to_be_sorted &a,
+                                             const start_end_to_be_sorted &b) {
+    if (a.start_milliseconds == b.start_milliseconds) {
+      return a.end_milliseconds < b.end_milliseconds;
     }
-
-  };
-  
-
-  struct motivation_lifetime_diff{
-  struct timespec file_created_time_;
-  struct timespec file_deleted_time_;
-  bool zcied_=false;
+    return a.start_milliseconds < b.start_milliseconds;
+  }
 };
 
-struct motivation_zone_lifetime_diff{
-  
+struct motivation_lifetime_diff {
+  struct timespec file_created_time_;
+  struct timespec file_deleted_time_;
+  bool zcied_ = false;
+};
+
+struct motivation_zone_lifetime_diff {
   struct timespec zone_allocated_time_;
   struct timespec zone_resetted_time_;
   struct std::vector<motivation_lifetime_diff> motivation_lifetime_diffs;
@@ -192,14 +190,12 @@ class Zone {
   //
   std::atomic<uint64_t> used_capacity_;
 
-  bool is_allocated_=false;
+  bool is_allocated_ = false;
   struct timespec allocated_time_;
-  bool this_zone_motivation_check_=false;
-  
+  bool this_zone_motivation_check_ = false;
 
   struct std::vector<motivation_lifetime_diff> motivation_lifetime_diffs;
   std::mutex motivation_lifetime_diffs_lock_;
-
 
   IOStatus Reset();
   IOStatus Finish();
@@ -277,8 +273,6 @@ enum class ZbdBackendType {
   kZoneFS,
 };
 
-
-
 class ZonedBlockDevice {
  private:
   FileSystemWrapper *zenfs_;
@@ -301,9 +295,7 @@ class ZonedBlockDevice {
 
   uint64_t finish_threshold_arr_[101];
   ///
-  std::atomic<long> active_io_zones_;
-  std::atomic<long> open_io_zones_;
-  std::atomic<long> migration_io_zones_{0};
+
   ///
   std::atomic<size_t> reset_count_{0};
   std::atomic<size_t> reset_count_before_full_{0};
@@ -505,6 +497,10 @@ class ZonedBlockDevice {
   double GetSigmaValue() const { return sigma_value_; }
   uint64_t GetDisableFinish() const { return finish_scheme_; }
   uint64_t GetPredictCnt() const { return predict_cnt_; }
+
+  std::atomic<long> active_io_zones_;
+  std::atomic<long> open_io_zones_;
+  std::atomic<long> migration_io_zones_{0};
 
   std::atomic<uint64_t> propagation_count_{0};
   void AddPropagationCount(uint64_t val) {
@@ -713,35 +709,33 @@ class ZonedBlockDevice {
       ret += z->capacity_;
     }
     return ret;
-  } 
-  uint64_t GetEmptyZoneN(){
-    uint64_t ret=0;
-    for(auto z : io_zones){
-      if(z->IsEmpty()){
+  }
+  uint64_t GetEmptyZoneN() {
+    uint64_t ret = 0;
+    for (auto z : io_zones) {
+      if (z->IsEmpty()) {
         ret++;
       }
     }
     return ret;
   }
 
-  uint64_t GetFullZoneN(){
-    uint64_t ret=0;
-    for(auto z : io_zones){
-      if(z->IsFull()){
+  uint64_t GetFullZoneN() {
+    uint64_t ret = 0;
+    for (auto z : io_zones) {
+      if (z->IsFull()) {
         ret++;
       }
     }
     return ret;
   }
 
-  bool ShouldZCByEmptyZoneN(){
-    if(GetEmptyZoneN()<zc_){
+  bool ShouldZCByEmptyZoneN() {
+    if (GetEmptyZoneN() < zc_) {
       return true;
     }
     return false;
   }
-
-
 
   uint64_t CalculateFreePercent(void) {
     // uint64_t device_size = (uint64_t)ZENFS_IO_ZONES * (uint64_t)ZONE_SIZE;
@@ -827,7 +821,7 @@ class ZonedBlockDevice {
   };
   uint64_t GetGCBytesWritten(void) { return gc_bytes_written_.load(); }
   uint64_t GetRC(void) { return reset_count_.load(); }
-    uint64_t GetBlocking(void) { return cumulative_io_blocking_; }
+  uint64_t GetBlocking(void) { return cumulative_io_blocking_; }
   uint64_t GetUserBytesWritten() {
     return bytes_written_.load() - gc_bytes_written_.load();
   };

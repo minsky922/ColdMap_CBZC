@@ -114,18 +114,17 @@ IOStatus Zone::Reset() {
 
   // }
 
-  if(this_zone_motivation_check_){
+  if (this_zone_motivation_check_) {
     printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs RESET\n");
     struct timespec motivation_reset_time;
-    clock_gettime(CLOCK_MONOTONIC,&motivation_reset_time);
+    clock_gettime(CLOCK_MONOTONIC, &motivation_reset_time);
     motivation_zone_lifetime_diff tmp;
-    tmp.zone_allocated_time_=allocated_time_;
-    tmp.zone_resetted_time_=motivation_reset_time;
-    tmp.motivation_lifetime_diffs=motivation_lifetime_diffs;
+    tmp.zone_allocated_time_ = allocated_time_;
+    tmp.zone_resetted_time_ = motivation_reset_time;
+    tmp.motivation_lifetime_diffs = motivation_lifetime_diffs;
     zbd_->motivation_zone_lifetime_diffs_.push_back(tmp);
     motivation_lifetime_diffs.clear();
-    is_allocated_=false;
-
+    is_allocated_ = false;
   }
 
   IOStatus ios = zbd_be_->Reset(start_, &offline, &max_capacity);
@@ -248,7 +247,7 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
     Info(logger_, "New zonefs backing: %s", zbd_be_->GetFilename().c_str());
   }
   zone_sz_ = zbd_be_->GetZoneSize();
-  clock_gettime(CLOCK_MONOTONIC,&motivation_mount_time_);
+  clock_gettime(CLOCK_MONOTONIC, &motivation_mount_time_);
   sst_file_bitmap_ = new ZoneFile *[1 << 20];
   memset(sst_file_bitmap_, 0, (1 << 20));
 }
@@ -299,8 +298,8 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   else
     max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
-  max_nr_active_io_zones_ = 8;
-  max_nr_open_io_zones_ = 8;
+  max_nr_active_io_zones_ = 12;
+  max_nr_open_io_zones_ = 12;
   // open(/home/femu/yc-bccp[/open_zone])
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
@@ -375,8 +374,6 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
     }
   }
   // io_zones[3]->this_zone_motivation_check_=true;
-
-
 
   // uint64_t device_free_space = (ZENFS_IO_ZONES) * (ZONE_SIZE);
   // printf("device free space : %ld\n", device_free_space);
@@ -649,51 +646,54 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     printf("avg deletion after time %lu us (total: %lu us, count: %lu)\n",
            avg_us, total_time_us, total_count);
     printf("reset_count_before_full_ %lu reset_size_before_full_ %lu\n",
-    reset_count_before_full_.load(),reset_size_before_full_.load());
+           reset_count_before_full_.load(), reset_size_before_full_.load());
   }
 
   for (const auto z : meta_zones) {
     delete z;
   }
 
-
   // motivation_mount_time_/
 
-
-
-   long mount_mili = (motivation_mount_time_.tv_sec * 1000) + (motivation_mount_time_.tv_nsec / 1000000);
+  long mount_mili = (motivation_mount_time_.tv_sec * 1000) +
+                    (motivation_mount_time_.tv_nsec / 1000000);
   for (const auto z : io_zones) {
-    if(z->this_zone_motivation_check_){
+    if (z->this_zone_motivation_check_) {
       // motivation_zone_lifetime_diffs_
-      int i=0;
-      printf("z->this_zone_motivation_check_ at index  %lu\n",z->zidx_);
-      for(auto res : motivation_zone_lifetime_diffs_){
-        printf("zone alloc/delete time %d\n",i++);
-        long start_milliseconds = (res.zone_allocated_time_.tv_sec * 1000) + (res.zone_allocated_time_.tv_nsec / 1000000);
-        long end_milliseconds = (res.zone_resetted_time_.tv_sec * 1000) + (res.zone_resetted_time_.tv_nsec / 1000000);
-          
-        printf("%lu\t%lu\n",start_milliseconds-mount_mili,end_milliseconds-mount_mili);
+      int i = 0;
+      printf("z->this_zone_motivation_check_ at index  %lu\n", z->zidx_);
+      for (auto res : motivation_zone_lifetime_diffs_) {
+        printf("zone alloc/delete time %d\n", i++);
+        long start_milliseconds = (res.zone_allocated_time_.tv_sec * 1000) +
+                                  (res.zone_allocated_time_.tv_nsec / 1000000);
+        long end_milliseconds = (res.zone_resetted_time_.tv_sec * 1000) +
+                                (res.zone_resetted_time_.tv_nsec / 1000000);
+
+        printf("%lu\t%lu\n", start_milliseconds - mount_mili,
+               end_milliseconds - mount_mili);
         printf("------------------\n");
 
         // std::vector< std::pair<long,long> > sorted;
         std::vector<start_end_to_be_sorted> sorted;
         sorted.clear();
-        for(auto file_time : res.motivation_lifetime_diffs){
-          
-           start_milliseconds = (file_time.file_created_time_.tv_sec * 1000) + (file_time.file_created_time_.tv_nsec / 1000000);
-           end_milliseconds = (file_time.file_deleted_time_.tv_sec * 1000) + (file_time.file_deleted_time_.tv_nsec / 1000000);
-          bool zcied= file_time.zcied_;
-          start_milliseconds-=mount_mili;
-          end_milliseconds-=mount_mili;
-          sorted.push_back({start_milliseconds,end_milliseconds,zcied});
+        for (auto file_time : res.motivation_lifetime_diffs) {
+          start_milliseconds = (file_time.file_created_time_.tv_sec * 1000) +
+                               (file_time.file_created_time_.tv_nsec / 1000000);
+          end_milliseconds = (file_time.file_deleted_time_.tv_sec * 1000) +
+                             (file_time.file_deleted_time_.tv_nsec / 1000000);
+          bool zcied = file_time.zcied_;
+          start_milliseconds -= mount_mili;
+          end_milliseconds -= mount_mili;
+          sorted.push_back({start_milliseconds, end_milliseconds, zcied});
           // printf("%lu\t%lu\n",start_milliseconds-mount_mili,end_milliseconds-mount_mili);
-
         }
 
-        std::sort(sorted.begin(),sorted.end(),start_end_to_be_sorted::compare_start_end_to_be_sorted);
+        std::sort(sorted.begin(), sorted.end(),
+                  start_end_to_be_sorted::compare_start_end_to_be_sorted);
 
-        for(auto s: sorted){
-          printf("%lu\t%lu\t%s\n",s.start_milliseconds,s.end_milliseconds, s.zcied ? "zcied": "");
+        for (auto s : sorted) {
+          printf("%lu\t%lu\t%s\n", s.start_milliseconds, s.end_milliseconds,
+                 s.zcied ? "zcied" : "");
         }
         printf("------------------\n");
       }
@@ -1105,7 +1105,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
   size_t total_invalid = 0;
 
   // uint64_t zeu_size = 1 << 30;
-  uint64_t zeu_size=io_zones[0]->max_capacity_;
+  uint64_t zeu_size = io_zones[0]->max_capacity_;
   (void)(zeu_size);
   IOStatus reset_status = IOStatus::OK();
   for (size_t i = 0; i < io_zones.size(); i++) {
@@ -1158,7 +1158,7 @@ IOStatus ZonedBlockDevice::RuntimeZoneReset() {
       reset_status = z->Reset();
 
       wasted_wp_.fetch_add(cp);
-      if(cp){
+      if (cp) {
         reset_count_before_full_.fetch_add(1);
         reset_size_before_full_.fetch_add(cp);
       }
@@ -1691,20 +1691,20 @@ IOStatus ZonedBlockDevice::ReleaseMigrateZone(Zone *zone) {
     std::unique_lock<std::mutex> lock(migrate_zone_mtx_);
     migrating_ = false;
     if (zone != nullptr) {
-      // bool full = zone->IsFull();
-      if(zone->this_zone_motivation_check_){
+      bool full = zone->IsFull();
+      if (zone->this_zone_motivation_check_) {
         struct timespec timespec;
-        clock_gettime(CLOCK_MONOTONIC,&timespec);
-        if(zone->is_allocated_==false){
-          zone->is_allocated_=true;
-          zone->allocated_time_=timespec;
+        clock_gettime(CLOCK_MONOTONIC, &timespec);
+        if (zone->is_allocated_ == false) {
+          zone->is_allocated_ = true;
+          zone->allocated_time_ = timespec;
         }
       }
       s = zone->CheckRelease();
       // PutOpenIOZoneToken();
-      // if (full) {
-      //   PutActiveIOZoneToken();
-      // }
+      if (full) {
+        PutActiveIOZoneToken();
+      }
       Info(logger_, "ReleaseMigrateZone: %lu", zone->start_);
     }
   }
@@ -1737,13 +1737,13 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Zone **out_zone,
       Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
       break;
     }
-    if(GetActiveIOZoneTokenIfAvailable()){
+    if (GetActiveIOZoneTokenIfAvailable()) {
       s = AllocateEmptyZone(out_zone);
       if (s.ok() && (*out_zone) != nullptr) {
         Info(logger_, "TakeMigrateZone: %lu", (*out_zone)->start_);
         break;
       }
-      if((*out_zone) == nullptr){
+      if ((*out_zone) == nullptr) {
         PutActiveIOZoneToken();
       }
     }
@@ -1846,11 +1846,6 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     }
 
     if (finish_scheme_ != FINISH_ENABLE) {
-
-
-
-
-
       AllocateAllInvalidZone(out_zone);
       if (*out_zone) {
         break;
@@ -1861,14 +1856,14 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       }
 
       // if(GetFullZoneN()>io_zones.size()-zc_-4){
-        if (GetActiveIOZoneTokenIfAvailable()) {
-          AllocateEmptyZone(out_zone);  // 빈 영역 할당
-          if (*out_zone != nullptr) {
-            (*out_zone)->lifetime_ = file_lifetime;
-            break;
-          }
-          PutActiveIOZoneToken();
+      if (GetActiveIOZoneTokenIfAvailable()) {
+        AllocateEmptyZone(out_zone);  // 빈 영역 할당
+        if (*out_zone != nullptr) {
+          (*out_zone)->lifetime_ = file_lifetime;
+          break;
         }
+        PutActiveIOZoneToken();
+      }
       // }
 
     } else if (finish_scheme_ == FINISH_ENABLE) {
@@ -2264,8 +2259,8 @@ IOStatus ZonedBlockDevice::AllocateIOZone(
     }
     if (allocated_zone == nullptr) {
       s = AllocateCompactionAwaredZone(smallest, largest, level, file_lifetime,
-                                      predicted_size, &allocated_zone,
-                                      min_capacity);
+                                       predicted_size, &allocated_zone,
+                                       min_capacity);
     }
     // if (allocated_zone != nullptr) {
     //   // printf("allocateiozone-go to end\n");

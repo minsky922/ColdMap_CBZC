@@ -2961,7 +2961,8 @@ double DBImpl::GetAvgCompressibilityOflevel(int output_level) {
       internal_stats->TEST_GetCompactionStats();
 
   if (output_level < 0 || static_cast<size_t>(output_level) >= cs_vec.size()) {
-    // printf("GetAvgCompressibilityOflevel :: invalid level=%d\n", output_level);
+    // printf("GetAvgCompressibilityOflevel :: invalid level=%d\n",
+    // output_level);
     return 0.0;
   }
 
@@ -3099,6 +3100,7 @@ void DBImpl::DownwardAdjacentFileList(Slice& s, Slice& l, int level,
 }
 
 void DBImpl::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
+  InstrumentedMutexLock l(&mutex_);
   auto vstorage =
       versions_->GetColumnFamilySet()->GetDefault()->current()->storage_info();
 

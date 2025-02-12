@@ -3346,6 +3346,7 @@ class Benchmark {
 
       int num_repeat = 1;
       int num_warmup = 0;
+      printf("@@@@@@@@@@ name %s", name.c_str());
       if (!name.empty() && *name.rbegin() == ']') {
         auto it = name.find('[');
         if (it == std::string::npos) {
@@ -3358,7 +3359,9 @@ class Benchmark {
 
         std::string bench_arg;
         std::stringstream args_stream(args);
+        printf("@@@@@@@@@@@@ args %s\n", args.c_str());
         while (std::getline(args_stream, bench_arg, '-')) {
+          printf("bench_arg %s\n", bench_arg.c_str());
           if (bench_arg.empty()) {
             continue;
           }

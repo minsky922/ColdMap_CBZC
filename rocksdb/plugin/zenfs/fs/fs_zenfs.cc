@@ -350,9 +350,10 @@ void ZenFS::BackgroundStatTimeLapse() {
       uint64_t rc = zbd_->GetRC();
       uint64_t cur_ops = cur_ops_.load();
       uint64_t cur_io_blocking = zbd_->GetBlocking();
-      printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t", cur_time,
+      printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t", cur_time,
              zbd_->CalculateFreePercent(), cur_ops, gc_bytes_written,
-             cur_io_blocking, rc);
+             cur_io_blocking, rc, zbd_->open_io_zones_.load(),
+             zbd_->active_io_zones_.load());
       printf("\n");
       // puts("");
       fflush(stdout);
