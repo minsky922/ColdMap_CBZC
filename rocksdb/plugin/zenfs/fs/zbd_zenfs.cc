@@ -393,6 +393,7 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // device_free_space_.store(device_free_space);
 
   start_time_ = time(NULL);
+  uint64_t g_file_size_dist[5] = {0, 0, 0, 0, 0};
 
   return IOStatus::OK();
 }
