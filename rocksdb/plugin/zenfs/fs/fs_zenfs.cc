@@ -2200,6 +2200,20 @@ IOStatus ZenFS::DeleteFileNoLock(std::string fname, const IOOptions& options,
   fname = FormatPathLexically(fname);
   zoneFile = GetFileNoLock(fname);
   if (zoneFile != nullptr) {
+    uint64_t file_size_bytes = zoneFile->GetFileSize();
+    uint64_t file_size_mb = file_size_bytes >> 20;
+
+    if (file_size_mb <= 32)
+      zbd_->g_file_size_dist[0]++;
+    else if (file_size_mb <= 63)
+      zbd_->g_file_size_dist[1]++;
+    else if (file_size_mb <= 128)
+      zbd_->gg_file_size_dist[2]++;
+    else if (file_size_mb <= 256)
+      zbd_->g_file_size_dist[3]++;
+    else
+      zbd_->g_file_size_dist[4]++;
+
     std::string record;
     // 파일 맵에서 삭제
     files_.erase(fname);
