@@ -359,6 +359,10 @@ void ZenFS::BackgroundStatTimeLapse() {
       fflush(stdout);
       fflush(stderr);
 
+      for (int i = 0; i < 5; i++) {
+        total += file_size_dist[i];
+      }
+
       if (total == 0) {
         memset(file_size_dist, 0, sizeof(file_size_dist));
         printf("[FileSizeDist] No files counted yet.\n");
