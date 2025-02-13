@@ -2208,7 +2208,7 @@ IOStatus ZenFS::DeleteFileNoLock(std::string fname, const IOOptions& options,
     else if (file_size_mb <= 63)
       zbd_->g_file_size_dist[1]++;
     else if (file_size_mb <= 128)
-      zbd_->gg_file_size_dist[2]++;
+      zbd_->g_file_size_dist[2]++;
     else if (file_size_mb <= 256)
       zbd_->g_file_size_dist[3]++;
     else
