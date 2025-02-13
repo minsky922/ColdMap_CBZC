@@ -2605,6 +2605,7 @@ void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
             << ", allocation_schme = " << allocation_scheme
             << ", zc_scheme = " << zc_scheme
             << ", finish_scheme = " << finish_scheme
+            << ", alpha_value = " << alpha_value
             << ", predict_cnt = " << predict_cnt << std::endl;
   zbd_->SetResetScheme(r, partial_reset_scheme, T, zc, until, allocation_scheme,
                        zc_scheme, alpha_value, sigma_value, finish_scheme,

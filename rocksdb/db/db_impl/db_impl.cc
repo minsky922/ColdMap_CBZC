@@ -3109,6 +3109,9 @@ void DBImpl::TrivialMoveFiles(int level, std::set<uint64_t>& trivial_set) {
     if (file == nullptr) {
       continue;
     }
+    if (reinterpret_cast<uintptr_t>(file) < 0x1000) {
+      continue;
+    }
     if (file->being_compacted) {
       continue;
     }

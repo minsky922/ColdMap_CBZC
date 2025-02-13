@@ -1,2 +1,2 @@
 #pragma once
-#define ZENFS_VERSION "v1.0-624-ga2aa64d-dirty"
+#define ZENFS_VERSION "v1.0-625-g3fcd92d-dirty"
