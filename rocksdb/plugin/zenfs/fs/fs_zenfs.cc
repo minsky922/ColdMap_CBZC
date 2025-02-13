@@ -289,6 +289,8 @@ ZenFS::ZenFS(ZonedBlockDevice* zbd, std::shared_ptr<FileSystem> aux_fs,
 
   // 메타데이터 작성기 초기화
   metadata_writer_.zenFS = this;
+
+  memset(file_size_dist, 0, sizeof(file_size_dist));
 }
 
 /*이 소멸자는 ZenFS 객체가 소멸될 때 호출되며, ZenFS 파일 시스템의 정리 작업을
