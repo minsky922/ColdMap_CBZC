@@ -356,11 +356,12 @@ void ZenFS::BackgroundStatTimeLapse() {
              cur_io_blocking, rc, zbd_->open_io_zones_.load(),
              zbd_->active_io_zones_.load());
       printf("\n");
+      fflush(stdout);
+      fflush(stderr);
 
       if (total == 0) {
         memset(file_size_dist, 0, sizeof(file_size_dist));
         printf("[FileSizeDist] No files counted yet.\n");
-        return;
       }
 
       double perc0 = (file_size_dist[0] * 100.0) / total;
