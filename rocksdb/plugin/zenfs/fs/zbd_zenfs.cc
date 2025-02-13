@@ -393,7 +393,6 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // device_free_space_.store(device_free_space);
 
   start_time_ = time(NULL);
-  uint64_t g_file_size_dist[5] = {0, 0, 0, 0, 0};
 
   return IOStatus::OK();
 }
@@ -649,34 +648,6 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     printf("reset_count_before_full_ %lu reset_size_before_full_ %lu\n",
            reset_count_before_full_.load(), reset_size_before_full_.load());
   }
-
-  uint64_t total = 0;
-  for (int i = 0; i < 5; i++) {
-    total += g_file_size_dist[i];
-  }
-
-  if (total == 0) {
-    printf("[FileSizeDist] No files counted yet.\n");
-    return;
-  }
-
-  double perc0 = (g_file_size_dist[0] * 100.0) / total;
-  double perc1 = (g_file_size_dist[1] * 100.0) / total;
-  double perc2 = (g_file_size_dist[2] * 100.0) / total;
-  double perc3 = (g_file_size_dist[3] * 100.0) / total;
-  double perc4 = (g_file_size_dist[4] * 100.0) / total;
-
-  printf("[FileSizeDist] Total files: %llu\n", (unsigned long long)total);
-  printf("  0 ~ 32MB :   %llu (%.2f%%)\n",
-         (unsigned long long)g_file_size_dist[0], perc0);
-  printf("  33 ~ 63MB:   %llu (%.2f%%)\n",
-         (unsigned long long)g_file_size_dist[1], perc1);
-  printf("  64 ~ 128MB:  %llu (%.2f%%)\n",
-         (unsigned long long)g_file_size_dist[2], perc2);
-  printf(" 129 ~ 256MB:  %llu (%.2f%%)\n",
-         (unsigned long long)g_file_size_dist[3], perc3);
-  printf(" Over 256MB:   %llu (%.2f%%)\n",
-         (unsigned long long)g_file_size_dist[4], perc4);
 
   for (const auto z : meta_zones) {
     delete z;

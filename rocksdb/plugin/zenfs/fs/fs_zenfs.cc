@@ -345,6 +345,7 @@ void ZenFS::BackgroundStatTimeLapse() {
     */
     sleep(1);
     int cur_time = mount_time_.fetch_add(1);
+    uint64_t total = 0;
     if (cur_time % 50 == 0) {
       uint64_t gc_bytes_written = zbd_->GetGCBytesWritten();
       uint64_t rc = zbd_->GetRC();
@@ -355,6 +356,30 @@ void ZenFS::BackgroundStatTimeLapse() {
              cur_io_blocking, rc, zbd_->open_io_zones_.load(),
              zbd_->active_io_zones_.load());
       printf("\n");
+
+      if (total == 0) {
+        file_size_dist[5] = {0, 0, 0, 0, 0};
+        printf("[FileSizeDist] No files counted yet.\n");
+        return;
+      }
+
+      double perc0 = (file_size_dist[0] * 100.0) / total;
+      double perc1 = (file_size_dist[1] * 100.0) / total;
+      double perc2 = (file_size_dist[2] * 100.0) / total;
+      double perc3 = (file_size_dist[3] * 100.0) / total;
+      double perc4 = (file_size_dist[4] * 100.0) / total;
+
+      printf("[FileSizeDist] Total files: %llu\n", (unsigned long long)total);
+      printf("  0 ~ 32MB :   %llu (%.2f%%)\n",
+             (unsigned long long)file_size_dist[0], perc0);
+      printf("  33 ~ 63MB:   %llu (%.2f%%)\n",
+             (unsigned long long)file_size_dist[1], perc1);
+      printf("  64 ~ 128MB:  %llu (%.2f%%)\n",
+             (unsigned long long)file_size_dist[2], perc2);
+      printf(" 129 ~ 256MB:  %llu (%.2f%%)\n",
+             (unsigned long long)file_size_dist[3], perc3);
+      printf(" Over 256MB:   %llu (%.2f%%)\n",
+             (unsigned long long)file_size_dist[4], perc4);
       // puts("");
       fflush(stdout);
       fflush(stderr);
@@ -2204,15 +2229,15 @@ IOStatus ZenFS::DeleteFileNoLock(std::string fname, const IOOptions& options,
     uint64_t file_size_mb = file_size_bytes >> 20;
 
     if (file_size_mb <= 32)
-      zbd_->g_file_size_dist[0]++;
+      file_size_dist[0]++;
     else if (file_size_mb <= 63)
-      zbd_->g_file_size_dist[1]++;
+      file_size_dist[1]++;
     else if (file_size_mb <= 128)
-      zbd_->g_file_size_dist[2]++;
+      file_size_dist[2]++;
     else if (file_size_mb <= 256)
-      zbd_->g_file_size_dist[3]++;
+      file_size_dist[3]++;
     else
-      zbd_->g_file_size_dist[4]++;
+      file_size_dist[4]++;
 
     std::string record;
     // 파일 맵에서 삭제

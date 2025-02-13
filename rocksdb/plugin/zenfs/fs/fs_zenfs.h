@@ -168,6 +168,8 @@ class ZenFS : public FileSystemWrapper {
 
   std::atomic<int> mount_time_{0};
 
+  uint64_t file_size_dist[5];
+
   DB* db_ptr_ = nullptr;
 
   struct ZenFSMetadataWriter : public MetadataWriter {

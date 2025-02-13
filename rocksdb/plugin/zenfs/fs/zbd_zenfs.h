@@ -524,8 +524,6 @@ class ZonedBlockDevice {
   uint64_t until_ = 20;
   std::atomic<bool> zc_running_ = false;
 
-  static uint64_t g_file_size_dist[5];
-
   uint64_t GetLevelSizeLimit(int level) {
     uint64_t max_bytes_for_level = max_bytes_for_level_base_;
     for (int l = 1; l < level; l++) {
