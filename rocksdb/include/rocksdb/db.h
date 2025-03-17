@@ -400,6 +400,9 @@ class DB {
   virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
                                  std::set<uint64_t>& compacting_files);
 
+  virtual void SameLevelFileList(int level, std::unordered_map<uint64_t, uint64_t>& file_map,
+                                 bool exclude_being_compacted = true, bool overap = true); 
+
   virtual double ReCalculateCompactionScore(int level);
   virtual std::vector<int> NumLevelsFiles(void);
   virtual std::vector<double> LevelsCompactionScore(void);

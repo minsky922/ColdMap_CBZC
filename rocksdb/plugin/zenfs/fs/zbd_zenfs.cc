@@ -692,6 +692,37 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     delete z;
   }
   PrintMisPredictStats();
+
+  std::cout << "[Accumulated Stats] right_vertical_total="
+  << predict_right_vertical_.load()
+  << ", false_vertical_total=" << predict_false_vertical_.load()
+  << ", right_horizontal_total=" << predict_right_horizontal_.load()
+  << ", false_horizontal_total=" << predict_false_horizontal_.load()
+  << std::endl;
+
+   {
+    uint64_t rvert  = predict_right_vertical_.load();
+    uint64_t fvert  = predict_false_vertical_.load();
+    uint64_t totalv = rvert + fvert;
+    if (totalv == 0) {
+      std::cout << "[Accumulated] Vertical ratio: N/A" << std::endl;
+    } else {
+      double ratio_v = double(fvert) / double(totalv);
+      std::cout << "[Accumulated] Vertical false/(right+false) = " 
+                << ratio_v << " (≈ " << ratio_v * 100.0 << "%)" << std::endl;
+    }
+
+    uint64_t rhori  = predict_right_horizontal_.load();
+    uint64_t fhori  = predict_false_horizontal_.load();
+    uint64_t totalh = rhori + fhori;
+    if (totalh == 0) {
+      std::cout << "[Accumulated] Horizontal ratio: N/A" << std::endl;
+    } else {
+      double ratio_h = double(fhori) / double(totalh);
+      std::cout << "[Accumulated] Horizontal false/(right+false) = "
+                << ratio_h << " (≈ " << ratio_h * 100.0 << "%)" << std::endl;
+    }
+  }
 }
 
 #define LIFETIME_DIFF_NOT_GOOD (100)
@@ -754,6 +785,94 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
   if (allocation_scheme_ == LIZA) {
     return;
   }
+
+  LSM_Tree_State cur_state;
+  cur_state.set=true;
+
+  for(int l =0 ;l <=cur_max_level_;l++){
+    cur_state.lsm_tree_[l] = lsm_tree_[l];
+    // do not exclude current compaction file :exclude_being_compacted =false
+    // void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
+    //                            bool exclude_being_compacted) {
+
+    std::unordered_map<uint64_t, uint64_t> file_map;
+    this->SameLevelFileList(l, file_map, false, false);
+    cur_state.ssts[l].clear();
+    for (const auto& [fno, oscore] : file_map) {
+      cur_state.ssts[l].push_back(fno);
+      cur_state.oscore_map[l][fno] = oscore;
+    }
+    // for (const auto& [fno, oscore] : file_map) {
+    //   // std::cout << "[GiveZenFStoLSMTreeHint] Level=" << l
+    //   //           << ", fno=" << fno
+    //   //           << ", o_score=" << oscore << std::endl;
+    // }
+  }
+
+  int predict_right_vertical= 0;
+  int predict_false_vertical=0;
+  int predict_right_horizontal= 0;
+  int predict_false_horizontal=0;
+  if(prev_state_.set==true){
+    // compare vertical state
+    //  sort previous state by score
+    //  sort current state by score
+    for (int l = 0; l <= cur_max_level_; l++) {
+      if (prev_state_.lsm_tree_[l] == cur_state.lsm_tree_[l]) {
+        predict_right_vertical++;
+      } else {
+        predict_false_vertical++;
+      }
+    }
+    // compare horizontal state
+    // for(int l =0 ;l <=cur_max_level_;l++){
+    //   // check index is still same as prev
+    //   if(cur_state.ssts[l].size()>prev_state_.ssts[l].size()){
+    //     for( int k = 0; k< prev_state_.size(); k++){
+    //         // you do as your best.
+    //     }
+
+    //   }else{
+    //     for( int k = 0; k< cur_state_.size(); k++){
+    //         // you do as your best.
+    //     }
+    //   }
+    // }
+
+    for (int l = 0; l <= cur_max_level_; l++) {    
+      std::unordered_map<uint64_t, uint64_t> prev_file_map = prev_state_.oscore_map[l];
+      std::unordered_map<uint64_t, uint64_t> cur_file_map = cur_state.oscore_map[l];
+    
+      for (const auto& [fno, oscore] : cur_file_map) {
+        if (prev_file_map.find(fno) == prev_file_map.end()) {
+          // predict_false_horizontal++; //새로생긴거
+        } else {
+          if (prev_file_map[fno] == oscore) {
+            predict_right_horizontal++;
+          } else {
+            predict_false_horizontal++;
+          }
+        }
+      }
+    
+      // // 삭제된거
+      // for (const auto& [fno, oscore] : prev_file_map) {
+      //   if (cur_file_map.find(fno) == cur_file_map.end()) {
+      //     predict_false_horizontal++;
+      //   }
+      // }
+    }
+    
+  }
+
+  predict_right_vertical_.fetch_add(predict_right_vertical);
+  predict_false_vertical_.fetch_add(predict_false_vertical);
+  predict_right_horizontal_.fetch_add(predict_right_horizontal);
+  predict_false_horizontal_.fetch_add(predict_false_horizontal);
+
+ //save cur state as prev state
+  prev_state_ = cur_state;
+
   if (trivial_move) {
     if (output_level == 1) {
       // printf("0->1 trivial move??\n");
@@ -2562,6 +2681,16 @@ void ZonedBlockDevice::SameLevelFileList(int level,
   fno_list.clear();
   // printf("level %d",level);
   db_ptr_->SameLevelFileList(level, fno_list, exclude_being_compacted);
+}
+
+void ZonedBlockDevice::SameLevelFileList(int level,
+  std::unordered_map<uint64_t, uint64_t> &file_map,
+  bool exclude_being_compacted, bool overap) {
+  assert(db_ptr_ != nullptr);
+  
+  file_map.clear();
+  // printf("level %d",level);
+  db_ptr_->SameLevelFileList(level, file_map, exclude_being_compacted, overap);
 }
 
 void ZonedBlockDevice::UpperLevelFileList(Slice &smallest, Slice &largest,

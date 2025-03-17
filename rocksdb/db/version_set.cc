@@ -3263,6 +3263,10 @@ void SortFileByOverlappingRatio(
                                           file->compensated_file_size /
                                           ttl_boost_score;
 
+    file->o_score = overlapping_bytes * 1024U /
+                file->compensated_file_size /
+                ttl_boost_score;
+
     // printf(
     //     "File Number: %lu, Overlapping Bytes: %lu, Compensated File Size:
     //     %lu, " "TTL Boost Score: %lu, Order Value: %lu\n",

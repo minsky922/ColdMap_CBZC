@@ -349,6 +349,10 @@ class DBImpl : public DB {
                                  bool exclude_being_compacted = true) override;
   virtual void SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
                                  std::set<uint64_t>& compacting_files) override;
+                              
+
+  virtual void SameLevelFileList(int level, std::unordered_map<uint64_t, uint64_t>& file_map,
+                                 bool exclude_being_compacted = true, bool overap = true) override;                               
   virtual uint64_t NowMicros(void) override;
 
   virtual std::vector<int> NumLevelsFiles(void) override;

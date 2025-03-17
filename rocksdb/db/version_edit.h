@@ -175,6 +175,8 @@ struct FileMetaData {
 
   FileSampledStats stats;
 
+  uint64_t o_score = 0;  // overapping score 새로 추가
+
   // Stats for compensating deletion entries during compaction
 
   // File size compensated by deletion entry.

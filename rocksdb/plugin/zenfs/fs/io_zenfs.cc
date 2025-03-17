@@ -31,6 +31,9 @@
 #include "rocksdb/status.h"
 #include "util/coding.h"
 
+#include "zbd_zenfs.h"  
+
+
 namespace ROCKSDB_NAMESPACE {
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone)
@@ -1117,6 +1120,8 @@ void ZonedWritableFile::SetMinMaxKeyAndLevel(const Slice& s, const Slice& l,
   zoneFile_->smallest_ = s;
   zoneFile_->largest_ = l;
   zoneFile_->level_ = output_level;
+
+  zoneFile_->GetZbd()->cur_max_level_ = std::max(zoneFile_->GetZbd()->cur_max_level_,output_level);
 
   return;
 }

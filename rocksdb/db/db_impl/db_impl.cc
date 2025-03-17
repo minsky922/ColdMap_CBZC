@@ -3210,6 +3210,8 @@ uint64_t DBImpl::NowMicros(void) {
   return immutable_db_options_.clock->NowMicros();
 }
 
+
+
 void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
                                std::set<uint64_t>& compacting_files) {
   auto vstorage =
@@ -3250,6 +3252,41 @@ void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
     fno_list.push_back(file->fd.GetNumber());
   }
 }
+
+// struct OverapInfo {
+//   uint64_t fno;
+//   uint64_t oscore;
+// };
+
+struct OverapInfo {
+  uint64_t fno;
+  uint64_t oscore;
+};
+
+void DBImpl::SameLevelFileList(int level,
+                               std::unordered_map<uint64_t, uint64_t>& file_map,
+                               bool exclude_being_compacted, bool overap) {
+
+  (void) overap;
+  auto vstorage = versions_->GetColumnFamilySet()
+                                 ->GetDefault()
+                                 ->current()
+                                 ->storage_info();
+  const std::vector<int>& files_by_compactio_pri =
+      vstorage->FilesByCompactionPri(level);
+
+  auto files = vstorage->LevelFiles(level);
+  for (size_t i = 0; i < files_by_compactio_pri.size(); i++) {
+    int index = files_by_compactio_pri[i];
+    auto file = files[index];
+    if (file->being_compacted && exclude_being_compacted) {
+      continue;
+    }
+
+    file_map[file->fd.GetNumber()] = file->o_score;
+  }
+}
+
 
 std::vector<int> DBImpl::NumLevelsFiles(void) {
   std::vector<int> ret;
@@ -4765,6 +4802,9 @@ void DB::SameLevelFileList(int, std::vector<uint64_t>&, std::set<uint64_t>&) {
 void DB::SameLevelFileList(int, std::vector<uint64_t>&, bool) {
   std::cout << "DB::SameLevelFileList not Supported\n";
 }
+void DB::SameLevelFileList(int, std::unordered_map<uint64_t, uint64_t>&, bool, bool){
+    std::cout << "DB::SameLevelFileList not Supported\n";
+} 
 void DB::AdjacentFileList(Slice&, Slice&, int, std::vector<uint64_t>&) {
   std::cout << "DB::AdjcanetFileLIst not Supported\n";
 }

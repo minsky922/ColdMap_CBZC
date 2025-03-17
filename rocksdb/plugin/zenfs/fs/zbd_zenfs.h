@@ -343,6 +343,12 @@ class ZonedBlockDevice {
   std::atomic<clock_t> runtime_reset_reset_latency_{0};
   std::atomic<clock_t> runtime_reset_latency_{0};
 
+
+  std::atomic<uint64_t> predict_right_vertical_{0};
+  std::atomic<uint64_t> predict_false_vertical_{0};
+  std::atomic<uint64_t> predict_right_horizontal_{0};
+  std::atomic<uint64_t> predict_false_horizontal_{0};
+
   std::atomic<uint64_t> device_free_space_;
 
   std::mutex compaction_refused_lock_;
@@ -581,6 +587,16 @@ class ZonedBlockDevice {
   std::atomic<uint64_t> total_deletion_after_copy_seq_{0};
   std::atomic<uint64_t> total_deletion_after_copy_seq_distribution_[SEQ_DIST_MAX];
   std::atomic<uint64_t> cost_benefit_score_sum_sequence_mb_{0};
+
+  struct LSM_Tree_State{
+    bool set= false;
+    uint64_t lsm_tree_[10];
+    std::vector<uint64_t> ssts[10];
+    std::unordered_map<uint64_t, uint64_t> oscore_map[10];
+  };
+
+  LSM_Tree_State prev_state_;
+  int cur_max_level_ = 0;
   
 
   std::atomic<uint64_t> file_size_distribution_[1077];
@@ -997,6 +1013,9 @@ class ZonedBlockDevice {
                          bool exclude_being_compacted = true);
   void SameLevelFileList(int level, std::vector<uint64_t> &fno_list,
                          std::set<uint64_t> &compacting_files);
+          
+  void SameLevelFileList(int level, std::unordered_map<uint64_t, uint64_t>& file_map,
+                                 bool exclude_being_compacted = true, bool overap = true);  
   void UpperLevelFileList(Slice &smallest, Slice &largest, int level,
                           std::vector<uint64_t> &fno_list);
   bool GetMinMaxKey(uint64_t fno, Slice &smallest, Slice &largest);
