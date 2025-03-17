@@ -34,7 +34,7 @@
 namespace ROCKSDB_NAMESPACE {
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone)
-    : start_(start), length_(length), zone_(zone), is_zc_copied_(false) {}
+    : start_(start), length_(length), zone_(zone), is_zc_copied_(false),ZC_COPIED_STATE(NO_COPIED) {}
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
                        std::string fname, ZoneFile* zfile)
@@ -45,7 +45,8 @@ ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
       fname_(fname),
       header_size_(0),
       zfile_(zfile),
-      is_zc_copied_(false) {
+      is_zc_copied_(false),
+      ZC_COPIED_STATE(NO_COPIED) {
   zc_copied_ts_.tv_sec = 0;
   zc_copied_ts_.tv_nsec = 0;
   if (zone == nullptr) {
@@ -299,25 +300,27 @@ void ZoneFile::ClearExtents() {
 
   struct timespec cur_deletion_ts;
   clock_gettime(CLOCK_MONOTONIC, &cur_deletion_ts);
-
+  int cur_fops_sequence = zbd_->file_operation_sequence_.load();
   uint64_t sum_diff_ns = 0;
   size_t deleted_after_copy_extents_n = 0;
+  size_t deleted_after_copy_size = 0;
   // bool motivation_check_=false;
-  Zone* motivation_check_zone =nullptr;
+  size_t deleted_after_copy_sequence_sum=0;
+
+  Zone* motivation_check_zone = nullptr;
   for (auto e = std::begin(extents_); e != std::end(extents_); ++e) {
     Zone* zone = (*e)->zone_;
 
     assert(zone && zone->used_capacity_ >= (*e)->length_);
     zone->used_capacity_ -= (*e)->length_;
-    if(zone->this_zone_motivation_check_){
-      motivation_check_zone=zone;
+    if (zone->this_zone_motivation_check_) {
+      motivation_check_zone = zone;
     }
-
     if (zc_scheme == CBZC5) {
       zone->recent_inval_time_ = std::chrono::system_clock::now();
     }
 
-    if ((*e)->is_zc_copied_) {
+    if ((*e)->is_zc_copied_ && ((*e)->ZC_COPIED_STATE==ZC_COPIED)) {
       // (현재삭제시각 - 복사시각) -> 나노초로 계산
       long diff_ns =
           (cur_deletion_ts.tv_sec - (*e)->zc_copied_ts_.tv_sec) * 1000000000L +
@@ -328,46 +331,67 @@ void ZoneFile::ClearExtents() {
       }
       sum_diff_ns += diff_ns;
       deleted_after_copy_extents_n++;
+      deleted_after_copy_size += (*e)->length_;
+      deleted_after_copy_sequence_sum+=(cur_fops_sequence-(*e)->zc_copied_sequence_);
     }
     delete *e;
   }
   extents_.clear();
 
-
-
   uint64_t sum_diff_us = sum_diff_ns / 1000;
 
-  if(motivation_check_zone){
-              printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs CLEAREXTENTS\n");
-    std::lock_guard<std::mutex> lg(motivation_check_zone->motivation_lifetime_diffs_lock_);
+  if (motivation_check_zone) {
+    printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs CLEAREXTENTS\n");
+    std::lock_guard<std::mutex> lg(
+        motivation_check_zone->motivation_lifetime_diffs_lock_);
 
-    motivation_check_zone->motivation_lifetime_diffs.push_back({created_time_,cur_deletion_ts,false});
+    motivation_check_zone->motivation_lifetime_diffs.push_back(
+        {created_time_, cur_deletion_ts, false});
   }
 
-  zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_us);
-  zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
+  // zbd_->total_deletion_after_copy_time_.fetch_add(sum_diff_us);
+  // zbd_->total_deletion_after_copy_n_.fetch_add(deleted_after_copy_extents_n);
+  if (deleted_after_copy_extents_n) {
+    zbd_->total_deletion_after_copy_time_.fetch_add(
+        sum_diff_us / deleted_after_copy_extents_n);
+    zbd_->total_deletion_after_copy_n_.fetch_add(1);
+    zbd_->total_deletion_after_copy_size_.fetch_add(deleted_after_copy_size);
+    uint64_t actual_cost_benefit_score =
+        (deleted_after_copy_size >> 20) *
+        ((sum_diff_us / 1000) / deleted_after_copy_extents_n);
+    zbd_->actual_cost_benefit_score_.fetch_add(actual_cost_benefit_score);
+    
+    zbd_->total_deletion_after_copy_seq_.fetch_add((deleted_after_copy_sequence_sum*100)/deleted_after_copy_extents_n);
+    if(deleted_after_copy_sequence_sum/deleted_after_copy_extents_n>SEQ_DIST_MAX){
+      printf("SEQUENCE OVER SEQ_DIST_MAX : %lu",(deleted_after_copy_sequence_sum/deleted_after_copy_extents_n));
+    }else{
+      zbd_->total_deletion_after_copy_seq_distribution_[(deleted_after_copy_sequence_sum/deleted_after_copy_extents_n)]++;
+    }
+   
+    uint64_t tmp = ((deleted_after_copy_size >> 20) * deleted_after_copy_sequence_sum)/(deleted_after_copy_extents_n);
+    // tmp = tmp * 
+    zbd_->cost_benefit_score_sum_sequence_mb_.fetch_add(tmp);
+
+  }
 }
 
 IOStatus ZoneFile::CloseActiveZone() {
   struct timespec timespec;
-  clock_gettime(CLOCK_MONOTONIC,&timespec);
+  clock_gettime(CLOCK_MONOTONIC, &timespec);
   IOStatus s = IOStatus::OK();
   if (active_zone_) {
     bool full = active_zone_->IsFull();
     s = active_zone_->Close();
 
-
-    if(active_zone_->this_zone_motivation_check_){
-          printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs ALLOC %s\n",linkfiles_[0].c_str());
-      if(active_zone_->is_allocated_==false){
-        active_zone_->is_allocated_=true;
-        active_zone_->allocated_time_=timespec;
+    if (active_zone_->this_zone_motivation_check_) {
+      printf("@@@@@@@@@@@@@@@@@@ reset motivation_lifetime_diffs ALLOC %s\n",
+             linkfiles_[0].c_str());
+      if (active_zone_->is_allocated_ == false) {
+        active_zone_->is_allocated_ = true;
+        active_zone_->allocated_time_ = timespec;
       }
-      created_time_=timespec;
+      created_time_ = timespec;
     }
-
-
-
 
     ReleaseActiveZone();
     if (!s.ok()) {
@@ -819,36 +843,71 @@ IOStatus ZonedWritableFile::CAZAFlushSST() {
   }
   // printf("%lu
   // %d\n",zoneFile_->predicted_size_,IS_BIG_SSTABLE(zoneFile_->predicted_size_));
-  // if(zoneFile_->level_ ==0){
+  if(zoneFile_->level_ ==0){
+    int seq = zoneFile_->GetZbd()->file_operation_sequence_.fetch_add(1);
+    zoneFile_->GetZbd()->latest_file_operation_sequence_[SeqL0L1andFlush] = seq;
+
+    // if(zoneFile_->GetZbd()->coldest_type_set_== true){
+    //   // todo
+    //   std::lock_guard<std::mutex> lg(zoneFile_->GetZbd()->coldest_type_lock_);
+    //   bool ok = true;
+    //   zoneFile_->GetZbd()->check_coldest_[SeqL0L1andFlush]=true;
+      
+    //   for(int i =0;i<10;i++){
+    //     if(zoneFile_->GetZbd()->latest_file_operation_sequence_[i]==0){
+    //       continue;
+    //     }
+    //     if(zoneFile_->GetZbd()->check_coldest_[i]==true){
+    //       continue;
+    //     }
+    //     ok=false;
+    //     break;
+    //   }
+
+    //   if(ok==true){
+    //     if(zoneFile_->GetZbd()->coldest_type_!=SeqL0L1andFlush){
+    //       zoneFile_->GetZbd()->CBSC_mispredict_stats_[zoneFile_->GetZbd()->coldest_type_].fetch_add(1);
+    //     }
+    //     zoneFile_->GetZbd()->CBSC_total_predict_stats_[zoneFile_->GetZbd()->coldest_type_].fetch_add(1);
+    //     zoneFile_->GetZbd()->coldest_type_set_=false;
+    //   }else{
+    //     // if(zoneFile_->GetZbd()->coldest_type_==)
+    //   }
+    // }
+
+
+  }
   //   zoneFile_->GetZbd()->lsm_tree_[0].fetch_add(1);
   // }else{
   zoneFile_->GetZbd()->lsm_tree_[zoneFile_->level_].fetch_add(
       zoneFile_->predicted_size_);
+  if(zoneFile_->predicted_size_>>20 < 1024){
+    zoneFile_->GetZbd()->file_size_distribution_[zoneFile_->predicted_size_>>20].fetch_add(1);
+  
+  }else{
+    printf("CAZAFlushSST fsize %lu\n",zoneFile_->predicted_size_>>20);
+  }
+
   // }
   // input_fno_.clear();
   return s;
 }
 
-/* 주어진 데이터를 블록 정렬된 방식으로 파일 끝에 추가하는 역할을 합니다. 이
- * 함수는 특정 크기의 데이터를 받아 여러 영역(Zone)에 걸쳐 데이터를 추가하며,
- * 필요한 경우 새로운 영역을 할당합니다. 주석에 따르면, 입력 데이터와 데이터
- * 크기가 블록 단위로 정렬되어 있다고 가정합니다*/
+
 /* Assumes that data and size are block aligned */
 IOStatus ZoneFile::Append(void* data, int data_size) {
-  uint32_t left = data_size;  // 남은 데이터 크기
+  uint32_t left = data_size;  
   uint32_t wr_size,
-      offset = 0;  // wr_size: 현재 쓰기 크기, offset: 데이터 오프셋
-  IOStatus s = IOStatus::OK();  // 함수의 반환 상태
+      offset = 0;  
+  IOStatus s = IOStatus::OK(); 
 
-  // 활성 영역이 없으면 새로운 영역을 할당
+
   if (!active_zone_) {
     s = AllocateNewZone();
     if (!s.ok()) return s;
   }
 
-  // 남은 데이터가 있을 때까지 반복
   while (left) {
-    // 활성 영역의 용량이 0이면 새로운 영역을 할당
     if (active_zone_->capacity_ == 0) {
       PushExtent();
 
@@ -861,22 +920,18 @@ IOStatus ZoneFile::Append(void* data, int data_size) {
       if (!s.ok()) return s;
     }
 
-    // 현재 남은 데이터 크기와 활성 영역의 용량 중 작은 값을 선택하여 wr_size에
-    // 저장
     wr_size = left;
     if (wr_size > active_zone_->capacity_) wr_size = active_zone_->capacity_;
 
-    // 데이터를 현재 활성 영역에 추가
     s = active_zone_->Append((char*)data + offset, wr_size);
     if (!s.ok()) return s;
 
-    // 파일 크기를 갱신하고, 남은 데이터 크기와 오프셋을 조정
     file_size_ += wr_size;
     left -= wr_size;
     offset += wr_size;
   }
 
-  return IOStatus::OK();  // 데이터 추가가 성공적으로 완료되었음을 반환
+  return IOStatus::OK(); 
 }
 
 IOStatus ZoneFile::RecoverSparseExtents(uint64_t start, uint64_t end,

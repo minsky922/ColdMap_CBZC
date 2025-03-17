@@ -3,9 +3,6 @@
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-/* Zoned Block Device(ZBD)와 관련된 기능을 구현하고 정의하는 파일입니다. ZBD의
- * 초기화, 읽기, 쓰기, 리셋 등의 작업을 포함하며, ZBD와의 인터페이스를
- * 제공합니다.*/
 #if !defined(ROCKSDB_LITE) && !defined(OS_WIN)
 
 #include "zbd_zenfs.h"
@@ -55,6 +52,7 @@
 // #define ZENFS_META_ZONES (3)
 
 #define ZENFS_IO_ZONES (100)
+// #define ZENFS_IO_ZONES (1843)  // 1.8T
 
 /* Minimum of number of zones that makes sense */
 #define ZENFS_MIN_ZONES (32)
@@ -99,7 +97,6 @@ void Zone::EncodeJson(std::ostream &json_stream) {
   json_stream << "}";
 }
 
-/* 존이 재설정되면 용량, 쓰기 포인터, 수명 등이 초기화 */
 IOStatus Zone::Reset() {
   bool offline;
   uint64_t max_capacity;
@@ -144,9 +141,7 @@ IOStatus Zone::Reset() {
   ////
   return IOStatus::OK();
 }
-/* 존을 마무리하고 용량을 0으로 설정하며, 쓰기 포인터를 존의 끝으로
-이동시킵니다. 존이 더 이상 쓰기 작업을 받지 않도록 설정합니다. 일반적으로 데이터
-쓰기가 완료된 후 존을 마무리할 때 사용됩니다.*/
+
 IOStatus Zone::Finish() {
   // assert(IsBusy());
 
@@ -164,9 +159,6 @@ IOStatus Zone::Finish() {
   return IOStatus::OK();
 }
 
-/* 존을 닫습니다. 존이 비어 있지 않거나 가득 차 있지 않을 때만 닫기 작업을
-수행합니다. 일반적으로 존을 더 이상 사용하지 않을 때 호출됩니다. 이는 존이 가득
-찼거나 비어 있지 않은 경우에만 수행됩니다.*/
 IOStatus Zone::Close() {
   // assert(IsBusy());
 
@@ -181,11 +173,6 @@ IOStatus Zone::Close() {
   return IOStatus::OK();
 }
 
-/* 주어진 데이터를 존에 추가하는 작업을 수행합니다. 이 함수는 데이터를 쓰기 전에
- * 존의 용량이 충분한지 확인하고, 데이터 크기가 블록 크기의 배수인지 검증합니다.
- * 쓰기 작업이 완료되면 쓰기 포인터와 용량을 업데이트하고, 쓰여진 바이트 수를
- * 기록합니다. 또한, 메트릭 시스템에 쓰기 지연 시간과 처리량을 보고합니다. 모든
- * 데이터가 성공적으로 쓰여지면 IOStatus::OK()를 반환합니다*/
 IOStatus Zone::Append(char *data, uint32_t size) {
   ZenFSMetricsLatencyGuard guard(zbd_->GetMetrics(), ZENFS_ZONE_WRITE_LATENCY,
                                  Env::Default());
@@ -215,8 +202,6 @@ IOStatus Zone::Append(char *data, uint32_t size) {
   return IOStatus::OK();
 }
 
-/* 존의 사용 플래그(busy flag)를 해제하려고 시도하며, 해제가 실패하면 오류
- * 상태를 반환합니다. 성공적으로 해제되면 IOStatus::OK()를 반환*/
 inline IOStatus Zone::CheckRelease() {
   if (!Release()) {
     assert(false);
@@ -227,7 +212,6 @@ inline IOStatus Zone::CheckRelease() {
   return IOStatus::OK();
 }
 
-/* 주어진 오프셋이 포함된 존을 io_zones 리스트에서 찾아 반환합니다*/
 Zone *ZonedBlockDevice::GetIOZone(uint64_t offset) {
   for (const auto z : io_zones)
     if (z->start_ <= offset && offset < (z->start_ + zbd_be_->GetZoneSize()))
@@ -250,18 +234,16 @@ ZonedBlockDevice::ZonedBlockDevice(std::string path, ZbdBackendType backend,
   clock_gettime(CLOCK_MONOTONIC, &motivation_mount_time_);
   sst_file_bitmap_ = new ZoneFile *[1 << 20];
   memset(sst_file_bitmap_, 0, (1 << 20));
+  for(int i = 0; i<5000;i++){
+    total_deletion_after_copy_seq_distribution_[i]=0;
+  }
+  for( int i =0;i<10;i++){
+    latest_file_operation_sequence_[i]=0;
+    CBSC_mispredict_stats_[i]=0;
+    CBSC_total_predict_stats_[i]=0;
+  }
 }
 
-/* ZonedBlockDevice 객체를 초기화하고 열기 위한 작업을 수행합니다. 함수는 다음
-작업을 수행합니다:
-
-쓰기 열기가 독점적인지 확인합니다.
-디바이스를 엽니다.
-디바이스의 존 수가 최소 요구 사항을 충족하는지 확인합니다.
-메타데이터 존과 I/O 존을 설정합니다.
-시작 시간을 설정합니다.
-
-이 작업을 통해 디바이스가 준비되고, 사용할 수 있는 존이 올바르게 설정됩니다.*/
 IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   std::unique_ptr<ZoneList> zone_rep;
   unsigned int max_nr_active_zones;
@@ -298,8 +280,8 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   else
     max_nr_open_io_zones_ = max_nr_open_zones - reserved_zones;
 
-  max_nr_active_io_zones_ = 8;
-  max_nr_open_io_zones_ = 8;
+  max_nr_active_io_zones_ = 12;
+  max_nr_open_io_zones_ = 12;
   // open(/home/femu/yc-bccp[/open_zone])
   Info(logger_, "Zone block device nr zones: %u max active: %u max open: %u \n",
        zbd_be_->GetNrZones(), max_nr_active_zones, max_nr_open_zones);
@@ -333,8 +315,9 @@ IOStatus ZonedBlockDevice::Open(bool readonly, bool exclusive) {
   // for (; i < zone_rep->ZoneCount() &&
   //        (io_zones.size() * zbd_be_->GetZoneSize()) < (device_io_capacity);
   //      i++) {
+  printf("zone_rep->ZoneCount() %u\n", zone_rep->ZoneCount());
   for (; i < zone_rep->ZoneCount() && i < ZENFS_IO_ZONES + 3; i++) {
-    // for (; i < zone_rep->ZoneCount(); i++) {
+    // for (; i < ZENFS_IO_ZONES + 3; i++) {
     /* Only use sequential write required zones */
     /*Sequential Write Required (SWR)*/
     /*Conventional Zone (Non-SWR) :  임의의 위치에 자유롭게
@@ -535,11 +518,11 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     R_wp = (zone_sz * 100 - wwp * 100 / (rc)) / zone_sz;  // MB
   }
   printf("============================================================\n");
-  printf("FAR STAT 1 :: WWP (MB) : %lu, R_wp : %lu\n",
+  printf("WWP (MB) : %lu, R_wp : %lu\n",
          wasted_wp_.load() / (1 << 20), R_wp);
   printf("NEW WWP(MB) : %lu\n", new_wasted_wp_.load() / (1 << 20));
   if (rc != 0) {
-    printf("FAR STAT 1-1 :: Runtime zone reset R_wp %lu\n",
+    printf("Runtime zone reset R_wp %lu\n",
            ((zone_sz * 100) - ((wwp * 100) / rc)) / zone_sz);
   }
   printf("ZONE FINISH VALID(MB) %lu\n", finished_valid_data_.load() >> 20);
@@ -547,7 +530,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
   // printf("ZC IO Blocking time : %d, Compaction Refused : %lu\n",
   // zc_io_block_,
   //        compaction_blocked_at_amount_.size());
-  printf("FAR STAT 2 ::ZC IO Blocking time : %d\n", zone_cleaning_io_block_);
+  printf("ZC IO Blocking time : %d\n", zone_cleaning_io_block_);
 
   printf("============================================================\n");
   uint64_t total_copied = 0;
@@ -579,7 +562,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
          total_copied / (1 << 20), rc_zc);
   printf("Total ZC copied- GC_BYTES_WRITTEN(MB):: %lu \n",
          (gc_bytes_written_.load()) >> 20);
-  printf("FAR STAT  :: Reset Count (R+ZC) : %ld+%ld=%ld\n", rc - rc_zc, rc_zc,
+  printf("Reset Count (R+ZC) : %ld+%ld=%ld\n", rc - rc_zc, rc_zc,
          rc);
   printf("Finish Count : %ld\n", finish_count_.load());
   double avg_zlv = 0.0;
@@ -657,6 +640,14 @@ ZonedBlockDevice::~ZonedBlockDevice() {
 
   long mount_mili = (motivation_mount_time_.tv_sec * 1000) +
                     (motivation_mount_time_.tv_nsec / 1000000);
+  printf("SEQUENCE DISTRIBUTION\n");
+  for(int i = 0; i<SEQ_DIST_MAX;i++){
+    printf("%ld ",total_deletion_after_copy_seq_distribution_[i].load());
+  }
+  printf("FILE SIZE DISTRIBUITION\n");
+  for(int i = 0; i<1077;i++){
+    printf("%ld ",file_size_distribution_[i].load());
+  }
   for (const auto z : io_zones) {
     if (z->this_zone_motivation_check_) {
       // motivation_zone_lifetime_diffs_
@@ -700,6 +691,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     }
     delete z;
   }
+  PrintMisPredictStats();
 }
 
 #define LIFETIME_DIFF_NOT_GOOD (100)
@@ -774,6 +766,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
         printf("why nullptr? %lu\n", fno);
         continue;
       }
+      zfile->level_=output_level;
       uint64_t file_size = zfile->predicted_size_;
       stats_[output_level - 1].denominator.fetch_add(file_size);
       lsm_tree_[output_level - 1].fetch_sub(file_size);
@@ -983,49 +976,6 @@ void ZonedBlockDevice::CalculateResetThreshold(uint64_t free_percent) {
 재설정이 완료되면, 필요에 따라 토큰을 반환합니다.*/
 IOStatus ZonedBlockDevice::ResetUnusedIOZones() {
   clock_t reset_latency{0};
-  // lazyreset으로 변경
-  // for (const auto z : io_zones) {
-  //   // Acquire 함수는 존을 사용할 수 있는지 확인하고 가능하면 락을 거는 역할
-  //   if (z->Acquire()) {
-  //     // 현재 존이 비어있지 않고 사용중이지 않은 경우를 확인
-  //     if (!z->IsEmpty() && !z->IsUsed()) {
-  //       bool full = z->IsFull();  // 현재 존이 가득 찬 상태인지 확인하여 full
-  //                                 // 변수에 저장
-  //       uint64_t cp = z->GetCapacityLeft();
-  //       //(cp > reset_threshold_) {
-  //       //   IOStatus release_status = z->CheckRelease();
-  //       //   if(!release_status.ok()){
-  //       //     return release_status;
-  //       //   }
-  //       //   continue;
-  //       // }
-  //       clock_t start = clock();
-  //       IOStatus reset_status = z->Reset();  // z->Reset(): 현재 존을 재설정
-  //       reset_count_.fetch_add(1);
-  //       wasted_wp_.fetch_add(cp);
-
-  //       clock_t end = clock();
-  //       reset_latency += (end - start);
-  //       runtime_reset_reset_latency_.fetch_add(end - start);
-  //       IOStatus release_status =
-  //           z->CheckRelease();  // z->CheckRelease(): 재설정 후 존을 해제
-  //       if (!reset_status.ok())
-  //         return reset_status;  // 두 함수의 상태를 확인하여 오류가 발생하면
-  //                               // 해당 상태를 반환
-  //       if (!release_status.ok()) return release_status;  //
-  //       if (!full)
-  //         PutActiveIOZoneToken();  // 현재 존이 가득 차지 않았다면,
-  //                                  // PutActiveIOZoneToken 함수를 호출하여
-  //                                  // 토큰을 반환
-  //     } else {  // 현재 존이 비어있거나 사용 중인 경우, CheckRelease 함수로
-  //               // 해제 상태를 확인하고, 오류가 발생하면 해당 상태를 반환
-  //       IOStatus release_status = z->CheckRelease();
-  //       if (!release_status.ok()) return release_status;
-  //     }
-  //   }
-  // }
-
-  // IOStatus reset_status;
 
   for (size_t i = 0; i < io_zones.size(); i++) {
     const auto z = io_zones[i];

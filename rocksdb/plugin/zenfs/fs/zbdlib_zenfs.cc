@@ -105,6 +105,7 @@ IOStatus ZbdlibBackend::Open(bool readonly, bool exclusive,
   block_sz_ = info.pblock_size;
   zone_sz_ = info.zone_size;
   nr_zones_ = info.nr_zones;
+  printf("info.nr_zones %u\n", info.nr_zones);
   *max_active_zones = info.max_nr_active_zones;
   *max_open_zones = info.max_nr_open_zones;
   return IOStatus::OK();

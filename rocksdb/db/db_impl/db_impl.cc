@@ -1842,7 +1842,7 @@ Status DBImpl::GetImpl(const ReadOptions& read_options, const Slice& key,
   PERF_CPU_TIMER_GUARD(get_cpu_nanos, immutable_db_options_.clock);
   StopWatch sw(immutable_db_options_.clock, stats_, DB_GET);
   PERF_TIMER_GUARD(get_snapshot_time);
-
+  immutable_db_options_.fs->cur_get_ops_++;
   auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
       get_impl_options.column_family);
   auto cfd = cfh->cfd();
@@ -3510,6 +3510,7 @@ Iterator* DBImpl::NewIterator(const ReadOptions& read_options,
                                  : kMaxSequenceNumber,
                              read_callback);
   }
+  immutable_db_options_.fs->cur_scan_ops_++;
   return result;
 }
 

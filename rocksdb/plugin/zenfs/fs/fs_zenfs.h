@@ -168,6 +168,12 @@ class ZenFS : public FileSystemWrapper {
 
   std::atomic<int> mount_time_{0};
 
+  // bool coldest_type_set_  =false;
+  // int coldest_type_ = -1;
+  // std::mutex coldest_type_lock_;
+
+  // std::atomic<int> file_operation_sequence_{0};
+
   uint64_t file_size_dist[5];
 
   DB* db_ptr_ = nullptr;
@@ -499,6 +505,76 @@ class ZenFS : public FileSystemWrapper {
       std::vector<uint64_t>& compaction_inputs_input_level_fno,
       std::vector<uint64_t>& compaction_inputs_output_level_fno,
       int output_level, bool trivial_move) override {
+
+
+    int seq = zbd_->file_operation_sequence_.fetch_add(1);
+    if(!trivial_move){
+      int type=0;
+      switch (output_level)
+      {
+      case 0:
+        zbd_->latest_file_operation_sequence_[SeqL0L1andFlush] = seq;
+        type=SeqL0L1andFlush;
+        break;
+      case 1:
+        zbd_->latest_file_operation_sequence_[SeqL0L1andFlush] = seq;
+        type=SeqL0L1andFlush;
+        break;
+      case 2:
+        zbd_->latest_file_operation_sequence_[SeqL1L2] = seq;
+        type=SeqL1L2;
+        break;
+      case 3:
+        zbd_->latest_file_operation_sequence_[SeqL2L3] = seq;
+        type=SeqL2L3;
+        break;
+      case 4:
+        zbd_->latest_file_operation_sequence_[SeqL3L4] = seq;
+        type=SeqL3L4;
+        break;
+      default:
+        break;
+      }
+
+      {
+        
+        if(zbd_->coldest_type_set_== true){
+          std::lock_guard<std::mutex> lg(zbd_->coldest_type_lock_);
+          // todo
+          bool ok = true;
+          zbd_->check_coldest_[type]=true;
+          for(int i =0;i<10;i++){
+            if(zbd_->latest_file_operation_sequence_[i]==0){
+              continue;
+            }
+            if(zbd_->check_coldest_[i]==true){
+              continue;
+            }
+            ok=false;
+            break;
+          }
+
+
+          if(ok==true){
+            if(zbd_->coldest_type_!=type){
+              zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+            }
+            zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+            zbd_->coldest_type_set_=false;
+          }
+          // else{
+          //   if(zbd_->coldest_type_==type){
+          //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+          //     zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+          //     zbd_->coldest_type_set_=false;
+          //   }
+          // }
+
+        }
+      }
+    }
+
+
     zbd_->GiveZenFStoLSMTreeHint(compaction_inputs_input_level_fno,
                                  compaction_inputs_output_level_fno,
                                  output_level, trivial_move);

@@ -37,6 +37,11 @@ struct SSTBuffer {
   bool positioned_;
   uint64_t offset_;
 };
+enum{
+  NO_COPIED,
+  ZC_COPIED,
+  COPIED_COPIED
+};
 
 class ZoneExtent {
  public:
@@ -58,6 +63,9 @@ class ZoneExtent {
   // struct timespec created_time_;
   // struct timespec deleted_time_;
   bool is_zc_copied_ = false;
+  
+  int zc_copied_sequence_;
+  int ZC_COPIED_STATE=NO_COPIED;
 
   // std::chrono::time_point<std::chrono::system_clock> zc_copied_time_;
   struct timespec zc_copied_ts_;

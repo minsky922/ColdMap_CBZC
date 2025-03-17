@@ -3,9 +3,6 @@
 //  This source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
-/* ZenFS의 주요 기능을 구현하는 파일로,
- 파일 시스템의 마운트, 언마운트, 읽기, 쓰기 등의 기능을 포함합니다. 이 파일은
- ZenFS의 핵심적인 로직을 담고 있습니다.*/
 #if !defined(ROCKSDB_LITE) && defined(OS_LINUX)
 //
 #include "fs_zenfs.h"
@@ -41,10 +38,6 @@
 #define DEFAULT_ZENV_LOG_PATH "/tmp/"
 
 namespace ROCKSDB_NAMESPACE {
-/* Slice 객체에서 슈퍼블록(superblock)을 디코딩하여 데이터를 읽어오는 작업을
- * 수행합니다. 주어진 입력이 예상된 크기와 일치하는지 확인하고, 다양한 필드를
- * 추출하여 슈퍼블록 구조체에 저장합니다. 또한, 슈퍼블록의 무결성을 검증하여
- * 올바른 포맷인지 확인합니다.*/
 Status Superblock::DecodeFrom(Slice* input) {
   if (input->size() != ENCODED_SIZE) {
     return Status::Corruption("ZenFS Superblock",
@@ -82,10 +75,6 @@ Status Superblock::DecodeFrom(Slice* input) {
   return Status::OK();
 }
 
-/*슈퍼블록(superblock) 의 데이터를 주어진 std::string 객체에
-    인코딩하는 작업을 수행합니다 .이는 슈퍼블록의 모든 필드를
-    시리얼라이즈(serialized) 하여 std::string 객체에 저장합니다.이 작업은
-    슈퍼블록의 현재 상태를 저장하거나 전송하기 위해 필요합니다*/
 void Superblock::EncodeTo(std::string* output) {
   sequence_++; /* Ensure that this superblock representation is unique */
   output->clear();
@@ -135,7 +124,7 @@ void Superblock::GetReport(std::string* reportString) {
   reportString->append(zenfs_version);
 }
 
-/* ZonedBlockDevice 객체와 슈퍼블록이 호환되는지 확인하는 작업을 수행*/
+
 Status Superblock::CompatibleWith(ZonedBlockDevice* zbd) {
   if (block_size_ != zbd->GetBlockSize())
     return Status::Corruption("ZenFS Superblock",
@@ -149,11 +138,6 @@ Status Superblock::CompatibleWith(ZonedBlockDevice* zbd) {
   return Status::OK();
 }
 
-/*주어진 Slice 데이터를 메타 로그에 기록합니다. 물리적 저장 크기를 계산하고,
- * 메모리를 할당하여 데이터를 준비한 후, CRC32C를 사용하여 오류 검사를
- * 수행합니다. 준비된 데이터를 존에 추가한 후 메모리를 해제하고 결과 상태를
- * 반환합니다. 이 과정을 통해 데이터 무결성을 보장하고 안정적으로 저장할 수
- * 있습니다*/
 IOStatus ZenMetaLog::AddRecord(const Slice& slice) {
   uint32_t record_sz = slice.size();
   const char* data = slice.data();
@@ -189,44 +173,35 @@ IOStatus ZenMetaLog::AddRecord(const Slice& slice) {
   return s;
 }
 
-/*Slice 객체를 사용하여 메타 로그에서 데이터를 읽어오는 작업을 수행합니다.
- * 함수는 특정 위치에서 데이터를 읽고, 읽기 위치를 업데이트합니다. 또한,
- * EOF(파일 끝)와 영역 경계를 체크하여 적절한 오류를 반환합니다*/
 IOStatus ZenMetaLog::Read(Slice* slice) {
-  char* data = (char*)slice->data();  // 읽을 데이터를 저장할 버퍼
-  size_t read = 0;                    // 현재까지 읽은 데이터 크기
-  size_t to_read = slice->size();     // 읽어야 할 전체 데이터 크기
-  int ret;                            // 읽기 작업의 반환값
+  char* data = (char*)slice->data(); 
+  size_t read = 0;                   
+  size_t to_read = slice->size();     
+  int ret;                            
 
-  // EOF 체크
   if (read_pos_ >= zone_->wp_) {
     slice->clear();
     return IOStatus::OK();
   }
 
-  // 존 경계 체크
   if ((read_pos_ + to_read) > (zone_->start_ + zone_->max_capacity_)) {
     return IOStatus::IOError("Read across zone");
   }
 
-  // 데이터 읽기
   while (read < to_read) {
     ret = zbd_->Read(data + read, read_pos_, to_read - read, false);
 
-    if (ret == -1 && errno == EINTR) continue;  // EINTR 오류가 발생하면 재시도
+    if (ret == -1 && errno == EINTR) continue;  
     if (ret < 0)
-      return IOStatus::IOError("Read failed");  // 읽기 실패 시 오류 반환
+      return IOStatus::IOError("Read failed"); 
 
-    read += ret;       // 읽은 데이터 크기 업데이트
-    read_pos_ += ret;  // 읽기 위치 업데이트
+    read += ret;       
+    read_pos_ += ret; 
   }
 
   return IOStatus::OK();
 }
 
-/*메타 로그에서 레코드를 읽어와 주어진 Slice 객체와 std::string 객체에 저장하는
- * 작업을 수행합니다. 주요 작업 단계는 레코드의 헤더를 읽고, 레코드 크기 및 CRC
- * 값을 확인한 다음, 데이터를 읽고 CRC 검사를 통해 유효성을 확인하는 것입니다*/
 IOStatus ZenMetaLog::ReadRecord(Slice* record, std::string* scratch) {
   Slice header;
   uint32_t record_sz = 0;
@@ -272,41 +247,32 @@ IOStatus ZenMetaLog::ReadRecord(Slice* record, std::string* scratch) {
   return IOStatus::OK();
 }
 
-/*이 생성자는 ZonedBlockDevice, 보조 파일 시스템(aux_fs), 로거(logger)를 받아
- * ZenFS 파일 시스템을 초기화하는 역할을 합니다*/
 ZenFS::ZenFS(ZonedBlockDevice* zbd, std::shared_ptr<FileSystem> aux_fs,
              std::shared_ptr<Logger> logger)
     : FileSystemWrapper(aux_fs), zbd_(zbd), logger_(logger) {
-  // ZenFS 초기화 시작
   Info(logger_, "ZenFS initializing");
 
-  // ZenFS 초기화 매개변수 로깅
   Info(logger_, "ZenFS parameters: block device: %s, aux filesystem: %s",
        zbd_->GetFilename().c_str(), target()->Name());
 
-  // 다음 파일 ID 초기화
   next_file_id_ = 1;
 
-  // 메타데이터 작성기 초기화
   metadata_writer_.zenFS = this;
 
   memset(file_size_dist, 0, sizeof(file_size_dist));
 }
 
-/*이 소멸자는 ZenFS 객체가 소멸될 때 호출되며, ZenFS 파일 시스템의 정리 작업을
- * 수행합니다. 주요 작업은 로깅, 가비지 컬렉션 스레드 종료, 메타 로그 정리, 파일
- * 맵 정리, ZonedBlockDevice 객체 삭제 등입니다*/
 ZenFS::~ZenFS() {
-  Status s;                              // 상태 변수 초기화
-  Info(logger_, "ZenFS shutting down");  // 종료 메시지 로깅
-  zbd_->LogZoneUsage();                  // 존 사용량 로깅
-  LogFiles();                            // 파일 정보 로깅
+  Status s;                             
+  Info(logger_, "ZenFS shutting down");  
+  zbd_->LogZoneUsage();                  
+  LogFiles();                           
 
-  run_gc_worker_ = false;  // 가비지 컬렉션 실행 중지
+  run_gc_worker_ = false;  
   run_bg_reset_worker_ = false;
 
-  if (gc_worker_) {      // 가비지 컬렉션 스레드 종료
-    gc_worker_->join();  // 가비지 컬렉션 스레드 종료 대기
+  if (gc_worker_) {      
+    gc_worker_->join();  
   }
 
   if (bg_reset_worker_) {
@@ -322,14 +288,14 @@ ZenFS::~ZenFS() {
                    (1 << 20)
             << "\n";
 
-  meta_log_.reset(nullptr);  // 메타 로그 정리
+  meta_log_.reset(nullptr);  
   uint64_t non_free = zbd_->GetUsedSpace() + zbd_->GetReclaimableSpace();
   uint64_t free = zbd_->GetFreeSpace();
   uint64_t free_percent = (100 * free) / (free + non_free);
 
   printf("@@~Zenfs Last Free percent freepercent %ld \n", free_percent);
-  ClearFiles();  // 파일 맵 정리
-  delete zbd_;   // ZonedBlockDevice 객체 삭제
+  ClearFiles();  
+  delete zbd_;   
 }
 
 void ZenFS::BackgroundStatTimeLapse() {
@@ -347,51 +313,181 @@ void ZenFS::BackgroundStatTimeLapse() {
     */
     sleep(1);
     int cur_time = mount_time_.fetch_add(1);
-    uint64_t total = 0;
-    if (cur_time % 50 == 0) {
+    // uint64_t total = 0;
+    if (cur_time % 50 == 0|| run_bg_reset_worker_==false) {
+      struct timespec timespec;
+      clock_gettime(CLOCK_MONOTONIC, &timespec);
       uint64_t gc_bytes_written = zbd_->GetGCBytesWritten();
       uint64_t rc = zbd_->GetRC();
       uint64_t cur_ops = cur_ops_.load();
+      uint64_t cur_get_ops = cur_get_ops_.load();
+      uint64_t cur_scan_ops = cur_scan_ops_.load();
       uint64_t cur_io_blocking = zbd_->GetBlocking();
-      printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t", cur_time,
-             zbd_->CalculateFreePercent(), cur_ops, gc_bytes_written,
-             cur_io_blocking, rc, zbd_->open_io_zones_.load(),
-             zbd_->active_io_zones_.load());
+
+      uint64_t total_time_ms =
+          zbd_->total_deletion_after_copy_time_.load() / 1000;
+      uint64_t total_count = zbd_->total_deletion_after_copy_n_.load();
+      uint64_t total_deletion_after_copy_size =zbd_->total_deletion_after_copy_size_;
+      uint64_t avg_ms = total_count == 0 ? 0 : (total_time_ms / total_count);
+      uint64_t actual_cost_benefit_score =
+          zbd_->actual_cost_benefit_score_.load();
+      uint64_t average_actual_cost_benefit_score;
+
+      
+
+      ////
+ 
+      uint64_t cost_benefit_score_sum_sequence_mb = zbd_->cost_benefit_score_sum_sequence_mb_.load();
+      uint64_t total_deletion_after_copy_seq = zbd_->total_deletion_after_copy_seq_.load()/100;
+      uint64_t copy_but_not_deleted_size = 0;
+      if(cur_time % 100 == 0|| run_bg_reset_worker_==false){
+        //  get copied but not deleted
+        int cur_fops_sequence = zbd_->file_operation_sequence_.load();
+
+        std::lock_guard<std::mutex> lg_(files_mtx_);
+        for (auto f : files_) {
+          int tmp_n=0;
+          int tmp_seq = 0;
+          size_t tmp_size=0;
+          long diff_ns_sum = 0;
+          for (auto ext : f.second->GetExtents()) {
+            if (ext->is_zc_copied_ && ext->ZC_COPIED_STATE==ZC_COPIED) {
+              diff_ns_sum +=
+                  (timespec.tv_sec - ext->zc_copied_ts_.tv_sec) * 1000000000L +
+                  (timespec.tv_nsec - ext->zc_copied_ts_.tv_nsec);
+              
+              copy_but_not_deleted_size += ext->length_;
+              tmp_size+=ext->length_;
+              // actual_cost_benefit_score +=
+              //     ((ext->length_ >> 20) * (diff_ns / 1000 / 1000));
+                  // is_copied=true;
+                  tmp_n++;
+                  tmp_seq+=(cur_fops_sequence-ext->zc_copied_sequence_);
+              }
+
+          }
+          if(tmp_n){
+            actual_cost_benefit_score +=
+            ((tmp_size >> 20) * (diff_ns_sum / 1000 / 1000));
+            // if(run_bg_reset_worker_==false){
+            //   printf("SEQ NOT DELETED UNTIL END %d\n",(tmp_seq/tmp_n));
+            // }
+            total_deletion_after_copy_seq+=(tmp_seq/tmp_n);
+            total_count++;
+            cost_benefit_score_sum_sequence_mb += ((tmp_size>>20)*tmp_seq)/tmp_n;
+          }
+        }
+        total_deletion_after_copy_size+=copy_but_not_deleted_size;
+      }
+
+      
+      
+      uint64_t A_CD_sequence =  total_count == 0 ? 0 : 
+                   ( total_deletion_after_copy_seq) /  total_count;
+      uint64_t WA_CD_sequence = (total_deletion_after_copy_size>>20) == 0 ? 0 :
+      cost_benefit_score_sum_sequence_mb / (total_deletion_after_copy_size >> 20);
+
+      // average_actual_cost_benefit_score = zbd_->GetGCBytesWritten() == 0 ? 0 :
+      //     actual_cost_benefit_score / (zbd_->GetGCBytesWritten() >> 20);
+      average_actual_cost_benefit_score = (total_deletion_after_copy_size>>20 == 0) ? 0 :
+      actual_cost_benefit_score / (total_deletion_after_copy_size >> 20);
+      if (cur_get_ops || cur_scan_ops) {
+        printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
+               cur_time, zbd_->CalculateFreePercent(), cur_ops,cur_get_ops,cur_scan_ops,
+               gc_bytes_written, cur_io_blocking, rc,
+               zbd_->open_io_zones_.load(), zbd_->active_io_zones_.load(),
+               total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
+
+      } else {
+        printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
+               cur_time, zbd_->CalculateFreePercent(), cur_ops,
+               gc_bytes_written, cur_io_blocking, rc,
+               zbd_->open_io_zones_.load(), zbd_->active_io_zones_.load(),
+               total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
+      }
       printf("\n");
+      printf("A_CD_sequence = %lu / %lu = %lu\n", ( zbd_->total_deletion_after_copy_seq_.load()/100),
+      (total_count),A_CD_sequence);
+      printf("WA_CD_sequence = %lu / %lu = %lu\n", ( cost_benefit_score_sum_sequence_mb),
+      (total_deletion_after_copy_size >> 20),WA_CD_sequence);
+      zbd_->PrintMisPredictStats();
+      // printf("\n");
       fflush(stdout);
       fflush(stderr);
 
-      for (int i = 0; i < 5; i++) {
-        total += file_size_dist[i];
-      }
+      // for (int i = 0; i < 5; i++) {
+      //   total += file_size_dist[i];
+      // }
 
-      if (total == 0) {
-        memset(file_size_dist, 0, sizeof(file_size_dist));
-        printf("[FileSizeDist] No files counted yet.\n");
-      }
+      // if (total == 0) {
+      //   memset(file_size_dist, 0, sizeof(file_size_dist));
+      //   printf("[FileSizeDist] No files counted yet.\n");
+      // }
 
-      double perc0 = (file_size_dist[0] * 100.0) / total;
-      double perc1 = (file_size_dist[1] * 100.0) / total;
-      double perc2 = (file_size_dist[2] * 100.0) / total;
-      double perc3 = (file_size_dist[3] * 100.0) / total;
-      double perc4 = (file_size_dist[4] * 100.0) / total;
+      // double perc0 = (file_size_dist[0] * 100.0) / total;
+      // double perc1 = (file_size_dist[1] * 100.0) / total;
+      // double perc2 = (file_size_dist[2] * 100.0) / total;
+      // double perc3 = (file_size_dist[3] * 100.0) / total;
+      // double perc4 = (file_size_dist[4] * 100.0) / total;
 
-      printf("[FileSizeDist] Total files: %llu\n", (unsigned long long)total);
-      printf("  0 ~ 32MB :   %llu (%.2f%%)\n",
-             (unsigned long long)file_size_dist[0], perc0);
-      printf("  33 ~ 63MB:   %llu (%.2f%%)\n",
-             (unsigned long long)file_size_dist[1], perc1);
-      printf("  64 ~ 128MB:  %llu (%.2f%%)\n",
-             (unsigned long long)file_size_dist[2], perc2);
-      printf(" 129 ~ 256MB:  %llu (%.2f%%)\n",
-             (unsigned long long)file_size_dist[3], perc3);
-      printf(" Over 256MB:   %llu (%.2f%%)\n",
-             (unsigned long long)file_size_dist[4], perc4);
-      // puts("");
-      fflush(stdout);
-      fflush(stderr);
+      // printf("[FileSizeDist] Total files: %llu\n", (unsigned long
+      // long)total); printf("  0 ~ 32MB :   %llu (%.2f%%)\n",
+      //        (unsigned long long)file_size_dist[0], perc0);
+      // printf("  33 ~ 63MB:   %llu (%.2f%%)\n",
+      //        (unsigned long long)file_size_dist[1], perc1);
+      // printf("  64 ~ 128MB:  %llu (%.2f%%)\n",
+      //        (unsigned long long)file_size_dist[2], perc2);
+      // printf(" 129 ~ 256MB:  %llu (%.2f%%)\n",
+      //        (unsigned long long)file_size_dist[3], perc3);
+      // printf(" Over 256MB:   %llu (%.2f%%)\n",
+      //        (unsigned long long)file_size_dist[4], perc4);
+      // // puts("");
+      // fflush(stdout);
+      // fflush(stderr);
     }
   }
+
+  // if(cur_time % 100 == 0){
+    //  get copied but not deleted
+   { 
+    int cur_fops_sequence = zbd_->file_operation_sequence_.load();
+
+    std::lock_guard<std::mutex> lg_(files_mtx_);
+    for (auto f : files_) {
+      int tmp_n=0;
+      int tmp_seq = 0;
+      // size_t tmp_size=0;
+      // long diff_ns_sum = 0;
+      for (auto ext : f.second->GetExtents()) {
+        if (ext->is_zc_copied_ && ext->ZC_COPIED_STATE==ZC_COPIED) {
+          // diff_ns_sum +=
+          //     (timespec.tv_sec - ext->zc_copied_ts_.tv_sec) * 1000000000L +
+          //     (timespec.tv_nsec - ext->zc_copied_ts_.tv_nsec);
+          
+          // copy_but_not_deleted_size += ext->length_;
+          // tmp_size+=ext->length_;
+          // actual_cost_benefit_score +=
+          //     ((ext->length_ >> 20) * (diff_ns / 1000 / 1000));
+              // is_copied=true;
+              tmp_n++;
+              tmp_seq+=(cur_fops_sequence-ext->zc_copied_sequence_);
+          }
+
+      }
+      if(tmp_n){
+        // actual_cost_benefit_score +=
+        // ((tmp_size >> 20) * (diff_ns_sum / 1000 / 1000));
+        // if(run_bg_reset_worker_==false){
+        printf("SEQ NOT DELETED UNTIL END %d\n",(tmp_seq/tmp_n));
+        // }
+        // total_deletion_after_copy_seq+=(tmp_seq/tmp_n);
+        // total_count++;
+        // cost_benefit_score_sum_sequence_mb += ((tmp_size>>20)*tmp_seq)/tmp_n;
+      }
+    }
+    // total_deletion_after_copy_size+=copy_but_not_deleted_size;
+  // }
+}
 }
 
 uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
@@ -409,6 +505,7 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
   }
 }
 
+//===================================================================//
 // void ZenFS::NormalizeZoneLifetimes() {
 //   double min_lifetime = std::numeric_limits<double>::max();
 //   double max_lifetime = 0.0;
@@ -715,7 +812,7 @@ uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
 //   }
 // }
 
-//==================================================================================//
+//==========================================================================//
 
 void ZenFS::CalculateHorizontalLifetimes(
     std::map<int, std::vector<FileInfo_>>& level_file_map) {
@@ -760,8 +857,11 @@ void ZenFS::CalculateHorizontalLifetimes(
           // Level > 0
           if (num_normal_files > 1) {
             normalized_index =
-                1.0 - static_cast<double>(normal_index) /
-                          static_cast<double>(num_normal_files - 1);
+                1.0 -
+                static_cast<double>(normal_index) /
+                    static_cast<double>(num_normal_files - 1);  //(kminoverlap)
+            // static_cast<double>(normal_index) /
+            // static_cast<double>(num_normal_files - 1); //(OAZA)
           } else {
             normalized_index = 1.0;
           }
@@ -790,7 +890,6 @@ void ZenFS::ReCalculateLifetimes() {
 
   zone_lifetime_map_.clear();
 
-  // 모든 level의 vertical_lifetime을 구하여 최소값과 최대값을 찾음
   std::vector<double> vertical_lifetimes(6);
   double max_vertical_lifetime = 0.0;
   double min_vertical_lifetime = std::numeric_limits<double>::max();
@@ -853,10 +952,9 @@ void ZenFS::ReCalculateLifetimes() {
         continue;
       }
 
-      // zone_lifetime_map_에 반영
       double sst_lifetime_value = sst.sst_lifetime_value_;
       for (const auto* extent : zone_file->GetExtents()) {
-        uint64_t zone_start = extent->zone_->start_;  // 존 시작 위치
+        uint64_t zone_start = extent->zone_->start_;  
 
         auto& entry = zone_lifetime_map_[zone_start];
 
@@ -867,7 +965,7 @@ void ZenFS::ReCalculateLifetimes() {
     }
   }
 
-  // ===========================legacy=========================================
+  // ====================================================================
   // for (auto& [level, file_infos] : level_file_map_) {
   //   double vertical_lifetime = normalized_vertical_lifetimes[level];
   //   for (auto& sst : file_infos) {
@@ -914,7 +1012,7 @@ void ZenFS::ReCalculateLifetimes() {
   //     }
   //   }
   // }
-  // }===========================legacy=====================================
+  // }===============================================================
 
   // 각 존의 평균 lifetime 계산 및 출력
   // for (const auto& zone_entry : zone_lifetime_map_) {
@@ -950,25 +1048,9 @@ void ZenFS::ReCalculateLifetimes() {
       for (const auto* extent : zoneFile->GetExtents()) {
         uint64_t zone_start = extent->zone_->start_;
 
-        // // 처음 본 zone이면 초기화
-        // if (zone_lifetime_map_.find(zone_start) == zone_lifetime_map_.end())
-        // {
-        //   // printf("ReCalculateLifetimes-WAL : not found\n");
-        //   zone_lifetime_map_[zone_start] = {
-        //       0.0,  // 총합
-        //       1,    // 파일 수
-        //       {}    // 파일별 lifetime 리스트
-        //   };
-        // }
-
         auto& entry = zone_lifetime_map_[zone_start];
         entry.total_lifetime += wal_lifetime_value;
         entry.file_count++;
-
-        // auto& entry = zone_lifetime_map_[zone_start];
-        // std::get<0>(entry) += wal_lifetime_value;
-        // std::get<1>(entry) += 1;
-        // std::get<2>(entry).push_back(wal_lifetime_value);
       }
     }
   }
@@ -997,8 +1079,6 @@ void ZenFS::PredictCompaction(int step) {
   fno_already_propagated.clear();
   fno_not_should_selected_as_pivot_again.clear();
   while (step > 0) {
-    // uint64_t pivot_level = 0;
-    // uint64_t pivot_fno = 0;
     std::vector<uint64_t> unpivot_fno_list;
     unpivot_fno_list.clear();
 
@@ -1068,7 +1148,6 @@ void ZenFS::PredictCompaction(int step) {
 
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
       if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
-        // 제거
         // it = unpivot_fno_list.erase(it);
         // printf("Removed an already propagated fno from unpivot_fno_list.\n");
         // fno_not_should_selected_as_pivot_again.insert(pivot_fno);
@@ -1474,6 +1553,14 @@ void ZenFS::ZoneCleaning(bool forced) {
     // printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
     return;
   }
+  if(zbd_->coldest_type_set_==false){
+    for(int i =0 ;i<10;i++){
+      zbd_->check_coldest_[i]=false;
+    }
+    // coldest_type_ = zbd_->GetCBSCColdestType();
+    zbd_->SetCBSCColdestType();
+    zbd_->coldest_type_set_= true;
+  }
 
   struct timespec start_ts, end_ts;
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
@@ -1522,15 +1609,10 @@ void ZenFS::ZoneCleaning(bool forced) {
       continue;
     }
     uint64_t garbage_percent_approx =
-        100 - 100 * zone.used_capacity / zone.max_capacity;  // 가비지 비율
+        100 - 100 * zone.used_capacity / zone.max_capacity;  
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
-      // if (zc_scheme == GREEDY) {
-      //   // printf("GREEDY!!!!\n");
-      //   victim_candidate.push_back(
-      //       {0.0, zone.start, garbage_percent_approx, 0.0});
-      // } else
+
       if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
-        // if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_age_ts);
         auto current_time = std::chrono::system_clock::now();
@@ -1592,9 +1674,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         uint64_t cost = (100 - garbage_percent_approx) * 2;
         uint64_t benefit = garbage_percent_approx * total_age;
         if (cost != 0) {
-          // uint64_t cost_benefit_score = benefit / cost;
           double cost_benefit_score = benefit / cost;
-          // victim_candidate.push_back({cost_benefit_score, zone.start});
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
         }
@@ -1638,10 +1718,6 @@ void ZenFS::ZoneCleaning(bool forced) {
 
         if (zone_lifetime_map_.find(zone_start) != zone_lifetime_map_.end()) {
           auto& entry = zone_lifetime_map_[zone_start];
-          // double total_lifetime = std::get<0>(entry);  // 존의 lifetime 총합
-          // int file_count = std::get<1>(entry);  // 존에 포함된 파일 수
-          // const auto& lifetime_values =
-          //     std::get<2>(entry);  // 각 파일의 lifetime 값
 
           double total_lifetime = entry.total_lifetime;  // 존의 lifetime 총합
           int file_count = entry.file_count;             // 존에 포함된 파일 수
@@ -1839,11 +1915,6 @@ void ZenFS::ZoneCleaning(bool forced) {
   }
 }
 
-/* 이 함수는 백그라운드에서 주기적으로 실행되며,
- 여유 공간 비율이 설정된 임계값 이하로 떨어지면 가비지 컬렉션을 트리거합니다.
- 스냅샷을 통해 현재 파일 시스템 상태를 확인하고,
- 가비지가 많은 존을 찾아 데이터를 새로운 존으로 마이그레이션합니다.
- 이를 통해 ZenFS의 여유 공간을 확보하고 성능을 유지합니다.*/
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
     // free_percent_ = zbd_->CalculateFreePercent();
@@ -1894,53 +1965,32 @@ void ZenFS::GCWorker() {
 
     zbd_->SetZCRunning(false);
 
-    //   usleep(1000 * 1000 * 10);  // 10초 동안 대기
-    //   /* 여유 공간 계산*/
-    //   // 사용된 공간과 회수 가능한 공간을 더한 값을 non_free에 저장
+    //   usleep(1000 * 1000 * 10);
     //   uint64_t non_free = zbd_->GetUsedSpace() +
     //   zbd_->GetReclaimableSpace();
-    //   // 여유 공간을 free에 저장
     //   uint64_t free = zbd_->GetFreeSpace();
-    //   // 총 공간 대비 여유 공간의 비율을 free_percent에 계산
     //   uint64_t free_percent = (100 * free) / (free + non_free);
-    //   //////////////////
     //   ZenFSSnapshot snapshot;
     //   ZenFSSnapshotOptions options;
-    //   // 여유 공간 비율이 GC_START_LEVEL(20)보다 크면 루프의 다음 반복으로
-    //   // 넘어갑니다. 즉, 여유 공간이 충분한 경우 GC를 수행하지 않습니다
     //   if (free_percent > GC_START_LEVEL) continue;
-    //   /* 스냅샷 옵션을 설정하여 존, 파일, 가비지 정보를 포함하도록 합니다.
-    //   */ options.zone_ = 1; options.zone_file_ = 1; options.log_garbage_ =
+    //   options.zone_ = 1; options.zone_file_ = 1; options.log_garbage_ =
     //   1;
-    //   // GetZenFSSnapshot 함수를 호출하여 파일 시스템의 현재 상태를
-    //   스냅샷으로
-    //   // 가져옵니다
     //   GetZenFSSnapshot(snapshot, options);
-    //   // 가비지 컬렉션 임계값을 계산하여 저장합니다
     //   uint64_t threshold = (100 - GC_SLOPE * (GC_START_LEVEL -
     //   free_percent));
-    //   /* 마이그레이션할 존 선택 */
-    //   // 스냅샷에서 각 존을 반복하면서, 가비지 비율이 임계값을 초과하는
-    //   존을 선택
-    //   // 선택된 존의 시작 위치를 migrate_zones_start 집합에 저장
-    //   std::set<uint64_t> migrate_zones_start;  // 마이그레이션할 존의 시작
-    //   위치를
-    //                                            // 저장할 집합 선언
-    //   for (const auto& zone : snapshot.zones_) {  // 스냅샷의 각 존을 반복
-    //     if (zone.capacity == 0) {  // 현재 존이 사용되지 않는 경우
-    //       uint64_t garbage_percent_approx =  // 가비지 비율 계산
+    //   std::set<uint64_t> migrate_zones_start; 
+    //   for (const auto& zone : snapshot.zones_) {  
+    //     if (zone.capacity == 0) {  
+    //       uint64_t garbage_percent_approx =  
     //           100 - 100 * zone.used_capacity / zone.max_capacity;
     //       if (garbage_percent_approx >
-    //               threshold &&  // 가비지 비율이 임계값을 초과하고
-    //           garbage_percent_approx < 100) {  // 100% 미만인 경우
+    //               threshold &&  
+    //           garbage_percent_approx < 100) {  
     //         migrate_zones_start.emplace(
-    //             zone.start);  // 존의 시작 위치를 집합에 추가
+    //             zone.start); 
     //       }
     //     }
     //   }
-    //   /* 마이그레이션할 익스텐트 선택 */
-    //   // 스냅샷에서 각 익스텐트를 반복하면서, 선택된 존에 속하는 익스텐트를
-    //   // migrate_exts 벡터에 저장
     //   std::vector<ZoneExtentSnapshot*> migrate_exts;
     //   for (auto& ext : snapshot.extents_) {
     //     if (migrate_zones_start.find(ext.zone_start) !=
@@ -1948,10 +1998,6 @@ void ZenFS::GCWorker() {
     //       migrate_exts.push_back(&ext);
     //     }
     //   }
-    //   /* 익스텐트 마이그레이션 */
-    //   // 마이그레이션할 익스텐트가 있는 경우, MigrateExtents 함수를
-    //   호출하여
-    //   // 익스텐트를 마이그레이션 마이그레이션이 실패하면 오류를 로깅
     //   if (migrate_exts.size() > 0) {
     //     IOStatus s;
     //     Info(logger_, "Garbage collecting %d extents \n",
@@ -2135,23 +2181,52 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
 
   // auto cur_zc_time = std::chrono::system_clock::now();
   struct timespec cur_zc_ts;
+  int cur_fops_sequence = zbd_->file_operation_sequence_.load();
   clock_gettime(CLOCK_MONOTONIC, &cur_zc_ts);
 
   if (!s.ok()) {
     return s;
   }
-
-  // Clear changed extents' zone stats
+  // uint64_t sum_diff_ns = 0;
+  // size_t deleted_after_copy_extents_n = 0;
+  // size_t deleted_after_copy_size = 0;
   for (size_t i = 0; i < new_extents.size(); ++i) {
     ZoneExtent* old_ext = old_extents[i];
     if (old_ext->start_ != new_extents[i]->start_) {
-      if (old_ext->is_zc_copied_ == true) {
-        new_extents[i]->is_zc_copied_ = true;
-        new_extents[i]->zc_copied_ts_ = old_ext->zc_copied_ts_;
-      } else {
-        new_extents[i]->is_zc_copied_ = true;
+
+      if (old_ext->is_zc_copied_ == false) {
+        new_extents[i]->zc_copied_sequence_= cur_fops_sequence;
         new_extents[i]->zc_copied_ts_ = cur_zc_ts;
+      }else{
+        new_extents[i]->zc_copied_sequence_ = old_ext->zc_copied_sequence_;
+        new_extents[i]->zc_copied_ts_ = old_ext->zc_copied_ts_;
       }
+      new_extents[i]->is_zc_copied_ = true;
+      // if (old_ext->is_zc_copied_ == true) {
+      //   long diff_ns =
+      //       (cur_zc_ts.tv_sec - old_ext->zc_copied_ts_.tv_sec) * 1000000000L +
+      //       (cur_zc_ts.tv_nsec - old_ext->zc_copied_ts_.tv_nsec);
+      //   sum_diff_ns += diff_ns;
+      //   deleted_after_copy_extents_n++;
+      //   deleted_after_copy_size += old_ext->length_;
+      // }else{
+      //   // new_extents[i]->zc_copied_sequence_= cur_fops_sequence;
+
+      // }
+      
+      // new_extents[i]->zc_copied_sequence_= cur_fops_sequence;
+
+      if(old_ext->ZC_COPIED_STATE==NO_COPIED){
+        new_extents[i]->ZC_COPIED_STATE=ZC_COPIED;
+      }
+      // else if(old_ext->ZC_COPIED_STATE == ZC_COPIED){
+      //   new_extents[i]->ZC_COPIED_STATE=COPIED_COPIED;
+      // }
+      // else {
+      //   // new_extents[i]->is_zc_copied_ = true;
+      //   // new_extents[i]->zc_copied_ts_ = cur_zc_ts;
+      // }
+
       if (old_ext->zone_->this_zone_motivation_check_) {
         std::lock_guard<std::mutex> lg(
             old_ext->zone_->motivation_lifetime_diffs_lock_);
@@ -2159,7 +2234,6 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
         old_ext->zone_->motivation_lifetime_diffs.push_back(
             {zoneFile->created_time_, cur_zc_ts, true});
       }
-
       if (new_extents[i]->zone_->this_zone_motivation_check_) {
         zoneFile->created_time_ = cur_zc_ts;
       }
@@ -2168,6 +2242,18 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
     }
     delete old_ext;
   }
+
+  // uint64_t sum_diff_us = sum_diff_ns / 1000;
+  // if (deleted_after_copy_extents_n != 0) {
+  //   zbd_->total_deletion_after_copy_time_.fetch_add(
+  //       (sum_diff_us / deleted_after_copy_extents_n));
+  //   zbd_->total_deletion_after_copy_n_.fetch_add(1);
+  //       zbd_->total_deletion_after_copy_size_.fetch_add(deleted_after_copy_size);
+  //   uint64_t actual_cost_benefit_score =
+  //       (deleted_after_copy_size >> 20) *
+  //       ((sum_diff_us / 1000) / deleted_after_copy_extents_n);
+  //   zbd_->actual_cost_benefit_score_.fetch_add(actual_cost_benefit_score);
+  // }
 
   return IOStatus::OK();
 }
@@ -2222,6 +2308,10 @@ std::shared_ptr<ZoneFile> ZenFS::GetFile(std::string fname) {
   zoneFile = GetFileNoLock(fname);
   return zoneFile;
 }
+inline bool ends_with(std::string const& value, std::string const& ending) {
+  if (ending.size() > value.size()) return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
 
 /* Must hold files_mtx_ */
 IOStatus ZenFS::DeleteFileNoLock(std::string fname, const IOOptions& options,
@@ -2232,42 +2322,48 @@ IOStatus ZenFS::DeleteFileNoLock(std::string fname, const IOOptions& options,
   fname = FormatPathLexically(fname);
   zoneFile = GetFileNoLock(fname);
   if (zoneFile != nullptr) {
-    uint64_t file_size_bytes = zoneFile->GetFileSize();
-    uint64_t file_size_mb = file_size_bytes >> 20;
+    // uint64_t file_size_bytes = zoneFile->GetFileSize();
+    // uint64_t file_size_mb = file_size_bytes >> 20;
 
-    if (file_size_mb <= 32)
-      file_size_dist[0]++;
-    else if (file_size_mb <= 63)
-      file_size_dist[1]++;
-    else if (file_size_mb <= 128)
-      file_size_dist[2]++;
-    else if (file_size_mb <= 256)
-      file_size_dist[3]++;
-    else
-      file_size_dist[4]++;
+    // if (file_size_mb <= 32)
+    //   file_size_dist[0]++;
+    // else if (file_size_mb <= 63)
+    //   file_size_dist[1]++;
+    // else if (file_size_mb <= 128)
+    //   file_size_dist[2]++;
+    // else if (file_size_mb <= 256)
+    //   file_size_dist[3]++;
+    // else
+    //   file_size_dist[4]++;
+    if (ends_with(fname, ".log")) {
+      if(zoneFile->GetFileSize()>>20 < 1024){
+        zbd_->file_size_distribution_[zoneFile->GetFileSize()>>20].fetch_add(1);
+      }else{
+        printf("DeleteFileNoLock fsize %lu\n",zoneFile->GetFileSize()>>20);
+      }
 
+    }
     std::string record;
-    // 파일 맵에서 삭제
     files_.erase(fname);
-    // 파일의 링크 삭제
+
     s = zoneFile->RemoveLinkName(fname);
     if (!s.ok()) return s;
-    // 파일 삭제 정보를 기록하고 저장
+
     EncodeFileDeletionTo(zoneFile, &record, fname);
     s = PersistRecord(record);
-    // 삭제 기록 저장에 실패하면, 파일을 다시 맵에 복원
+
     if (!s.ok()) {
       /* Failed to persist the delete, return to a consistent state */
       files_.insert(std::make_pair(fname.c_str(), zoneFile));
       zoneFile->AddLinkName(fname);
-      // 성공하면, 다른 링크가 없을 때 파일을 삭제 처리
+
     } else {
       if (zoneFile->GetNrLinks() > 0) return s;
       /* Mark up the file as deleted so it won't be migrated by GC */
       zoneFile->SetDeleted();
       zoneFile.reset();
     }
-    // 파일이 맵에 없으면, 보조 경로에서 삭제
+
   } else {
     s = target()->DeleteFile(ToAuxPath(fname), options, dbg);
   }
@@ -2313,10 +2409,6 @@ IOStatus ZenFS::NewRandomAccessFile(const std::string& filename,
   return IOStatus::OK();
 }
 
-inline bool ends_with(std::string const& value, std::string const& ending) {
-  if (ending.size() > value.size()) return false;
-  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
-}
 
 IOStatus ZenFS::NewWritableFile(const std::string& filename,
                                 const FileOptions& file_opts,
@@ -2547,6 +2639,54 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
       zoneFile->SetIOType(IOType::kWAL);
       zoneFile->is_wal_ = true;
       zoneFile->SetSparse(!file_opts.use_direct_writes);
+      int seq = zbd_->file_operation_sequence_.fetch_add(1);
+      zbd_->latest_file_operation_sequence_[SeqWAL] = seq;
+      // {
+        
+      //   if(coldest_type_set_== true){
+      //     // todo
+      //     if(coldest_type_!=SeqWAL){
+      //       zbd_->CBSC_mispredict_stats_[coldest_type_].fetch_add(1);
+      //     }
+      //     zbd_->CBSC_total_predict_stats_[coldest_type_].fetch_add(1);
+      //     coldest_type_set_=false;
+      //   }
+        
+      // }
+      if(zbd_->coldest_type_set_== true){
+        // todo
+        // std::lock_guard<std::mutex> lg(zbd_->coldest_type_lock_);
+        // bool ok = true;
+        // zbd_->check_coldest_[SeqWAL]=true;
+        
+        // for(int i =0;i<10;i++){
+        //   if(zbd_->latest_file_operation_sequence_[i]==0){
+        //     continue;
+        //   }
+        //   if(zbd_->check_coldest_[i]==true){
+        //     continue;
+        //   }
+        //   ok=false;
+        //   break;
+        // }
+
+        // if(ok==true){
+        //   if(zbd_->coldest_type_!=SeqWAL){
+        //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+        //   }
+        //   zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+        //   zbd_->coldest_type_set_=false;
+        // }
+
+
+        // else{
+        //   if(zbd_->coldest_type_==SeqWAL){
+        //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+        //     zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+        //     zbd_->coldest_type_set_=false;
+        //   }
+        // }
+      }
     } else {
       zoneFile->SetIOType(IOType::kUnknown);
     }
@@ -2579,7 +2719,49 @@ IOStatus ZenFS::DeleteFile(const std::string& fname, const IOOptions& options,
   Debug(logger_, "DeleteFile: %s \n", fname.c_str());
 
   files_mtx_.lock();
+  if(ends_with(fname, ".log")){
+    int seq= zbd_->file_operation_sequence_.fetch_add(1);
+    zbd_->latest_file_operation_sequence_[SeqWAL] = seq;
+    {
+      // std::lock_guard<std::mutex> lg(coldest_type_lock_);
+      if(zbd_->coldest_type_set_== true){
+        // todo
+        std::lock_guard<std::mutex> lg(zbd_->coldest_type_lock_);
+        bool ok = true;
+        zbd_->check_coldest_[SeqWAL]=true;
+        
+        for(int i =0;i<10;i++){
+          if(zbd_->latest_file_operation_sequence_[i]==0){
+            continue;
+          }
+          if(zbd_->check_coldest_[i]==true){
+            continue;
+          }
+          ok=false;
+          break;
+        }
+
+        if(ok==true){
+          if(zbd_->coldest_type_!=SeqWAL){
+            zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+          }
+          zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+          zbd_->coldest_type_set_=false;
+        }       
+        // else{
+        //   if(zbd_->coldest_type_==SeqWAL){
+        //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+        //     zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+        //     zbd_->coldest_type_set_=false;
+        //   }
+        // }
+      }
+
+      
+    }
+  }
   s = DeleteFileNoLock(fname, options, dbg);
+
   files_mtx_.unlock();
   // if (s.ok()) s = zbd_->ResetUnusedIOZones();
   if (s.ok()) {
@@ -2651,7 +2833,6 @@ void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
             << ", allocation_schme = " << allocation_scheme
             << ", zc_scheme = " << zc_scheme
             << ", finish_scheme = " << finish_scheme
-            << ", alpha_value = " << alpha_value
             << ", predict_cnt = " << predict_cnt << std::endl;
   zbd_->SetResetScheme(r, partial_reset_scheme, T, zc, until, allocation_scheme,
                        zc_scheme, alpha_value, sigma_value, finish_scheme,
@@ -3118,10 +3299,6 @@ Status ZenFS::RecoverFrom(ZenMetaLog* log) {
     return Status::NotFound("ZenFS", "No snapshot found");
 }
 
-/* 파일 시스템을 마운트하는 것은 운영 체제와 저장 장치 간의 인터페이스를
-  설정하여 사용자가 저장 장치의 데이터를 접근하고 관리할 수 있게 하는
-  과정입니다. 파일 시스템이 마운트되면, 운영 체제는 특정 디렉토리(마운트
-  포인트)를 통해 파일 시스템의 내용을 볼 수 있게 됩니다. */
 /* Mount the filesystem by recovering form the latest valid metadata zone */
 Status ZenFS::Mount(bool readonly) {
   std::vector<Zone*> metazones = zbd_->GetMetaZones();
@@ -3138,8 +3315,6 @@ Status ZenFS::Mount(bool readonly) {
           "Need at least two non-offline meta zones to open for write");
     return Status::NotSupported();
   }
-  /* 각 메타존에서 유효한 슈퍼블록을 찾아서 valid_superblocks, valid_logs,
-   * valid_zones 벡터에 저장 */
   /* Find all valid superblocks */
   for (const auto z : metazones) {
     std::unique_ptr<ZenMetaLog> log;
@@ -3258,13 +3433,13 @@ Status ZenFS::Mount(bool readonly) {
   Info(logger_, "Superblock sequence %d", (int)superblock_->GetSeq());
   Info(logger_, "Finish threshold %u", superblock_->GetFinishTreshold());
   Info(logger_, "Filesystem mount OK");
-  /* 사용하지 않는 IO 존을 리셋하여 공간을 회수합니다. */
+
   if (!readonly) {
     Info(logger_, "Resetting unused IO Zones..");
     IOStatus status = zbd_->ResetUnusedIOZones();
     if (!status.ok()) return status;
     Info(logger_, "  Done");
-    /* 가비지 컬렉션이 활성화된 경우, 가비지 컬렉션 작업자를 시작합니다. */
+
     if (superblock_->IsGCEnabled()) {
       Info(logger_, "Starting garbage collection worker");
       run_gc_worker_ = true;
@@ -3283,8 +3458,6 @@ Status ZenFS::Mount(bool readonly) {
   return Status::OK();
 }
 
-/* ZenFS 파일 시스템을 초기화하고, 메타 데이터 존을 설정하며, 슈퍼블록을
- * 기록하여 파일 시스템을 사용할 준비를 합니다*/
 Status ZenFS::MkFS(std::string aux_fs_p, uint32_t finish_threshold,
                    bool enable_gc) {
   std::vector<Zone*> metazones = zbd_->GetMetaZones();
@@ -3348,10 +3521,6 @@ Status ZenFS::MkFS(std::string aux_fs_p, uint32_t finish_threshold,
   return Status::OK();
 }
 
-/*ZenFS에서 관리하는 모든 파일의 이름과 해당 파일의 쓰기 수명 힌트를 맵 형태로
-   반환합니다. 이 정보를 통해 파일 시스템 내의 각 파일이 어떤 수명 힌트를
-   가지고 있는지 쉽게 확인할 수 있습니다.
-*/
 std::map<std::string, Env::WriteLifeTimeHint> ZenFS::GetWriteLifeTimeHints() {
   std::map<std::string, Env::WriteLifeTimeHint> hint_map;
 
@@ -3543,9 +3712,6 @@ void ZenFS::GetZenFSSnapshot(ZenFSSnapshot& snapshot,
   }
 }
 
-/*  주어진 익스텐트 목록을 파일 이름별로 그룹화하고,
- .sst 파일에 대해 유효 데이터를 마이그레이션합니다.
-  마이그레이션이 성공적으로 완료되면 사용되지 않는 IO 존을 재설정*/
 IOStatus ZenFS::MigrateExtents(
     const std::vector<ZoneExtentSnapshot*>& extents) {
   // struct timespec start1, end1;
@@ -3588,20 +3754,18 @@ IOStatus ZenFS::MigrateExtents(
   // zbd_->AddCumulative_3(elapsed3);
   return s;
 }
-/* 주어진 파일의 익스텐트를 새로운 존으로 마이그레이션하는 작업을 수행 */
-// 함수는 여러 단계를 통해 유효 데이터를 새로운 존으로 이동시키고, 파일
-// 시스템의 무결성을 유지
+
 IOStatus ZenFS::MigrateFileExtents(
     const std::string& fname,
     const std::vector<ZoneExtentSnapshot*>& migrate_exts) {
   IOStatus s = IOStatus::OK();
   uint64_t copied = 0;
-  // 파일 이름과 익스텐트 개수를 로깅
+ 
   Info(logger_, "MigrateFileExtents, fname: %s, extent count: %lu",
        fname.data(), migrate_exts.size());
 
   // The file may be deleted by other threads, better double check.
-  // 파일을 가져옵니다
+
   // struct timespec start1, end1;
   // struct timespec start2, end2;
   // struct timespec start3, end3;

@@ -62,7 +62,7 @@ class ZoneFile;
 #define READ_PAGE_COST 1
 #define WRITE_COST 2
 #define FREE_SPACE_COST 3
-
+#define SEQ_DIST_MAX 5000
 // #define ZENFS_IO_ZONES (80)
 
 #define ZONE_SIZE 1024
@@ -106,6 +106,14 @@ class ZoneFile;
 #define FINISH_ENABLE 0
 #define FINISH_DISABLE 1
 #define FINISH_PROPOSAL 2
+enum{
+  SeqWAL=0,
+  SeqL0L1andFlush=1,
+  SeqL1L2=2,
+  SeqL2L3=3,
+  SeqL3L4=4,
+  SeqL4L5=5,
+};
 enum WaitForOpenZoneClass {
   WAL = 0,
   ZC = 1,
@@ -513,11 +521,69 @@ class ZonedBlockDevice {
     std::atomic<uint64_t> denominator;
   };
   OverlappingStat stats_[6];
+  std::atomic<int> file_operation_sequence_{0};
+
+  
+  int latest_file_operation_sequence_[10];
+  bool check_coldest_[10];
+  
+  std::atomic<int> CBSC_mispredict_stats_[10];
+  std::atomic<int> CBSC_total_predict_stats_[10];
+
+  bool coldest_type_set_  =false;
+  int coldest_type_ = -1;
+  std::mutex coldest_type_lock_;
+
+  void SetCBSCColdestType(){
+    int i;
+    int min_seq=100000000;
+    int ret=0;
+    for(i = 0;i<10;i++){
+      if(latest_file_operation_sequence_[i]==0){
+        continue;
+      }
+      int tmp = latest_file_operation_sequence_[i];
+      if(tmp < min_seq){
+        min_seq= tmp;
+        ret = i;
+      } 
+    }
+    // return ret
+    coldest_type_=ret;
+  }
+
+  // int GetCBSCColdestType(){
+  //   return cur_coldest_type_;
+  // }
+  void PrintMisPredictStats(){
+    int i;
+    printf("PrintMisPredictStats\n");
+    for(i = 0;i<10;i++){
+      if(CBSC_total_predict_stats_[i]==0){
+        continue;
+      }
+      int a = CBSC_mispredict_stats_[i].load();
+      int b = CBSC_total_predict_stats_[i].load();
+      printf("[%d] %d / %d = %d\n",i,a,b,
+      a*10000/b);
+    }
+  }
+  
   std::atomic<uint64_t> lsm_tree_[10];
   std::array<uint64_t, 10> GetCurrentLSMTree();
   uint64_t max_bytes_for_level_base_ = 256 << 20;
   std::atomic<uint64_t> total_deletion_after_copy_time_{0};
   std::atomic<uint64_t> total_deletion_after_copy_n_{0};
+  std::atomic<uint64_t> total_deletion_after_copy_size_{0};
+  std::atomic<uint64_t> actual_cost_benefit_score_{0};
+
+
+  std::atomic<uint64_t> total_deletion_after_copy_seq_{0};
+  std::atomic<uint64_t> total_deletion_after_copy_seq_distribution_[SEQ_DIST_MAX];
+  std::atomic<uint64_t> cost_benefit_score_sum_sequence_mb_{0};
+  
+
+  std::atomic<uint64_t> file_size_distribution_[1077];
 
   bool zc_until_set_ = false;
   uint64_t zc_ = 20;
