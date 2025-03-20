@@ -460,50 +460,40 @@ void ZonedBlockDevice::LogZoneUsage() {
 }
 
 void ZonedBlockDevice::LogGarbageInfo() {
-  // 존 쓰레기 통계 벡터를 로그로 기록합니다.
-  //
-  // 벡터의 각 값은 특정 쓰레기 비율을 가진 존의 수를 나타냅니다.
-  // 각 인덱스의 쓰레기 비율: [0%, <10%, <20%, ... <100%, 100%]
-  // 예를 들어, `[100, 1, 2, 3....]`는 100개의 존이 비어 있고,
-  // 1개의 존은 쓰레기 비율이 10% 미만, 2개의 존은 쓰레기 비율이 10% ~ 20%
-  // 사이임을 의미합니다.
-  //
-  // 데이터를 읽기만 하므로 io_zones를 잠글 필요가 없으며, 결과의 정확성을 높일
-  // 필요도 없습니다.
-  int zone_gc_stat[12] = {0};  // 각 쓰레기 비율 구간별 존의 수를 저장하는 배열
-  for (auto z : io_zones) {    // 모든 I/O 존에 대해 반복
-    if (!z->Acquire()) {       // 존이 사용 가능하지 않으면 건너뜀
+  int zone_gc_stat[12] = {0};  
+  for (auto z : io_zones) {    
+    if (!z->Acquire()) {      
       continue;
     }
 
-    if (z->IsEmpty()) {  // 존이 비어 있는 경우
+    if (z->IsEmpty()) {  
       zone_gc_stat[0]++;
-      z->Release();  // 존을 해제
+      z->Release(); 
       continue;
     }
 
-    double garbage_rate = 0;  // 쓰레기 비율 초기화
-    if (z->IsFull()) {        // 존이 가득 찬 경우
+    double garbage_rate = 0;  
+    if (z->IsFull()) {        
       garbage_rate =
           double(z->max_capacity_ - z->used_capacity_) / z->max_capacity_;
-    } else {  // 존이 가득 차지 않은 경우
+    } else {  
       garbage_rate =
           double(z->wp_ - z->start_ - z->used_capacity_) / z->max_capacity_;
     }
-    assert(garbage_rate >= 0);                 // 쓰레기 비율이 0 이상인지 확인
-    int idx = int((garbage_rate + 0.1) * 10);  // 쓰레기 비율을 인덱스로 변환
-    zone_gc_stat[idx]++;  // 해당 쓰레기 비율 구간의 존 수 증가
+    assert(garbage_rate >= 0);                 
+    int idx = int((garbage_rate + 0.1) * 10);  
+    zone_gc_stat[idx]++;  
 
-    z->Release();  // 존을 해제
+    z->Release();  
   }
 
-  std::stringstream ss;  // 로그 메시지를 저장할 문자열 스트림
+  std::stringstream ss; 
   ss << "Zone Garbage Stats: [";
-  for (int i = 0; i < 12; i++) {  // 각 쓰레기 비율 구간의 존 수를 스트림에 추가
+  for (int i = 0; i < 12; i++) {  
     ss << zone_gc_stat[i] << " ";
   }
   ss << "]";
-  Info(logger_, "%s", ss.str().data());  // 로그 메시지를 기록
+  Info(logger_, "%s", ss.str().data());  
 }
 
 ZonedBlockDevice::~ZonedBlockDevice() {
@@ -791,10 +781,6 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
 
   for(int l =0 ;l <=cur_max_level_;l++){
     cur_state.lsm_tree_[l] = lsm_tree_[l];
-    // do not exclude current compaction file :exclude_being_compacted =false
-    // void DBImpl::SameLevelFileList(int level, std::vector<uint64_t>& fno_list,
-    //                            bool exclude_being_compacted) {
-
     std::unordered_map<uint64_t, uint64_t> file_map;
     this->SameLevelFileList(l, file_map, false, false);
     cur_state.ssts[l].clear();
@@ -814,9 +800,6 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
   int predict_right_horizontal= 0;
   int predict_false_horizontal=0;
   if(prev_state_.set==true){
-    // compare vertical state
-    //  sort previous state by score
-    //  sort current state by score
     for (int l = 0; l <= cur_max_level_; l++) {
       if (prev_state_.lsm_tree_[l] == cur_state.lsm_tree_[l]) {
         predict_right_vertical++;
@@ -824,20 +807,6 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
         predict_false_vertical++;
       }
     }
-    // compare horizontal state
-    // for(int l =0 ;l <=cur_max_level_;l++){
-    //   // check index is still same as prev
-    //   if(cur_state.ssts[l].size()>prev_state_.ssts[l].size()){
-    //     for( int k = 0; k< prev_state_.size(); k++){
-    //         // you do as your best.
-    //     }
-
-    //   }else{
-    //     for( int k = 0; k< cur_state_.size(); k++){
-    //         // you do as your best.
-    //     }
-    //   }
-    // }
 
     for (int l = 0; l <= cur_max_level_; l++) {    
       std::unordered_map<uint64_t, uint64_t> prev_file_map = prev_state_.oscore_map[l];
@@ -845,7 +814,7 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
     
       for (const auto& [fno, oscore] : cur_file_map) {
         if (prev_file_map.find(fno) == prev_file_map.end()) {
-          // predict_false_horizontal++; //새로생긴거
+          predict_false_horizontal++; //new
         } else {
           if (prev_file_map[fno] == oscore) {
             predict_right_horizontal++;
@@ -855,12 +824,12 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
         }
       }
     
-      // // 삭제된거
-      // for (const auto& [fno, oscore] : prev_file_map) {
-      //   if (cur_file_map.find(fno) == cur_file_map.end()) {
-      //     predict_false_horizontal++;
-      //   }
-      // }
+      // deleted
+      for (const auto& [fno, oscore] : prev_file_map) {
+        if (cur_file_map.find(fno) == cur_file_map.end()) {
+          predict_false_horizontal++;
+        }
+      }
     }
     
   }
@@ -896,16 +865,6 @@ void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
 
   //////////////// invaldation compaction
 
-  // struct overlapping stat {
-  //   std atomic 분모 std atomic 분자
-  // }
-
-  // overlapping stat[6] stat[0]
-  //     .분모 stat[0]
-  //     .분자
-
-  //     for (0 - 4){printf(분모 % lu / 분자 % lu = ratio)} printf(
-  //         분모 % lu / 분자 % lu = ratio)
 
   for (uint64_t fno : compaction_inputs_input_level_fno) {
     zfile = GetSSTZoneFileInZBDNoLock(fno);
