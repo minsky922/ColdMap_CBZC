@@ -339,7 +339,7 @@ void ZenFS::BackgroundStatTimeLapse() {
  
       uint64_t cost_benefit_score_sum_sequence_mb = zbd_->cost_benefit_score_sum_sequence_mb_.load();
       uint64_t total_deletion_after_copy_seq = zbd_->total_deletion_after_copy_seq_.load()/100;
-      uint64_t copy_but_not_deleted_size = 0;
+      // uint64_t copy_but_not_deleted_size = 0;
       // if(cur_time % 100 == 0|| run_bg_reset_worker_==false){
       //   //  get copied but not deleted
       //   int cur_fops_sequence = zbd_->file_operation_sequence_.load();
@@ -382,9 +382,9 @@ void ZenFS::BackgroundStatTimeLapse() {
 
       
       
-      uint64_t A_CD_sequence =  total_count == 0 ? 0 : 
-                   ( total_deletion_after_copy_seq) /  total_count;
-      uint64_t WA_CD_sequence = (total_deletion_after_copy_size>>20) == 0 ? 0 :
+      // uint64_t A_CD_sequence =  total_count == 0 ? 0 : 
+      //              ( total_deletion_after_copy_seq) /  total_count;
+      // uint64_t WA_CD_sequence = (total_deletion_after_copy_size>>20) == 0 ? 0 :
       cost_benefit_score_sum_sequence_mb / (total_deletion_after_copy_size >> 20);
 
       // average_actual_cost_benefit_score = zbd_->GetGCBytesWritten() == 0 ? 0 :
@@ -1553,14 +1553,14 @@ void ZenFS::ZoneCleaning(bool forced) {
     // printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
     return;
   }
-  if(zbd_->coldest_type_set_==false){
-    for(int i =0 ;i<10;i++){
-      zbd_->check_coldest_[i]=false;
-    }
-    // coldest_type_ = zbd_->GetCBSCColdestType();
-    zbd_->SetCBSCColdestType();
-    zbd_->coldest_type_set_= true;
-  }
+  // if(zbd_->coldest_type_set_==false){
+  //   for(int i =0 ;i<10;i++){
+  //     zbd_->check_coldest_[i]=false;
+  //   }
+  //   // coldest_type_ = zbd_->GetCBSCColdestType();
+  //   zbd_->SetCBSCColdestType();
+  //   zbd_->coldest_type_set_= true;
+  // }
 
   struct timespec start_ts, end_ts;
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
