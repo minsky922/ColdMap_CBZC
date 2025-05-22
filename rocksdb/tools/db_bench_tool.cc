@@ -3346,7 +3346,6 @@ class Benchmark {
 
       int num_repeat = 1;
       int num_warmup = 0;
-      printf("@@@@@@@@@@ name %s", name.c_str());
       if (!name.empty() && *name.rbegin() == ']') {
         auto it = name.find('[');
         if (it == std::string::npos) {
@@ -3359,9 +3358,7 @@ class Benchmark {
 
         std::string bench_arg;
         std::stringstream args_stream(args);
-        printf("@@@@@@@@@@@@ args %s\n", args.c_str());
         while (std::getline(args_stream, bench_arg, '-')) {
-          printf("bench_arg %s\n", bench_arg.c_str());
           if (bench_arg.empty()) {
             continue;
           }
@@ -6771,7 +6768,7 @@ class Benchmark {
     WriteBatch batch(/*reserved_bytes=*/0, /*max_bytes=*/0,
                      FLAGS_write_batch_protection_bytes_per_key,
                      user_timestamp_size_);
-    Duration duration(seq ? 0 : FLAGS_duration, deletes_);
+    Duration duration(seq ? 0 : FLAGS_duration, deletes_/4);
     int64_t i = 0;
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
@@ -7157,7 +7154,7 @@ class Benchmark {
     int put_weight = 0;
     int64_t reads_done = 0;
     int64_t writes_done = 0;
-    Duration duration(FLAGS_duration, readwrites_);
+    Duration duration(FLAGS_duration, readwrites_/2);
 
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
@@ -7230,7 +7227,7 @@ class Benchmark {
     std::string value;
     int64_t found = 0;
     int64_t bytes = 0;
-    Duration duration(FLAGS_duration, readwrites_);
+    Duration duration(FLAGS_duration, readwrites_/3);
 
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
