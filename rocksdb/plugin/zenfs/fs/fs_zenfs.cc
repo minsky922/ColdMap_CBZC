@@ -337,8 +337,8 @@ void ZenFS::BackgroundStatTimeLapse() {
 
       ////
  
-      uint64_t cost_benefit_score_sum_sequence_mb = zbd_->cost_benefit_score_sum_sequence_mb_.load();
-      uint64_t total_deletion_after_copy_seq = zbd_->total_deletion_after_copy_seq_.load()/100;
+      // uint64_t cost_benefit_score_sum_sequence_mb = zbd_->cost_benefit_score_sum_sequence_mb_.load();
+      // uint64_t total_deletion_after_copy_seq = zbd_->total_deletion_after_copy_seq_.load()/100;
       // uint64_t copy_but_not_deleted_size = 0;
       // if(cur_time % 100 == 0|| run_bg_reset_worker_==false){
       //   //  get copied but not deleted
@@ -385,26 +385,34 @@ void ZenFS::BackgroundStatTimeLapse() {
       // uint64_t A_CD_sequence =  total_count == 0 ? 0 : 
       //              ( total_deletion_after_copy_seq) /  total_count;
       // uint64_t WA_CD_sequence = (total_deletion_after_copy_size>>20) == 0 ? 0 :
-      cost_benefit_score_sum_sequence_mb / (total_deletion_after_copy_size >> 20);
+      // cost_benefit_score_sum_sequence_mb / (total_deletion_after_copy_size >> 20);
 
       // average_actual_cost_benefit_score = zbd_->GetGCBytesWritten() == 0 ? 0 :
       //     actual_cost_benefit_score / (zbd_->GetGCBytesWritten() >> 20);
-      average_actual_cost_benefit_score = (total_deletion_after_copy_size>>20 == 0) ? 0 :
-      actual_cost_benefit_score / (total_deletion_after_copy_size >> 20);
-      if (cur_get_ops || cur_scan_ops) {
-        printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
-               cur_time, zbd_->CalculateFreePercent(), cur_ops,cur_get_ops,cur_scan_ops,
-               gc_bytes_written, cur_io_blocking, rc,
-               zbd_->open_io_zones_.load(), zbd_->active_io_zones_.load(),
-               total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
+      // average_actual_cost_benefit_score = (total_deletion_after_copy_size>>20 == 0) ? 0 :
+      // actual_cost_benefit_score / (total_deletion_after_copy_size >> 20);
+      // if (cur_get_ops || cur_scan_ops) {
+      //   printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
+      //          cur_time, zbd_->CalculateFreePercent(), cur_ops,cur_get_ops,cur_scan_ops,
+      //          gc_bytes_written, cur_io_blocking, rc,
+      //          zbd_->open_io_zones_.load(), zbd_->active_io_zones_.load(),
+      //          total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
 
-      } else {
-        printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
-               cur_time, zbd_->CalculateFreePercent(), cur_ops,
-               gc_bytes_written, cur_io_blocking, rc,
-               zbd_->open_io_zones_.load(), zbd_->active_io_zones_.load(),
-               total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
-      }
+      // } else {
+      //   printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
+      //          cur_time, zbd_->CalculateFreePercent(), cur_ops,
+      //          gc_bytes_written, cur_io_blocking, rc,
+      //          zbd_->open_io_zones_.load(), zbd_->active_io_zones_.load(),
+      //          total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
+      // }
+      // printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
+      //          cur_time, zbd_->CalculateFreePercent(), cur_ops,cur_get_ops,cur_scan_ops,
+      //          (gc_bytes_written>>20), cur_io_blocking, rc);
+
+
+      printf("%d\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t",
+               cur_time, zbd_->CalculateFreePercent(), cur_ops,cur_get_ops,cur_scan_ops,
+               (gc_bytes_written>>20), cur_io_blocking, rc);
       printf("\n");
       // printf("A_CD_sequence = %lu / %lu = %lu\n", ( zbd_->total_deletion_after_copy_seq_.load()/100),
       // (total_count),A_CD_sequence);
@@ -447,47 +455,31 @@ void ZenFS::BackgroundStatTimeLapse() {
     }
   }
 
-  // if(cur_time % 100 == 0){
-    //  get copied but not deleted
-   { 
-    int cur_fops_sequence = zbd_->file_operation_sequence_.load();
 
-    std::lock_guard<std::mutex> lg_(files_mtx_);
-    for (auto f : files_) {
-      int tmp_n=0;
-      int tmp_seq = 0;
-      // size_t tmp_size=0;
-      // long diff_ns_sum = 0;
-      for (auto ext : f.second->GetExtents()) {
-        if (ext->is_zc_copied_ && ext->ZC_COPIED_STATE==ZC_COPIED) {
-          // diff_ns_sum +=
-          //     (timespec.tv_sec - ext->zc_copied_ts_.tv_sec) * 1000000000L +
-          //     (timespec.tv_nsec - ext->zc_copied_ts_.tv_nsec);
-          
-          // copy_but_not_deleted_size += ext->length_;
-          // tmp_size+=ext->length_;
-          // actual_cost_benefit_score +=
-          //     ((ext->length_ >> 20) * (diff_ns / 1000 / 1000));
-              // is_copied=true;
-              tmp_n++;
-              tmp_seq+=(cur_fops_sequence-ext->zc_copied_sequence_);
-          }
+//    { 
+//     int cur_fops_sequence = zbd_->file_operation_sequence_.load();
 
-      }
-      if(tmp_n){
-        // actual_cost_benefit_score +=
-        // ((tmp_size >> 20) * (diff_ns_sum / 1000 / 1000));
-        // if(run_bg_reset_worker_==false){
-        printf("SEQ NOT DELETED UNTIL END %d\n",(tmp_seq/tmp_n));
-        // }
-        // total_deletion_after_copy_seq+=(tmp_seq/tmp_n);
-        // total_count++;
-        // cost_benefit_score_sum_sequence_mb += ((tmp_size>>20)*tmp_seq)/tmp_n;
-      }
-    }
-    // total_deletion_after_copy_size+=copy_but_not_deleted_size;
-  // }
-}
+//     std::lock_guard<std::mutex> lg_(files_mtx_);
+//     for (auto f : files_) {
+//       int tmp_n=0;
+//       int tmp_seq = 0;
+
+//       for (auto ext : f.second->GetExtents()) {
+//         if (ext->is_zc_copied_ && ext->ZC_COPIED_STATE==ZC_COPIED) {
+
+//               tmp_n++;
+//               tmp_seq+=(cur_fops_sequence-ext->zc_copied_sequence_);
+//           }
+
+//       }
+//       if(tmp_n){
+
+//         printf("SEQ NOT DELETED UNTIL END %d\n",(tmp_seq/tmp_n));
+
+//       }
+//     }
+
+// }
 }
 
 uint64_t ZenFS::EstimateFileAge(Env::WriteLifeTimeHint hint) {
