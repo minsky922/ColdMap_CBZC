@@ -324,14 +324,14 @@ void ZenFS::BackgroundStatTimeLapse() {
       uint64_t cur_scan_ops = cur_scan_ops_.load();
       uint64_t cur_io_blocking = zbd_->GetBlocking();
 
-      uint64_t total_time_ms =
-          zbd_->total_deletion_after_copy_time_.load() / 1000;
-      uint64_t total_count = zbd_->total_deletion_after_copy_n_.load();
-      uint64_t total_deletion_after_copy_size =zbd_->total_deletion_after_copy_size_;
-      uint64_t avg_ms = total_count == 0 ? 0 : (total_time_ms / total_count);
-      uint64_t actual_cost_benefit_score =
-          zbd_->actual_cost_benefit_score_.load();
-      uint64_t average_actual_cost_benefit_score;
+      // uint64_t total_time_ms =
+      //     zbd_->total_deletion_after_copy_time_.load() / 1000;
+      // uint64_t total_count = zbd_->total_deletion_after_copy_n_.load();
+      // uint64_t total_deletion_after_copy_size =zbd_->total_deletion_after_copy_size_;
+      // uint64_t avg_ms = total_count == 0 ? 0 : (total_time_ms / total_count);
+      // uint64_t actual_cost_benefit_score =
+      //     zbd_->actual_cost_benefit_score_.load();
+      // uint64_t average_actual_cost_benefit_score;
 
       
 
