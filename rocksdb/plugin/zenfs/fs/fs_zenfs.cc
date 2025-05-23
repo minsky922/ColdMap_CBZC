@@ -1089,20 +1089,24 @@ void ZenFS::PredictCompaction(int step) {
 
     if (pivot_fno == 0) {
       excluded_levels.insert(pivot_level);
-      pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree, initial_l0_files_n,
-                                          excluded_levels);
 
-      pivot_fno = GetMaxHorizontalFno(pivot_level);
-      // printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
-      //        pivot_level, pivot_fno);
+      continue;
 
-      if (pivot_fno != 0) {
-        GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
-      } else {
-        // printf("[Fix] Still no pivot fno => reduce step, go next loop\n");
-        step--;
-        continue;
-      }
+      // pivot_level = GetMaxLevelScoreLevel(tmp_lsm_tree, initial_l0_files_n,
+      //                                     excluded_levels);
+
+      // pivot_fno = GetMaxHorizontalFno(pivot_level);
+      // // printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
+      // //        pivot_level, pivot_fno);
+
+      // if (pivot_fno != 0) {
+      //   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
+      // } else {
+      //   // printf("[Fix] Still no pivot fno => reduce step, go next loop\n");
+      //   step--;
+      //   continue;
+      // }
+
     }else[
       GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
     ]
@@ -1252,6 +1256,7 @@ void ZenFS::PredictCompaction(int step) {
       // printf("l0 step!\n");
       continue;  // L0는 전부 끝났으니 다음 루프
     }
+    
     // !L0
     uint64_t file_size = pivot_file->GetFileSize();
     uint64_t unpivot_total = 0;
