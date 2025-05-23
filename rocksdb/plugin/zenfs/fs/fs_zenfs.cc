@@ -948,11 +948,11 @@ void ZenFS::ReCalculateLifetimes() {
       for (const auto* extent : zone_file->GetExtents()) {
         uint64_t zone_start = extent->zone_->start_;  
 
-        // auto& entry = zone_lifetime_map_[zone_start];
+        auto& entry = zone_lifetime_map_[zone_start];
 
-        zone_lifetime_map_[zone_start].total_lifetime += sst_lifetime_value;
-        zone_lifetime_map_[zone_start].file_count += 1;
-        zone_lifetime_map_[zone_start].file_lifetimes[sst.fno] = sst_lifetime_value;
+        entry.total_lifetime += sst_lifetime_value;
+        entry.file_count += 1;
+        entry.file_lifetimes[sst.fno] = sst_lifetime_value;
       }
     }
   }
@@ -1040,11 +1040,9 @@ void ZenFS::ReCalculateLifetimes() {
       for (const auto* extent : zoneFile->GetExtents()) {
         uint64_t zone_start = extent->zone_->start_;
 
-        // auto& entry = zone_lifetime_map_[zone_start];
-        // entry.total_lifetime += wal_lifetime_value;
-        // entry.file_count++;
-        zone_lifetime_map_[zone_start].total_lifetime +=wal_lifetime_value;
-        zone_lifetime_map_[zone_start].file_count++;
+        auto& entry = zone_lifetime_map_[zone_start];
+        entry.total_lifetime += wal_lifetime_value;
+        entry.file_count++;
       }
     }
   }
@@ -1377,42 +1375,21 @@ void ZenFS::PredictCompaction(int step) {
 
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
-      return;
-    }
-
-    bool should_not_selected_again=false;
-    for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
-      if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
-        // it = unpivot_fno_list.erase(it);
-        // printf("Removed an already propagated fno from unpivot_fno_list.\n");
-        // fno_not_should_selected_as_pivot_again.insert(pivot_fno);
-
-        should_not_selected_again = true;
-
-        // continue;
-        break;
-      } else {
-        ++it;
-      }
-    }
-
-    if (should_not_selected_again == true) {
-      fno_not_should_selected_as_pivot_again.insert(pivot_fno);
+      // printf("fno_already_propagated\n");
       // continue;
       return;
     }
 
-
-
-    // for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
-    //   if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
-    //     // 제거
-    //     it = unpivot_fno_list.erase(it);
-    //     // printf("Removed an already propagated fno from unpivot_fno_list.\n");
-    //   } else {
-    //     ++it;
-    //   }
-    // }
+    for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
+      if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
+        // 제거
+        it = unpivot_fno_list.erase(it);
+        // printf("Removed an already propagated fno from unpivot_fno_list.\n");
+      } else {
+        ++it;
+      }
+      return;
+    }
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
     if (pivot_file == nullptr) {
