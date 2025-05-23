@@ -1379,7 +1379,7 @@ void ZenFS::PredictCompaction(int step) {
         fno_already_propagated.end()) {
       return;
     }
-
+  bool should_not_selected_again=false;
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
       if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
         // it = unpivot_fno_list.erase(it);
