@@ -1388,6 +1388,7 @@ void ZenFS::PredictCompaction(int step) {
       } else {
         ++it;
       }
+      
       // return;
       
     }
