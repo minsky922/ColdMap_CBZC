@@ -1376,7 +1376,8 @@ void ZenFS::PredictCompaction(int step) {
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
       // printf("fno_already_propagated\n");
-      continue;
+      // continue;
+      return;
     }
 
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
@@ -1854,8 +1855,8 @@ void ZenFS::ZoneCleaning(bool forced) {
         // std::cout << "garbage : " << garbage_percent_approx << std::endl;
         // printf("============================================\n");
       } else {
-        // printf("CBZC3!!");
-        // std::cout << "zc_scheme: " << zc_scheme << std::endl;
+        printf("CBZC3!!");
+        std::cout << "zc_scheme: " << zc_scheme << std::endl;
         uint64_t zone_start = zone.start;
 
         double average_lifetime = 0;
