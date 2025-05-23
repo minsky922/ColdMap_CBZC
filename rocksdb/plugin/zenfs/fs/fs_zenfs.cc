@@ -1379,7 +1379,8 @@ void ZenFS::PredictCompaction(int step) {
         fno_already_propagated.end()) {
       return;
     }
-  bool should_not_selected_again=false;
+
+    bool should_not_selected_again=false;
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
       if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
         // it = unpivot_fno_list.erase(it);
@@ -1397,8 +1398,11 @@ void ZenFS::PredictCompaction(int step) {
 
     if (should_not_selected_again == true) {
       fno_not_should_selected_as_pivot_again.insert(pivot_fno);
-      continue;
+      // continue;
+      return;
     }
+
+
 
     // for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
     //   if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
