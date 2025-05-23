@@ -1388,7 +1388,8 @@ void ZenFS::PredictCompaction(int step) {
       } else {
         ++it;
       }
-      return;
+      // return;
+      
     }
 
     ZoneFile* pivot_file = zbd_->GetSSTZoneFileInZBDNoLock(pivot_fno);
