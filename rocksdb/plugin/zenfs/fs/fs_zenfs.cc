@@ -1103,9 +1103,10 @@ void ZenFS::PredictCompaction(int step) {
         step--;
         continue;
       }
-    }
+    }else[
+      GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
+    ]
 
-    GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
 
     // if (unpivot_fno_list.empty()) {
     //   // if trivial move, return
@@ -1122,21 +1123,20 @@ void ZenFS::PredictCompaction(int step) {
 
     if (fno_already_propagated.find(pivot_fno) !=
         fno_already_propagated.end()) {
-      // printf("fno_already_propagated\n");
-      // continue;
-      return;
+      // fno_already_propagated.insert(pivot_fno);
+      continue;
     }
+
+
 
     // for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
     //   if (fno_already_propagated.find(*it) != fno_already_propagated.end()) {
-    //     // 제거
     //     it = unpivot_fno_list.erase(it);
-    //     // printf("Removed an already propagated fno from
-    //     unpivot_fno_list.\n");
     //   } else {
     //     ++it;
     //   }
     // }
+    // }  
     bool should_not_selected_again = false;
 
     for (auto it = unpivot_fno_list.begin(); it != unpivot_fno_list.end();) {
