@@ -595,9 +595,9 @@ void ZoneFile::PushExtent() {
   active_zone_->used_capacity_ += length;
   extent_start_ = active_zone_->wp_;
   extent_filepos_ = file_size_;
-  if (zbd_->GetZCScheme() == CBZC5) {
-    active_zone_->recent_inval_time_ = std::chrono::system_clock::now();
-  }
+  // if (zbd_->GetZCScheme() == CBZC5) {
+  active_zone_->recent_inval_time_ = std::chrono::system_clock::now();
+  // }
 }
 
 IOStatus ZoneFile::AllocateNewZone(uint64_t min_capacity) {
