@@ -1107,9 +1107,11 @@ void ZenFS::PredictCompaction(int step) {
       //   continue;
       // }
 
-    }else[
+    }else{
       GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
-    ]
+
+    }
+    
 
 
     // if (unpivot_fno_list.empty()) {
