@@ -6481,19 +6481,21 @@ class Benchmark {
         double usecs_since_start =
             static_cast<double>(now - thread->stats.GetStart());
         thread->stats.ResetSineInterval();
-        double mix_rate_with_noise = AddNoise(
-            SineRate(usecs_since_start / 1000000.0), FLAGS_sine_mix_rate_noise);
-        read_rate = mix_rate_with_noise * (query.ratio_[0] + query.ratio_[2]);
-        write_rate = mix_rate_with_noise * query.ratio_[1];
 
-        if (read_rate > 0) {
-          thread->shared->read_rate_limiter->SetBytesPerSecond(
-              static_cast<int64_t>(read_rate));
-        }
-        if (write_rate > 0) {
-          thread->shared->write_rate_limiter->SetBytesPerSecond(
-              static_cast<int64_t>(write_rate));
-        }
+        // SJ
+        // double mix_rate_with_noise = AddNoise(
+        //     SineRate(usecs_since_start / 1000000.0), FLAGS_sine_mix_rate_noise);
+        // read_rate = mix_rate_with_noise * (query.ratio_[0] + query.ratio_[2]);
+        // write_rate = mix_rate_with_noise * query.ratio_[1];
+
+        // if (read_rate > 0) {
+        //   thread->shared->read_rate_limiter->SetBytesPerSecond(
+        //       static_cast<int64_t>(read_rate));
+        // }
+        // if (write_rate > 0) {
+        //   thread->shared->write_rate_limiter->SetBytesPerSecond(
+        //       static_cast<int64_t>(write_rate));
+        // }
       }
       // Start the query
       if (query_type == 0) {
@@ -6541,11 +6543,12 @@ class Benchmark {
           fprintf(stderr, "put error: %s\n", s.ToString().c_str());
           ErrorExit();
         }
+        // SJ
+        // if (thread->shared->write_rate_limiter && puts % 100 == 0) {
+        //   thread->shared->write_rate_limiter->Request(100, Env::IO_HIGH,
+        //                                               nullptr /*stats*/);
+        // }
 
-        if (thread->shared->write_rate_limiter && puts % 100 == 0) {
-          thread->shared->write_rate_limiter->Request(100, Env::IO_HIGH,
-                                                      nullptr /*stats*/);
-        }
         thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kWrite);
       } else if (query_type == 2) {
         // Seek query
