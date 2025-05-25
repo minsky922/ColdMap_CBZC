@@ -84,5 +84,6 @@
         "queue": "cpp",
         "stack": "cpp",
         "__string": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/home/gs201/0524/EZC/rocksdb"
 }

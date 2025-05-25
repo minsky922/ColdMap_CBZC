@@ -7154,7 +7154,7 @@ class Benchmark {
     int put_weight = 0;
     int64_t reads_done = 0;
     int64_t writes_done = 0;
-    Duration duration(FLAGS_duration, readwrites_/2);
+    Duration duration(FLAGS_duration, readwrites_);
 
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
@@ -7227,7 +7227,7 @@ class Benchmark {
     std::string value;
     int64_t found = 0;
     int64_t bytes = 0;
-    Duration duration(FLAGS_duration, readwrites_/3);
+    Duration duration(FLAGS_duration, readwrites_/2);
 
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
