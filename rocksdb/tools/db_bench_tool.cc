@@ -6481,7 +6481,7 @@ class Benchmark {
         double usecs_since_start =
             static_cast<double>(now - thread->stats.GetStart());
         thread->stats.ResetSineInterval();
-
+        (void)(usecs_since_start);
         // SJ
         // double mix_rate_with_noise = AddNoise(
         //     SineRate(usecs_since_start / 1000000.0), FLAGS_sine_mix_rate_noise);
