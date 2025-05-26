@@ -6426,6 +6426,14 @@ class Benchmark {
 
     // the limit of qps initiation
     if (FLAGS_sine_mix_rate) {
+      printf("write_rate_limiter@@@@@@@@@@@@@@@@@@@@@@\n");
+            printf("write_rate_limiter@@@@@@@@@@@@@@@@@@@@@@\n");
+
+      printf("write_rate_limiter@@@@@@@@@@@@@@@@@@@@@@\n");
+      printf("write_rate_limiter@@@@@@@@@@@@@@@@@@@@@@\n");
+
+      printf("write_rate_limiter@@@@@@@@@@@@@@@@@@@@@@\n");
+
       thread->shared->read_rate_limiter.reset(
           NewGenericRateLimiter(static_cast<int64_t>(read_rate)));
       thread->shared->write_rate_limiter.reset(
