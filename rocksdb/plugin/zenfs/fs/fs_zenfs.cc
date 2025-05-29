@@ -2802,7 +2802,7 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
         
       }
       if(zbd_->coldest_type_set_== true){
-        todo
+        // todo
         std::lock_guard<std::mutex> lg(zbd_->coldest_type_lock_);
         bool ok = true;
         zbd_->check_coldest_[SeqWAL]=true;
