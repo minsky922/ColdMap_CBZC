@@ -562,13 +562,13 @@ class ZenFS : public FileSystemWrapper {
             zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
             zbd_->coldest_type_set_=false;
           }
-          // else{
-          //   if(zbd_->coldest_type_==type){
-          //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
-          //     zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
-          //     zbd_->coldest_type_set_=false;
-          //   }
-          // }
+          else{
+            if(zbd_->coldest_type_==type){
+              zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+              zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+              zbd_->coldest_type_set_=false;
+            }
+          }
 
         }
       }

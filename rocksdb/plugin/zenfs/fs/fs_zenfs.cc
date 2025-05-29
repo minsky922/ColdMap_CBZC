@@ -1701,14 +1701,14 @@ void ZenFS::ZoneCleaning(bool forced) {
     // printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
     return;
   }
-  // if(zbd_->coldest_type_set_==false){
-  //   for(int i =0 ;i<10;i++){
-  //     zbd_->check_coldest_[i]=false;
-  //   }
-  //   // coldest_type_ = zbd_->GetCBSCColdestType();
-  //   zbd_->SetCBSCColdestType();
-  //   zbd_->coldest_type_set_= true;
-  // }
+  if(zbd_->coldest_type_set_==false){
+    for(int i =0 ;i<10;i++){
+      zbd_->check_coldest_[i]=false;
+    }
+    // coldest_type_ = zbd_->GetCBSCColdestType();
+    zbd_->SetCBSCColdestType();
+    zbd_->coldest_type_set_= true;
+  }
 
   struct timespec start_ts, end_ts;
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
@@ -2789,51 +2789,51 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
       zoneFile->SetSparse(!file_opts.use_direct_writes);
       int seq = zbd_->file_operation_sequence_.fetch_add(1);
       zbd_->latest_file_operation_sequence_[SeqWAL] = seq;
-      // {
+      {
         
-      //   if(coldest_type_set_== true){
-      //     // todo
-      //     if(coldest_type_!=SeqWAL){
-      //       zbd_->CBSC_mispredict_stats_[coldest_type_].fetch_add(1);
-      //     }
-      //     zbd_->CBSC_total_predict_stats_[coldest_type_].fetch_add(1);
-      //     coldest_type_set_=false;
-      //   }
+        if(coldest_type_set_== true){
+          // todo
+          if(coldest_type_!=SeqWAL){
+            zbd_->CBSC_mispredict_stats_[coldest_type_].fetch_add(1);
+          }
+          zbd_->CBSC_total_predict_stats_[coldest_type_].fetch_add(1);
+          coldest_type_set_=false;
+        }
         
-      // }
+      }
       if(zbd_->coldest_type_set_== true){
-        // todo
-        // std::lock_guard<std::mutex> lg(zbd_->coldest_type_lock_);
-        // bool ok = true;
-        // zbd_->check_coldest_[SeqWAL]=true;
+        todo
+        std::lock_guard<std::mutex> lg(zbd_->coldest_type_lock_);
+        bool ok = true;
+        zbd_->check_coldest_[SeqWAL]=true;
         
-        // for(int i =0;i<10;i++){
-        //   if(zbd_->latest_file_operation_sequence_[i]==0){
-        //     continue;
-        //   }
-        //   if(zbd_->check_coldest_[i]==true){
-        //     continue;
-        //   }
-        //   ok=false;
-        //   break;
-        // }
+        for(int i =0;i<10;i++){
+          if(zbd_->latest_file_operation_sequence_[i]==0){
+            continue;
+          }
+          if(zbd_->check_coldest_[i]==true){
+            continue;
+          }
+          ok=false;
+          break;
+        }
 
-        // if(ok==true){
-        //   if(zbd_->coldest_type_!=SeqWAL){
-        //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
-        //   }
-        //   zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
-        //   zbd_->coldest_type_set_=false;
-        // }
+        if(ok==true){
+          if(zbd_->coldest_type_!=SeqWAL){
+            zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+          }
+          zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+          zbd_->coldest_type_set_=false;
+        }
 
 
-        // else{
-        //   if(zbd_->coldest_type_==SeqWAL){
-        //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
-        //     zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
-        //     zbd_->coldest_type_set_=false;
-        //   }
-        // }
+        else{
+          if(zbd_->coldest_type_==SeqWAL){
+            zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+            zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+            zbd_->coldest_type_set_=false;
+          }
+        }
       }
     } else {
       zoneFile->SetIOType(IOType::kUnknown);
@@ -2896,13 +2896,13 @@ IOStatus ZenFS::DeleteFile(const std::string& fname, const IOOptions& options,
           zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
           zbd_->coldest_type_set_=false;
         }       
-        // else{
-        //   if(zbd_->coldest_type_==SeqWAL){
-        //     zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
-        //     zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
-        //     zbd_->coldest_type_set_=false;
-        //   }
-        // }
+        else{
+          if(zbd_->coldest_type_==SeqWAL){
+            zbd_->CBSC_mispredict_stats_[zbd_->coldest_type_].fetch_add(1);
+            zbd_->CBSC_total_predict_stats_[zbd_->coldest_type_].fetch_add(1);
+            zbd_->coldest_type_set_=false;
+          }
+        }
       }
 
       
