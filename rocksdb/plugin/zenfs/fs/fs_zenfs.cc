@@ -2791,14 +2791,14 @@ IOStatus ZenFS::OpenWritableFile(const std::string& filename,
       zbd_->latest_file_operation_sequence_[SeqWAL] = seq;
       {
         
-        if(coldest_type_set_== true){
-          // todo
-          if(coldest_type_!=SeqWAL){
-            zbd_->CBSC_mispredict_stats_[coldest_type_].fetch_add(1);
-          }
-          zbd_->CBSC_total_predict_stats_[coldest_type_].fetch_add(1);
-          coldest_type_set_=false;
-        }
+        // if(coldest_type_set_== true){
+        //   // todo
+        //   if(coldest_type_!=SeqWAL){
+        //     zbd_->CBSC_mispredict_stats_[coldest_type_].fetch_add(1);
+        //   }
+        //   zbd_->CBSC_total_predict_stats_[coldest_type_].fetch_add(1);
+        //   coldest_type_set_=false;
+        // }
         
       }
       if(zbd_->coldest_type_set_== true){
