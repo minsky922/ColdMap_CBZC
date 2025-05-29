@@ -418,7 +418,7 @@ void ZenFS::BackgroundStatTimeLapse() {
       // (total_count),A_CD_sequence);
       // printf("WA_CD_sequence = %lu / %lu = %lu\n", ( cost_benefit_score_sum_sequence_mb),
       // (total_deletion_after_copy_size >> 20),WA_CD_sequence);
-      // zbd_->PrintMisPredictStats();
+      zbd_->PrintMisPredictStats();
       // printf("\n");
       fflush(stdout);
       fflush(stderr);
