@@ -6,7 +6,7 @@
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
-
+#include "timing_listener.h"
 #ifdef GFLAGS
 #ifdef NUMA
 #include <numa.h>
@@ -92,6 +92,7 @@
 #include "utilities/merge_operators/bytesxor.h"
 #include "utilities/merge_operators/sortlist.h"
 #include "utilities/persistent_cache/block_cache_tier.h"
+
 
 #ifdef MEMKIND
 #include "memory/memkind_kmem_allocator.h"
@@ -4569,6 +4570,9 @@ class Benchmark {
     // APIs, and settings for the benchmark itself.
     Options& options = *opts;
 
+    options.listeners.emplace_back(
+      std::make_shared<TimingListener>()); 
+
     // Always set these since they are harmless when not needed and prevent
     // a guaranteed failure when they are needed.
     options.create_missing_column_families = true;
@@ -6527,10 +6531,10 @@ class Benchmark {
           abort();
         }
 
-        if (thread->shared->read_rate_limiter && (gets + seek) % 100 == 0) {
-          thread->shared->read_rate_limiter->Request(100, Env::IO_HIGH,
-                                                     nullptr /*stats*/);
-        }
+       // if (thread->shared->read_rate_limiter && (gets + seek) % 100 == 0) {
+         // thread->shared->read_rate_limiter->Request(100, Env::IO_HIGH,
+           //                                         nullptr /*stats*/);
+       // }
         thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kRead);
       } else if (query_type == 1) {
         // the Put query
