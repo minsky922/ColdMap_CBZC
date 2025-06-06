@@ -2378,7 +2378,7 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
                                     now.time_since_epoch()).count();
 
         uint64_t relative_wp_page = ((old_ext->zone_->start_ % old_ext->zone_->max_capacity_) >> 12);
-        uint64_t size_page = length_ / 4096;
+        uint64_t size_page = old_ext->length_ / 4096;
 
         for (uint64_t p = relative_wp_page; p < relative_wp_page + size_page; p++) {
             old_ext->zone_->i_bitmap[p] = timestamp_ms;
