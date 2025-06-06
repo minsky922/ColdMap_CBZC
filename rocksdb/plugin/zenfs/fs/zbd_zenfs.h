@@ -89,6 +89,8 @@ class ZoneFile;
 #define CBZC4 4
 #define CBZC5 5
 
+#define CBZC6 6
+
 #define PARTIAL_RESET_KICKED_THRESHOLD 40
 // | zone-reset | partial-reset |
 #define RUNTIME_ZONE_RESET_DISABLED 0    // |      x     |       x       |
@@ -204,6 +206,10 @@ class Zone {
 
   struct std::vector<motivation_lifetime_diff> motivation_lifetime_diffs;
   std::mutex motivation_lifetime_diffs_lock_;
+
+  uint64_t i_bitmap[275712];
+  uint64_t v_bitmap[275712];
+
 
   IOStatus Reset();
   IOStatus Finish();

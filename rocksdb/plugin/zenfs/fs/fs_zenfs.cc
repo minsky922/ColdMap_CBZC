@@ -1852,14 +1852,9 @@ void ZenFS::ZoneCleaning(bool forced) {
           //           << std::endl;
         }
 
-        // std::cout << "cost : " << cost << std::endl;
-        // std::cout << "freeSpace : " << freeSpace << std::endl;
-        // std::cout << "benefit : " << benefit << std::endl;
-        // std::cout << "garbage : " << garbage_percent_approx << std::endl;
-        // printf("============================================\n");
-      } else {
-        // printf("CBZC3!!");
-        // std::cout << "zc_scheme: " << zc_scheme << std::endl;
+
+      } else if(zc_scheme == CBZC3){
+
         uint64_t zone_start = zone.start;
 
         double average_lifetime = 0;
@@ -1872,37 +1867,7 @@ void ZenFS::ZoneCleaning(bool forced) {
 
           average_lifetime = total_lifetime / file_count;
 
-          // std::map<double, int> value_counts;
-          // for (const auto& value : lifetime_values) {
-          //   value_counts[value]++;
-          // }
 
-          /* benefit = sigma^ZLV * (1-simga)^(free space)
-            0<ZLV<1, 0<free space<1
-            0<sigma<1 */
-          // uint64_t ZoneLifetimeValue = 0;
-
-          // uint64_t min_variance = 20;
-          // uint64_t max_variance = 700;
-          // double sigma_min = 0.5;
-          // double sigma_max = 2.0;
-
-          // double variance_weight =
-          //     (static_cast<double>(cur_variance) - min_variance) /
-          //     (max_variance - min_variance);
-          // double sigma = sigma_min + (sigma_max - sigma_min) *
-          // variance_weight; double weighted_age = pow(ZoneLifetimeValue,
-          // sigma);
-          // uint64_t u = 100 * zone.used_capacity / zone.max_capacity;
-          // uint64_t freeSpace = 100 * (zone.max_capacity -
-          // zone.used_capacity)
-          // /
-          //                      zone.max_capacity;
-          // uint64_t cost = 100 + u;
-          // uint64_t benefit = freeSpace * ZoneLifetimeValue;
-          // uint64_t benefit = freeSpace * weighted_age;
-
-          // double sigma = cur_variance;
 
           double u = 2 * (static_cast<double>(zone.used_capacity) /
                           static_cast<double>(zone.max_capacity));
@@ -1961,6 +1926,21 @@ void ZenFS::ZoneCleaning(bool forced) {
             // std::cout << "]" << ",freespace: " << weighted_freeSpace
             //           << ",age: " << weighted_age << std::endl;
           }
+        }
+      }else if(zc_scheme==CBZC6){
+        // uint64_t zone_size_page;
+        // uint64_t* v_bitmap;
+        // uint64_t* i_bitmap;
+        uint64_t total_age=0;
+        for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
+          total_age  = zone.i_bitmap[i]-zone.v_bitmap[i];
+        }
+        uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t benefit = garbage_percent_approx * total_age;
+        if (cost != 0) {
+          double cost_benefit_score = benefit / cost;
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
         }
       }
     } else {  // 유효 데이터가 없는 경우

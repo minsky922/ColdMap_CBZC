@@ -57,6 +57,8 @@ class ZoneSnapshot {
   uint64_t capacity;       
   uint64_t used_capacity;  
   uint64_t max_capacity;   
+  uint64_t i_bitmap[275712];
+  uint64_t v_bitmap[275712];
 
   std::chrono::time_point<std::chrono::system_clock> recent_inval_time;
 
@@ -68,7 +70,10 @@ class ZoneSnapshot {
         capacity(zone.capacity_),
         used_capacity(zone.used_capacity_),
         max_capacity(zone.max_capacity_),
-        recent_inval_time(zone.recent_inval_time_) {}
+        recent_inval_time(zone.recent_inval_time_) {
+          memcpy(i_bitmap,zone.i_bitmap,sizeof(i_bitmap));
+          memcpy(v_bitmap,zone.v_bitmap,sizeof(v_bitmap));
+        }
 };
 
 class ZoneExtentSnapshot {

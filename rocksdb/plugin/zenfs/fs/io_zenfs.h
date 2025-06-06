@@ -73,6 +73,20 @@ class ZoneExtent {
   explicit ZoneExtent(uint64_t start, uint64_t length, Zone* zone);
   explicit ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
                       std::string fname, ZoneFile* zfile);
+  ~ZoneExtent(){
+    if(zone_&&zone_->zbd_->zc_scheme_==CBZC6){
+        auto now = std::chrono::system_clock::now();
+        uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
+
+        uint64_t relative_wp_page = ((start_ % zone_->max_capacity_) >> 12);
+        uint64_t size_page = length_ / 4096;
+
+        for (uint64_t i = relative_wp_page; i < relative_wp_page + size_page; i++) {
+            zone_->i_bitmap[i] = timestamp_ms;
+        }
+    }
+  }
   Status DecodeFrom(Slice* input);
   void EncodeTo(std::string* output);
   void EncodeJson(std::ostream& json_stream);

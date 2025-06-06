@@ -6527,10 +6527,10 @@ class Benchmark {
           abort();
         }
 
-        if (thread->shared->read_rate_limiter && (gets + seek) % 100 == 0) {
-          thread->shared->read_rate_limiter->Request(100, Env::IO_HIGH,
-                                                     nullptr /*stats*/);
-        }
+        // if (thread->shared->read_rate_limiter && (gets + seek) % 100 == 0) {
+        //   thread->shared->read_rate_limiter->Request(100, Env::IO_HIGH,
+        //                                              nullptr /*stats*/);
+        // }
         thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kRead);
       } else if (query_type == 1) {
         // the Put query
