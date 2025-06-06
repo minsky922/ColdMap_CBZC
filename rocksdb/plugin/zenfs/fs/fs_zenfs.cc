@@ -2086,7 +2086,10 @@ void ZenFS::GCWorker() {
       }
     }
     try_n = 0;
-    while (zbd_->CalculateFreePercent() < zbd_->zc_) {
+    if(zbd_->CalculateFreePercent()>zbd_->zc_){
+      continue;
+    }
+    while (zbd_->CalculateFreePercent() < zbd_->until_) {
       zbd_->SetZCRunning(true);
       ZoneCleaning(true);
       try_n++;
