@@ -197,7 +197,7 @@ IOStatus Zone::Append(char *data, uint32_t size) {
     if (ret < 0) {
       return IOStatus::IOError(strerror(errno));
     }
-    if(zbd_->zc_scheme_==CBZC6){
+    if(zbd_->GetZCScheme()==CBZC6){
       uint64_t relative_wp_page = ((wp_%max_capacity_)>>12);
       uint64_t size_page = size/4096;
         for(uint64_t i = relative_wp_page; 

@@ -337,6 +337,22 @@ void ZoneFile::ClearExtents() {
       deleted_after_copy_size += (*e)->length_;
       deleted_after_copy_sequence_sum+=(cur_fops_sequence-(*e)->zc_copied_sequence_);
     }
+
+
+    if(zbd_->GetZCScheme()==CBZC6){
+        auto now = std::chrono::system_clock::now();
+        uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
+
+        uint64_t relative_wp_page = ((start_ % zone->max_capacity_) >> 12);
+        uint64_t size_page = length_ / 4096;
+
+        for (uint64_t i = relative_wp_page; i < relative_wp_page + size_page; i++) {
+            zone->i_bitmap[i] = timestamp_ms;
+        }
+    }
+
+    
     delete *e;
   }
   extents_.clear();
