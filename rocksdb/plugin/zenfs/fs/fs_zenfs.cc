@@ -2075,6 +2075,9 @@ void ZenFS::GCWorker() {
     }
 
     zbd_->SetZCRunning(false);
+    if(zbd_->CalculateFreePercent()>zbd_->zc_){
+      continue;
+    }
     // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
     int try_n = 0;
     while (zbd_->ShouldZCByEmptyZoneN()) {
@@ -2086,9 +2089,7 @@ void ZenFS::GCWorker() {
       }
     }
     try_n = 0;
-    if(zbd_->CalculateFreePercent()>zbd_->zc_){
-      continue;
-    }
+
     while (zbd_->CalculateFreePercent() < zbd_->until_) {
       zbd_->SetZCRunning(true);
       ZoneCleaning(true);
