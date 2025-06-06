@@ -1928,12 +1928,16 @@ void ZenFS::ZoneCleaning(bool forced) {
           }
         }
       }else if(zc_scheme==CBZC6){
-        // uint64_t zone_size_page;
-        // uint64_t* v_bitmap;
-        // uint64_t* i_bitmap;
+        auto now = std::chrono::system_clock::now();
+        uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
         uint64_t total_age=0;
         for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
-          total_age  = zone.i_bitmap[i]-zone.v_bitmap[i];
+          if(zone.i_bitmap[i]==0){
+            total_age  += timestamp_ms-zone.v_bitmap[i];
+            continue;
+          }
+          total_age  += zone.i_bitmap[i]-zone.v_bitmap[i];
         }
         uint64_t cost = (100 - garbage_percent_approx) * 2;
         uint64_t benefit = garbage_percent_approx * total_age;
@@ -2373,11 +2377,11 @@ IOStatus ZenFS::SyncFileExtents(ZoneFile* zoneFile,
         uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                     now.time_since_epoch()).count();
 
-        uint64_t relative_wp_page = ((start_ % zone->max_capacity_) >> 12);
+        uint64_t relative_wp_page = ((old_ext->zone_->start_ % old_ext->zone_->max_capacity_) >> 12);
         uint64_t size_page = length_ / 4096;
 
-        for (uint64_t i = relative_wp_page; i < relative_wp_page + size_page; i++) {
-            old_ext->zone_->i_bitmap[i] = timestamp_ms;
+        for (uint64_t p = relative_wp_page; p < relative_wp_page + size_page; p++) {
+            old_ext->zone_->i_bitmap[p] = timestamp_ms;
         }
     }
 

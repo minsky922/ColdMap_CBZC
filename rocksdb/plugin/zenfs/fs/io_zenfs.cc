@@ -344,15 +344,15 @@ void ZoneFile::ClearExtents() {
         uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                     now.time_since_epoch()).count();
 
-        uint64_t relative_wp_page = ((start_ % zone->max_capacity_) >> 12);
-        uint64_t size_page = length_ / 4096;
+        uint64_t relative_wp_page = ((zone->start_ % zone->max_capacity_) >> 12);
+        uint64_t size_page = zone->length_ / 4096;
 
         for (uint64_t i = relative_wp_page; i < relative_wp_page + size_page; i++) {
             zone->i_bitmap[i] = timestamp_ms;
         }
     }
 
-    
+
     delete *e;
   }
   extents_.clear();
