@@ -1937,7 +1937,7 @@ void ZenFS::ZoneCleaning(bool forced) {
             total_age  += timestamp_ms-zone.v_bitmap[i];
             continue;
           }
-          total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
+          // total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
         }
         total_age>>=30;
         uint64_t cost = (100 - garbage_percent_approx) * 2;
@@ -1947,8 +1947,8 @@ void ZenFS::ZoneCleaning(bool forced) {
           double cost_benefit_score = benefit / cost;
           victim_candidate.push_back(
               {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
-              printf("garbage_percent_approx %lu total_age %lu cost %lu benefit %lu cost_benefit_score %f\n",
-          garbage_percent_approx,total_age,cost,benefit,cost_benefit_score);
+          //     printf("garbage_percent_approx %lu total_age %lu cost %lu benefit %lu cost_benefit_score %f\n",
+          // garbage_percent_approx,total_age,cost,benefit,cost_benefit_score);
         }
 
       }
