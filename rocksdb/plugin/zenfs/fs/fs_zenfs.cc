@@ -2091,7 +2091,7 @@ void ZenFS::GCWorker() {
     int try_n = 0;
     while (zbd_->ShouldZCByEmptyZoneN()) {
       zbd_->SetZCRunning(true);
-      ZoneCleaning(try_n > 7);
+      ZoneCleaning(try_n > 4);
       try_n++;
       if (try_n > 8) {
         break;
@@ -2101,7 +2101,7 @@ void ZenFS::GCWorker() {
 
     while (zbd_->CalculateFreePercent() < zbd_->until_) {
       zbd_->SetZCRunning(true);
-      ZoneCleaning(try_n > 7);
+      ZoneCleaning(try_n > 4);
       try_n++;
       if (try_n > 8) {
         break;
