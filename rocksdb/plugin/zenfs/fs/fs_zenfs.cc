@@ -12,7 +12,7 @@
 #include <ctime>
 #include <iostream>
 #include <numeric>
-
+#include <cfloat>
 /// cur_ops_
 #include <dirent.h>
 #include <errno.h>
