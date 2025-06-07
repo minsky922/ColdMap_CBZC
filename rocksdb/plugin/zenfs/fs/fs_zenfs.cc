@@ -1935,6 +1935,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
           if(zone.i_bitmap[i]==0){
             // total_age  += timestamp_ms-zone.v_bitmap[i];
+            (void)(timestamp_ms);
             continue;
           }
           total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
