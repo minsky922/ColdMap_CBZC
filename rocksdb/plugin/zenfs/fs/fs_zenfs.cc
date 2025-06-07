@@ -1937,8 +1937,9 @@ void ZenFS::ZoneCleaning(bool forced) {
             total_age  += timestamp_ms-zone.v_bitmap[i];
             continue;
           }
-          total_age  += zone.i_bitmap[i]-zone.v_bitmap[i];
+          total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
         }
+        total_age/=(zone.max_capacity>>30)
         uint64_t cost = (100 - garbage_percent_approx) * 2;
         uint64_t benefit = garbage_percent_approx * total_age;
 
