@@ -418,7 +418,7 @@ void ZenFS::BackgroundStatTimeLapse() {
       // (total_count),A_CD_sequence);
       // printf("WA_CD_sequence = %lu / %lu = %lu\n", ( cost_benefit_score_sum_sequence_mb),
       // (total_deletion_after_copy_size >> 20),WA_CD_sequence);
-      zbd_->PrintMisPredictStats();
+      // zbd_->PrintMisPredictStats();
       // printf("\n");
       fflush(stdout);
       fflush(stderr);
@@ -1955,10 +1955,11 @@ void ZenFS::ZoneCleaning(bool forced) {
               {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
           //     printf("garbage_percent_approx %lu total_age %lu cost %lu benefit %lu cost_benefit_score %f\n",
           // garbage_percent_approx,total_age,cost,benefit,cost_benefit_score);
-        }else{
-          victim_candidate.push_back(
-              {DBL_MAX, zone.start, garbage_percent_approx, 0.0});
         }
+        // else{
+        //   victim_candidate.push_back(
+        //       {DBL_MAX, zone.start, garbage_percent_approx, 0.0});
+        // }
 
       }
     } else {  // 유효 데이터가 없는 경우
@@ -1980,17 +1981,17 @@ void ZenFS::ZoneCleaning(bool forced) {
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
   }
 
-  // std::cout
-  //     <<
-  //     "-------------------------------------------------------------------"
-  //     << std::endl;
-  // for (const auto& candidate : victim_candidate) {
-  //   std::cout << "cost-benefit score: " << candidate.score
-  //             << ", zone start: " << candidate.zone_start
-  //             << ", Garbage Percentage: " <<
-  //             candidate.garbage_percent_approx
-  //             << "%" << std::endl;
-  // }
+  std::cout
+      <<
+      "-------------------------------------------------------------------"
+      << std::endl;
+  for (const auto& candidate : victim_candidate) {
+    std::cout << "cost-benefit score: " << candidate.score
+              << ", zone start: " << candidate.zone_start
+              << ", Garbage Percentage: " <<
+              candidate.garbage_percent_approx
+              << "%" << std::endl;
+  }
 
   if (!victim_candidate.empty()) {
     for (const auto& candidate : victim_candidate) {

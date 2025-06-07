@@ -862,40 +862,42 @@ IOStatus ZonedWritableFile::CAZAFlushSST() {
   }
   // printf("%lu
   // %d\n",zoneFile_->predicted_size_,IS_BIG_SSTABLE(zoneFile_->predicted_size_));
-  if(zoneFile_->level_ ==0){
-    int seq = zoneFile_->GetZbd()->file_operation_sequence_.fetch_add(1);
-    zoneFile_->GetZbd()->latest_file_operation_sequence_[SeqL0L1andFlush] = seq;
+  // if(zoneFile_->level_ ==0){
+  //   int seq = zoneFile_->GetZbd()->file_operation_sequence_.fetch_add(1);
+  //   zoneFile_->GetZbd()->latest_file_operation_sequence_[SeqL0L1andFlush] = seq;
 
-    if(zoneFile_->GetZbd()->coldest_type_set_== true){
-      // todo
-      std::lock_guard<std::mutex> lg(zoneFile_->GetZbd()->coldest_type_lock_);
-      bool ok = true;
-      zoneFile_->GetZbd()->check_coldest_[SeqL0L1andFlush]=true;
+  //   if(zoneFile_->GetZbd()->coldest_type_set_== true){
+  //     // todo
+  //     std::lock_guard<std::mutex> lg(zoneFile_->GetZbd()->coldest_type_lock_);
+  //     bool ok = true;
+  //     zoneFile_->GetZbd()->check_coldest_[SeqL0L1andFlush]=true;
       
-      for(int i =0;i<10;i++){
-        if(zoneFile_->GetZbd()->latest_file_operation_sequence_[i]==0){
-          continue;
-        }
-        if(zoneFile_->GetZbd()->check_coldest_[i]==true){
-          continue;
-        }
-        ok=false;
-        break;
-      }
+  //     for(int i =0;i<10;i++){
+  //       if(zoneFile_->GetZbd()->latest_file_operation_sequence_[i]==0){
+  //         continue;
+  //       }
+  //       if(zoneFile_->GetZbd()->check_coldest_[i]==true){
+  //         continue;
+  //       }
+  //       ok=false;
+  //       break;
+  //     }
 
-      if(ok==true){
-        if(zoneFile_->GetZbd()->coldest_type_!=SeqL0L1andFlush){
-          zoneFile_->GetZbd()->CBSC_mispredict_stats_[zoneFile_->GetZbd()->coldest_type_].fetch_add(1);
-        }
-        zoneFile_->GetZbd()->CBSC_total_predict_stats_[zoneFile_->GetZbd()->coldest_type_].fetch_add(1);
-        zoneFile_->GetZbd()->coldest_type_set_=false;
-      }else{
-        // if(zoneFile_->GetZbd()->coldest_type_==)
-      }
-    }
+  //     if(ok==true){
+  //       if(zoneFile_->GetZbd()->coldest_type_!=SeqL0L1andFlush){
+  //         zoneFile_->GetZbd()->CBSC_mispredict_stats_[zoneFile_->GetZbd()->coldest_type_].fetch_add(1);
+  //       }
+  //       zoneFile_->GetZbd()->CBSC_total_predict_stats_[zoneFile_->GetZbd()->coldest_type_].fetch_add(1);
+  //       zoneFile_->GetZbd()->coldest_type_set_=false;
+  //     }else{
+  //       // if(zoneFile_->GetZbd()->coldest_type_==)
+  //     }
+  //   }
 
 
-  }
+  // }
+
+  
   //   zoneFile_->GetZbd()->lsm_tree_[0].fetch_add(1);
   // }else{
   zoneFile_->GetZbd()->lsm_tree_[zoneFile_->level_].fetch_add(
