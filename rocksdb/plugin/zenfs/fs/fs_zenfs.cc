@@ -1955,6 +1955,9 @@ void ZenFS::ZoneCleaning(bool forced) {
               {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
           //     printf("garbage_percent_approx %lu total_age %lu cost %lu benefit %lu cost_benefit_score %f\n",
           // garbage_percent_approx,total_age,cost,benefit,cost_benefit_score);
+        }else{
+          victim_candidate.push_back(
+              {DBL_MAX, zone.start, garbage_percent_approx, 0.0});
         }
 
       }
