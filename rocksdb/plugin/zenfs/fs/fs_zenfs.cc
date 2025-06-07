@@ -1993,36 +1993,36 @@ void ZenFS::ZoneCleaning(bool forced) {
   //             << "%" << std::endl;
   // }
 
-  if (!victim_candidate.empty()) {
-    for (const auto& candidate : victim_candidate) {
-      migrate_zones_start.emplace(candidate.zone_start);
-      ZLV = candidate.ZoneLifetimeValue;
-      // std::cout << "ZLV: " << ZLV << std::endl;
+  // if (!victim_candidate.empty()) {
+  //   for (const auto& candidate : victim_candidate) {
+  //     migrate_zones_start.emplace(candidate.zone_start);
+  //     ZLV = candidate.ZoneLifetimeValue;
+  //     // std::cout << "ZLV: " << ZLV << std::endl;
 
-      std::cout << "[Picked] cost-benefit score: " << candidate.score
-                << ", zone start: " << candidate.zone_start
-                << ", Garbage Percentage: " <<
-                candidate.garbage_percent_approx
-                << "%" << std::endl;
+  //     std::cout << "[Picked] cost-benefit score: " << candidate.score
+  //               << ", zone start: " << candidate.zone_start
+  //               << ", Garbage Percentage: " <<
+  //               candidate.garbage_percent_approx
+  //               << "%" << std::endl;
 
-      break;
-    }
-  }
+  //     break;
+  //   }
+  // }
 
   // uint64_t threshold = 0;
-  // uint64_t reclaimed_zone_n = 1;
+  uint64_t reclaimed_zone_n = 2;
 
-  // // 청소할 존 수 계산
-  // reclaimed_zone_n = reclaimed_zone_n > victim_candidate.size()
-  //                        ? victim_candidate.size()
-  //                        : reclaimed_zone_n;
+  // 청소할 존 수 계산
+  reclaimed_zone_n = reclaimed_zone_n > victim_candidate.size()
+                         ? victim_candidate.size()
+                         : reclaimed_zone_n;
 
-  // // 청소 대상 존 선택
-  // for (size_t i = 0;
-  //      (i < reclaimed_zone_n && migrate_zones_start.size() <
-  //      reclaimed_zone_n); i++) {
-  //   migrate_zones_start.emplace(victim_candidate[i].zone_start);
-  // }
+  // 청소 대상 존 선택
+  for (size_t i = 0;
+       (i < reclaimed_zone_n && migrate_zones_start.size() <
+       reclaimed_zone_n); i++) {
+    migrate_zones_start.emplace(victim_candidate[i].zone_start);
+  }
 
   std::vector<ZoneExtentSnapshot*> migrate_exts;
   for (auto& ext : snapshot.extents_) {
