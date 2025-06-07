@@ -1697,6 +1697,11 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
 
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
+
+  if(forced){
+    zc_scheme=0;
+  }
+
   if (db_ptr_ == nullptr) {
     // printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
     return;
@@ -1934,7 +1939,7 @@ void ZenFS::ZoneCleaning(bool forced) {
         uint64_t total_age=0;
         for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
           if(zone.i_bitmap[i]==0){
-            // total_age  += timestamp_ms-zone.v_bitmap[i];
+            total_age  += timestamp_ms-zone.v_bitmap[i];
             (void)(timestamp_ms);
             continue;
           }
@@ -2086,7 +2091,7 @@ void ZenFS::GCWorker() {
     int try_n = 0;
     while (zbd_->ShouldZCByEmptyZoneN()) {
       zbd_->SetZCRunning(true);
-      ZoneCleaning(true);
+      ZoneCleaning(try_n > 7);
       try_n++;
       if (try_n > 8) {
         break;
@@ -2096,7 +2101,7 @@ void ZenFS::GCWorker() {
 
     while (zbd_->CalculateFreePercent() < zbd_->until_) {
       zbd_->SetZCRunning(true);
-      ZoneCleaning(true);
+      ZoneCleaning(try_n > 7);
       try_n++;
       if (try_n > 8) {
         break;
