@@ -1946,8 +1946,8 @@ void ZenFS::ZoneCleaning(bool forced) {
           total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
         }
         total_age>>=30;
-        uint64_t cost = (100 - garbage_percent_approx*garbage_percent_approx) * 2;
-        uint64_t benefit = garbage_percent_approx*garbage_percent_approx * total_age;
+        uint64_t cost = (100 - ((garbage_percent_approx*garbage_percent_approx)/100) ) * 2;
+        uint64_t benefit =  ((garbage_percent_approx*garbage_percent_approx)/100)  * total_age;
 
         if (cost != 0) {
           double cost_benefit_score = benefit / cost;
