@@ -1946,8 +1946,8 @@ void ZenFS::ZoneCleaning(bool forced) {
           total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
         }
         total_age>>=30;
-        uint64_t cost = (100 - garbage_percent_approx) * 2;
-        uint64_t benefit = garbage_percent_approx * total_age;
+        uint64_t cost = (100 - garbage_percent_approx*garbage_percent_approx) * 2;
+        uint64_t benefit = garbage_percent_approx*garbage_percent_approx * total_age;
 
         if (cost != 0) {
           double cost_benefit_score = benefit / cost;
@@ -1981,17 +1981,17 @@ void ZenFS::ZoneCleaning(bool forced) {
         [](const ZoneInfo& a, const ZoneInfo& b) { return a.score > b.score; });
   }
 
-  std::cout
-      <<
-      "-------------------------------------------------------------------"
-      << std::endl;
-  for (const auto& candidate : victim_candidate) {
-    std::cout << "cost-benefit score: " << candidate.score
-              << ", zone start: " << candidate.zone_start
-              << ", Garbage Percentage: " <<
-              candidate.garbage_percent_approx
-              << "%" << std::endl;
-  }
+  // std::cout
+  //     <<
+  //     "-------------------------------------------------------------------"
+  //     << std::endl;
+  // for (const auto& candidate : victim_candidate) {
+  //   std::cout << "cost-benefit score: " << candidate.score
+  //             << ", zone start: " << candidate.zone_start
+  //             << ", Garbage Percentage: " <<
+  //             candidate.garbage_percent_approx
+  //             << "%" << std::endl;
+  // }
 
   if (!victim_candidate.empty()) {
     for (const auto& candidate : victim_candidate) {
@@ -1999,11 +1999,11 @@ void ZenFS::ZoneCleaning(bool forced) {
       ZLV = candidate.ZoneLifetimeValue;
       // std::cout << "ZLV: " << ZLV << std::endl;
 
-      // std::cout << "[Picked] cost-benefit score: " << candidate.score
-      //           << ", zone start: " << candidate.zone_start
-      //           << ", Garbage Percentage: " <<
-      //           candidate.garbage_percent_approx
-      //           << "%" << std::endl;
+      std::cout << "[Picked] cost-benefit score: " << candidate.score
+                << ", zone start: " << candidate.zone_start
+                << ", Garbage Percentage: " <<
+                candidate.garbage_percent_approx
+                << "%" << std::endl;
 
       break;
     }
