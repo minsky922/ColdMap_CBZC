@@ -2589,7 +2589,7 @@ IOStatus ZenFS::NewWritableFile(const std::string& filename,
   }
   // return OpenWritableFile(fname, file_opts, result, nullptr, false);
   printf("target()->NewWritableFile %s\n",fname.c_str());
-return target()->NewWritableFile(fname, file_opts, result, nullptr);
+return target_->NewWritableFile(fname, file_opts, result, nullptr);
 }
 
 IOStatus ZenFS::ReuseWritableFile(const std::string& filename,
@@ -2761,8 +2761,9 @@ IOStatus ZenFS::DeleteDirRecursiveNoLock(const std::string& dir,
 IOStatus ZenFS::NewLogger(const std::string& fname, const IOOptions& options,
                           std::shared_ptr<Logger>* result,
                           IODebugContext* dbg) {
-  return target_->NewLogger(fname, options, result, dbg);
+  // return target_->NewLogger(fname, options, result, dbg);
   // (void)(fname);
+  return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
   // (void)(result);
   // (void)(options);
   // (void)(dbg);
