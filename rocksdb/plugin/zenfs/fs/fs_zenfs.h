@@ -29,7 +29,9 @@ namespace fs = std::filesystem;
 #include "version.h"
 #include "zbd_zenfs.h"
 
-#include "port/port.h"
+// #include "port/port.h"
+#include "port/port_posix.h"
+
 #include "rocksdb/perf_level.h"
 #include "rocksdb/system_clock.h"
 namespace ROCKSDB_NAMESPACE {
