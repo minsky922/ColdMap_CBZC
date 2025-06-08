@@ -123,8 +123,8 @@ IOStatus Zone::Reset() {
     motivation_lifetime_diffs.clear();
     is_allocated_ = false;
   }
-  memset(i_bitmap,0,sizeof(i_bitmap));
-  memset(v_bitmap,0,sizeof(v_bitmap));
+  // memset(i_bitmap,0,sizeof(i_bitmap));
+  // memset(v_bitmap,0,sizeof(v_bitmap));
   
 
   IOStatus ios = zbd_be_->Reset(start_, &offline, &max_capacity);
@@ -197,14 +197,14 @@ IOStatus Zone::Append(char *data, uint32_t size) {
     if (ret < 0) {
       return IOStatus::IOError(strerror(errno));
     }
-    if(zbd_->GetZCScheme()==CBZC6){
-      uint64_t relative_wp_page = ((wp_%max_capacity_)>>12);
-      uint64_t size_page = size/4096;
-        for(uint64_t i = relative_wp_page; 
-          i<relative_wp_page+size_page;i++){
-          v_bitmap[i]=timestamp_ms;
-        }
-    }
+    // if(zbd_->GetZCScheme()==CBZC6){
+    //   uint64_t relative_wp_page = ((wp_%max_capacity_)>>12);
+    //   uint64_t size_page = size/4096;
+    //     for(uint64_t i = relative_wp_page; 
+    //       i<relative_wp_page+size_page;i++){
+    //       // v_bitmap[i]=timestamp_ms;
+    //     }
+    // }
 
     ptr += ret;
     wp_ += ret;
@@ -1887,7 +1887,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (finish_scheme_ != FINISH_ENABLE && zc_scheme!=CBZC6) {
+    if (finish_scheme_ != FINISH_ENABLE && zc_scheme_!=CBZC6) {
       AllocateAllInvalidZone(out_zone);
       if (*out_zone) {
         break;
