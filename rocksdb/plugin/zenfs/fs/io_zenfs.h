@@ -304,6 +304,7 @@ class ZonedWritableFile : public FSWritableFile {
   virtual Env::WriteLifeTimeHint GetWriteLifeTimeHint() override {
     return zoneFile_->GetWriteLifeTimeHint();
   }
+  std::shared_ptr<ZoneFile> zoneFile_;
 
  private:
   IOStatus BufferedWrite(char* data, uint32_t data_left);
@@ -322,7 +323,6 @@ class ZonedWritableFile : public FSWritableFile {
   int write_temp;
   bool open;
 
-  std::shared_ptr<ZoneFile> zoneFile_;
   MetadataWriter* metadata_writer_;
 
   std::mutex buffer_mtx_;
