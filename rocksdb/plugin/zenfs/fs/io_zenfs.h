@@ -66,7 +66,7 @@ class ZoneExtent {
   
   int zc_copied_sequence_;
   int ZC_COPIED_STATE=NO_COPIED;
-
+  uint64_t create_time_;
   // std::chrono::time_point<std::chrono::system_clock> zc_copied_time_;
   struct timespec zc_copied_ts_;
 
@@ -112,6 +112,7 @@ class ZoneFile {
   std::mutex open_for_wr_mtx_;
 
   time_t m_time_;
+  uint64_t created_time_;
   bool is_sparse_ = false;
   bool is_deleted_ = false;
 

@@ -37,7 +37,10 @@
 namespace ROCKSDB_NAMESPACE {
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone)
-    : start_(start), length_(length), zone_(zone), is_zc_copied_(false),ZC_COPIED_STATE(NO_COPIED) {}
+    : start_(start), length_(length), zone_(zone), is_zc_copied_(false),ZC_COPIED_STATE(NO_COPIED) {
+      create_time_= std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
+    }
 
 ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
                        std::string fname, ZoneFile* zfile)
@@ -52,6 +55,8 @@ ZoneExtent::ZoneExtent(uint64_t start, uint64_t length, Zone* zone,
       ZC_COPIED_STATE(NO_COPIED) {
   zc_copied_ts_.tv_sec = 0;
   zc_copied_ts_.tv_nsec = 0;
+  create_time_= std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
   if (zone == nullptr) {
     return;
   }
@@ -282,7 +287,11 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, uint64_t file_id,
       nr_synced_extents_(0),
       m_time_(0),
       metadata_writer_(metadata_writer),
-      zenfs_(zenfs) {}  ///
+      zenfs_(zenfs) {
+        created_time_= std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
+
+      }  ///
 
 std::string ZoneFile::GetFilename() { return linkfiles_[0]; }
 time_t ZoneFile::GetFileModificationTime() { return m_time_; }

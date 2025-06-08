@@ -81,6 +81,7 @@ class ZoneExtentSnapshot {
   uint64_t start;
   uint64_t length;
   uint64_t zone_start;
+  uint64_t create_time;
   std::string filename;
 
  public:
@@ -88,6 +89,7 @@ class ZoneExtentSnapshot {
       : start(extent.start_),
         length(extent.length_),
         zone_start(extent.zone_->start_),
+        create_time(extent.create_time_),
         filename(fname) {}
 };
 

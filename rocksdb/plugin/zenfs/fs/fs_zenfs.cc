@@ -1933,21 +1933,37 @@ void ZenFS::ZoneCleaning(bool forced) {
           }
         }
       }else if(zc_scheme==CBZC6){
+
+
         auto now = std::chrono::system_clock::now();
         uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                     now.time_since_epoch()).count();
         uint64_t total_age=0;
-        for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
-          if(zone.i_bitmap[i]==0){
-            total_age  += timestamp_ms-zone.v_bitmap[i];
-            (void)(timestamp_ms);
-            continue;
-          }
-          total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
+        
+
+        // for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
+        //   if(zone.i_bitmap[i]==0){
+        //     total_age  += timestamp_ms-zone.v_bitmap[i];
+        //     (void)(timestamp_ms);
+        //     continue;
+        //   }
+        //   total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
+        // }
+        // total_age>>=30;
+
+      for (auto& ext : snapshot.extents_) {
+        if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
+          total_age+=timestamp_ms-ext.create_time;
         }
-        total_age>>=30;
+      }
+
+
+
         uint64_t cost = (100 - ((garbage_percent_approx*garbage_percent_approx)/100) ) * 2;
         uint64_t benefit =  ((garbage_percent_approx*garbage_percent_approx)/100)  * total_age;
+
+
+
 
         if (cost != 0) {
           double cost_benefit_score = benefit / cost;
@@ -2580,16 +2596,16 @@ IOStatus ZenFS::NewWritableFile(const std::string& filename,
   std::string fname = FormatPathLexically(filename);
   Debug(logger_, "New writable file: %s direct: %d\n", fname.c_str(),
         file_opts.use_direct_writes);
-  if(ends_with(fname, ".sst")){
-    return OpenWritableFile(fname, file_opts, result, nullptr, false);
+  // if(ends_with(fname, ".sst")){
+  //   return OpenWritableFile(fname, file_opts, result, nullptr, false);
 
-  }else if(ends_with(fname, ".log")){
-    return OpenWritableFile(fname, file_opts, result, nullptr, false);
+  // }else if(ends_with(fname, ".log")){
+  //   return OpenWritableFile(fname, file_opts, result, nullptr, false);
 
-  }
-  // return OpenWritableFile(fname, file_opts, result, nullptr, false);
-  printf("target()->NewWritableFile %s\n",fname.c_str());
-return target_->NewWritableFile(fname, file_opts, result, nullptr);
+  // }
+  return OpenWritableFile(fname, file_opts, result, nullptr, false);
+//   printf("target()->NewWritableFile %s\n",fname.c_str());
+// return target_->NewWritableFile(fname, file_opts, result, nullptr);
 }
 
 IOStatus ZenFS::ReuseWritableFile(const std::string& filename,
@@ -2763,7 +2779,7 @@ IOStatus ZenFS::NewLogger(const std::string& fname, const IOOptions& options,
                           IODebugContext* dbg) {
   // return target_->NewLogger(fname, options, result, dbg);
   // (void)(fname);
-  return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
+  // return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
   // (void)(result);
   // (void)(options);
   // (void)(dbg);
