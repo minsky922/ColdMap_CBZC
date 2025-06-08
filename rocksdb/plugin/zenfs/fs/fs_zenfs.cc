@@ -2776,36 +2776,36 @@ IOStatus ZenFS::DeleteDirRecursiveNoLock(const std::string& dir,
   return target()->DeleteDir(ToAuxPath(d), options, dbg);
 }
 
-IOStatus ZenFS::NewLogger(const std::string& fname, const IOOptions& options,
-                          std::shared_ptr<Logger>* result,
-                          IODebugContext* dbg) {
-  // return target_->NewLogger(fname, options, result, dbg);
-  // (void)(fname);
-  // return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
-  // (void)(result);
-  // (void)(options);
-  // (void)(dbg);
-  // return IOStatus::OK();
-  printf("@ZenFS::NewLoggerZenFS::NewLogger@ZenFS::NewLogger\n");
-  FileOptions foptions;
- foptions.io_options = options;
-  // TODO: Tune the buffer size.
-  foptions.writable_file_max_buffer_size = 1024 * 1024;
-  std::unique_ptr<FSWritableFile> writable_file;
-  const IOStatus status = NewWritableFile(fname, foptions, &writable_file, dbg);
-  if (!status.ok()) {
-    return status;
-  }
+// IOStatus ZenFS::NewLogger(const std::string& fname, const IOOptions& options,
+//                           std::shared_ptr<Logger>* result,
+//                           IODebugContext* dbg) {
+//   // return target_->NewLogger(fname, options, result, dbg);
+//   // (void)(fname);
+//   // return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
+//   // (void)(result);
+//   // (void)(options);
+//   // (void)(dbg);
+//   // return IOStatus::OK();
+//   printf("@ZenFS::NewLoggerZenFS::NewLogger@ZenFS::NewLogger\n");
+//   FileOptions foptions;
+//  foptions.io_options = options;
+//   // TODO: Tune the buffer size.
+//   foptions.writable_file_max_buffer_size = 1024 * 1024;
+//   std::unique_ptr<FSWritableFile> writable_file;
+//   const IOStatus status = NewWritableFile(fname, foptions, &writable_file, dbg);
+//   if (!status.ok()) {
+//     return status;
+//   }
 
 
-  *result = std::make_shared<ZenFSLogger>(
-    this,std::move(writable_file), fname,
-              foptions, Env::Default());
-  logger_= *result;
-  return IOStatus::OK();
+//   *result = std::make_shared<ZenFSLogger>(
+//     this,std::move(writable_file), fname,
+//               foptions, Env::Default());
+//   logger_= *result;
+//   return IOStatus::OK();
 
 
-}
+// }
 
 IOStatus ZenFS::DeleteDirRecursive(const std::string& d,
                                    const IOOptions& options,
