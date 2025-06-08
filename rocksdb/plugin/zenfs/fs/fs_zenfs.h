@@ -28,7 +28,8 @@ namespace fs = std::filesystem;
 #include "snapshot.h"
 #include "version.h"
 #include "zbd_zenfs.h"
-
+#include "rocksdb/perf_level.h"
+#include "rocksdb/system_clock.h"
 namespace ROCKSDB_NAMESPACE {
 
 #if !defined(ROCKSDB_LITE) && defined(OS_LINUX)
@@ -684,7 +685,7 @@ class ZenFSLogger : public Logger {
         env_(env),
         clock_(env_->GetSystemClock().get()),
         // file_( std::move(writable_file)) ,
-        file_(std::unique_ptr<FDPWritableFile>(static_cast<FDPWritableFile*>(writable_file.release()))),
+        file_(std::unique_ptr<ZonedWritableFile>(static_cast<ZonedWritableFile*>(writable_file.release()))),
 
         fname_(fname),
         envoptions_(options),
@@ -854,7 +855,7 @@ class ZenFSLogger : public Logger {
   Env* env_;
   SystemClock* clock_;
   // WritableFileWriter file_;
-  std::unique_ptr<FDPWritableFile> file_;
+  std::unique_ptr<ZonedWritableFile> file_;
   std::string fname_;
   EnvOptions envoptions_;
   mutable port::Mutex mutex_;  // Mutex to protect the shared variables below.
