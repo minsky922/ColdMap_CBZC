@@ -1887,28 +1887,8 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (finish_scheme_ != FINISH_ENABLE && zc_scheme_!=CBZC6) {
-      AllocateAllInvalidZone(out_zone);
-      if (*out_zone) {
-        break;
-      }
-      GetAnyLargestRemainingZone(out_zone, min_capacity);
-      if (*out_zone) {
-        break;
-      }
-
-      // if(GetFullZoneN()>io_zones.size()-zc_-4){
-      if (GetActiveIOZoneTokenIfAvailable()) {
-        AllocateEmptyZone(out_zone);  // 빈 영역 할당
-        if (*out_zone != nullptr) {
-          (*out_zone)->lifetime_ = file_lifetime;
-          break;
-        }
-        PutActiveIOZoneToken();
-      }
-      // }
-
-    } else if (finish_scheme_ == FINISH_ENABLE) {
+    
+    if (finish_scheme_ == FINISH_ENABLE || zc_scheme_==CBZC6) {
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
@@ -1983,7 +1963,28 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     if (!s.ok()) {
       return s;
     }
-  }
+  }else if (finish_scheme_ != FINISH_ENABLE) {
+      AllocateAllInvalidZone(out_zone);
+      if (*out_zone) {
+        break;
+      }
+      GetAnyLargestRemainingZone(out_zone, min_capacity);
+      if (*out_zone) {
+        break;
+      }
+
+      // if(GetFullZoneN()>io_zones.size()-zc_-4){
+      if (GetActiveIOZoneTokenIfAvailable()) {
+        AllocateEmptyZone(out_zone);  // 빈 영역 할당
+        if (*out_zone != nullptr) {
+          (*out_zone)->lifetime_ = file_lifetime;
+          break;
+        }
+        PutActiveIOZoneToken();
+      }
+      // }
+
+    }
 
   if (s.ok() && (*out_zone) != nullptr) {
     // printf("LAST: min_capacity : %lu\n", min_capacity);
