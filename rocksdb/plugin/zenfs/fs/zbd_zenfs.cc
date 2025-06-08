@@ -184,8 +184,8 @@ IOStatus Zone::Append(char *data, uint32_t size) {
   uint32_t left = size;
   int ret;
   recent_inval_time_ = std::chrono::system_clock::now();
-  uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                    recent_inval_time_.time_since_epoch()).count();
+  // uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                                   recent_inval_time_.time_since_epoch()).count();
 
   if (capacity_ < size)
     return IOStatus::NoSpace("Not enough capacity for append");
