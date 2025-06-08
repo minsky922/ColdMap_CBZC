@@ -1888,7 +1888,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
     }
 
 
-    if (finish_scheme_ == FINISH_ENABLE || zc_scheme_==CBZC6) {
+    if (finish_scheme_ == FINISH_ENABLE) {
       while (true) {
         if (GetActiveIOZoneTokenIfAvailable()) {
           break;
