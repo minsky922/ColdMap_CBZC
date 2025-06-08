@@ -123,6 +123,9 @@ IOStatus Zone::Reset() {
     motivation_lifetime_diffs.clear();
     is_allocated_ = false;
   }
+  memset(i_bitmap,0,sizeof(i_bitmap));
+  memset(v_bitmap,0,sizeof(v_bitmap));
+  
 
   IOStatus ios = zbd_be_->Reset(start_, &offline, &max_capacity);
   if (ios != IOStatus::OK()) return ios;
@@ -181,6 +184,9 @@ IOStatus Zone::Append(char *data, uint32_t size) {
   uint32_t left = size;
   int ret;
   recent_inval_time_ = std::chrono::system_clock::now();
+  uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    recent_inval_time_.time_since_epoch()).count();
+
   if (capacity_ < size)
     return IOStatus::NoSpace("Not enough capacity for append");
 
@@ -190,6 +196,14 @@ IOStatus Zone::Append(char *data, uint32_t size) {
     ret = zbd_be_->Write(ptr, left, wp_);
     if (ret < 0) {
       return IOStatus::IOError(strerror(errno));
+    }
+    if(zbd_->GetZCScheme()==CBZC6){
+      uint64_t relative_wp_page = ((wp_%max_capacity_)>>12);
+      uint64_t size_page = size/4096;
+        for(uint64_t i = relative_wp_page; 
+          i<relative_wp_page+size_page;i++){
+          v_bitmap[i]=timestamp_ms;
+        }
     }
 
     ptr += ret;
@@ -1873,7 +1887,7 @@ IOStatus ZonedBlockDevice::TakeMigrateZone(Slice &smallest, Slice &largest,
       break;
     }
 
-    if (finish_scheme_ != FINISH_ENABLE) {
+    if (finish_scheme_ != FINISH_ENABLE && zc_scheme!=CBZC6) {
       AllocateAllInvalidZone(out_zone);
       if (*out_zone) {
         break;
