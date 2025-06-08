@@ -3727,7 +3727,11 @@ Status NewZenFS(FileSystem** fs, const ZbdBackendType backend_type,
   // TODO(guokuankuan@bytedance.com) We need to figure out how to reuse
   // RocksDB's logger in the future.
 #if !defined(NDEBUG) || defined(WITH_TERARKDB)
-  s = Env::Default()->NewLogger(GetLogFilename(backend_name), &logger);
+  // s = Env::Default()->NewLogger(GetLogFilename(backend_name), &logger);
+    s = Env::Default()->NewLogger("/rocksdb.log", &logger);
+    printf("%s",GetLogFilename(backend_name).c_str());
+
+
   if (!s.ok()) {
     fprintf(stderr, "ZenFS: Could not create logger");
   } else {
