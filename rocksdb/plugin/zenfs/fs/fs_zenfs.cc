@@ -1968,10 +1968,12 @@ void ZenFS::ZoneCleaning(bool forced) {
           }
         }
       }
+
+
       if(extent_n){
         total_age/=extent_n;
       }else{
-        total_age=1;
+        total_age=0;
       }
 
 
