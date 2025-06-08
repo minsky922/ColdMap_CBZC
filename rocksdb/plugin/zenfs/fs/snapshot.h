@@ -77,13 +77,15 @@ class ZoneExtentSnapshot {
   uint64_t length;
   uint64_t zone_start;
   std::string filename;
+  uint64_t create_time;
 
  public:
   ZoneExtentSnapshot(const ZoneExtent& extent, const std::string fname)
       : start(extent.start_),
         length(extent.length_),
         zone_start(extent.zone_->start_),
-        filename(fname) {}
+        filename(fname),
+        create_time(extent.create_time_) {}
 };
 
 class ZoneFileSnapshot {

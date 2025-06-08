@@ -1857,7 +1857,77 @@ void ZenFS::ZoneCleaning(bool forced) {
         // std::cout << "benefit : " << benefit << std::endl;
         // std::cout << "garbage : " << garbage_percent_approx << std::endl;
         // printf("============================================\n");
-      } else {
+      } else if(zc_scheme==CBZC6){
+
+
+        auto now = std::chrono::system_clock::now();
+        uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
+        uint64_t total_age=0;
+        
+
+        // for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
+        //   if(zone.i_bitmap[i]==0){
+        //     total_age  += timestamp_ms-zone.v_bitmap[i];
+        //     (void)(timestamp_ms);
+        //     continue;
+        //   }
+        //   total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
+        // }
+        // total_age>>=30;
+      uint64_t extent_n=0;
+
+      // for (auto& ext : snapshot.extents_) {
+      //   // if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
+      //   if(zone.start==ext.zone_start){
+      //     // total_age+=timestamp_ms-ext.create_time;
+      //     extent_n++;
+      //   }
+      // }
+      // if(extent_n==0){
+      //   continue;
+      // }
+      // extent_n=0;
+
+      for(auto& file : snapshot.zone_files_){
+        if(file.extents.size()){
+          // if (migrate_zones_start.find(file.extents[0].start) != migrate_zones_start.end()) {
+          if(zone.start==file.extents[0].start){
+            total_age+=timestamp_ms-file.extents[0].create_time;
+            extent_n++;
+          }
+        }
+      }
+
+
+      if(extent_n){
+        total_age/=extent_n;
+      }else{
+        // total_age=0;
+        continue;
+      }
+
+
+        // uint64_t cost = (100 - ((garbage_percent_approx*garbage_percent_approx)/100) ) * 2;
+        // uint64_t benefit =  ((garbage_percent_approx*garbage_percent_approx)/100)  * total_age;
+
+        uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t benefit = (garbage_percent_approx * total_age);
+
+
+        if (cost != 0) {
+          double cost_benefit_score = benefit / cost;
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
+          //     printf("garbage_percent_approx %lu total_age %lu cost %lu benefit %lu cost_benefit_score %f\n",
+          // garbage_percent_approx,total_age,cost,benefit,cost_benefit_score);
+        }
+        // else{
+        //   victim_candidate.push_back(
+        //       {DBL_MAX, zone.start, garbage_percent_approx, 0.0});
+        // }
+
+      }else {
         // printf("CBZC3!!");
         // std::cout << "zc_scheme: " << zc_scheme << std::endl;
         uint64_t zone_start = zone.start;

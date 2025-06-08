@@ -66,7 +66,7 @@ class ZoneExtent {
   
   int zc_copied_sequence_;
   int ZC_COPIED_STATE=NO_COPIED;
-
+  uint64_t create_time_;
   // std::chrono::time_point<std::chrono::system_clock> zc_copied_time_;
   struct timespec zc_copied_ts_;
 
