@@ -1954,7 +1954,7 @@ void ZenFS::ZoneCleaning(bool forced) {
 
       for (auto& ext : snapshot.extents_) {
         // if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
-        if(zone.start==ext.zone_start)
+        if(zone.start==ext.zone_start){
           // total_age+=timestamp_ms-ext.create_time;
           extent_n++;
         }
@@ -1967,7 +1967,7 @@ void ZenFS::ZoneCleaning(bool forced) {
       for(auto& file : snapshot.zone_files_){
         if(file.extents.size()){
           // if (migrate_zones_start.find(file.extents[0].start) != migrate_zones_start.end()) {
-          if(zone.start==file.extents[0].start)
+          if(zone.start==file.extents[0].start){
             total_age+=timestamp_ms-file.extents[0].create_time;
             extent_n++;
           }
