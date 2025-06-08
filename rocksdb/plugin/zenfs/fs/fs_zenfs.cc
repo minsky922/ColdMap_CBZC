@@ -2761,7 +2761,7 @@ IOStatus ZenFS::DeleteDirRecursiveNoLock(const std::string& dir,
 IOStatus ZenFS::NewLogger(const std::string& fname, const IOOptions& options,
                           std::shared_ptr<Logger>* result,
                           IODebugContext* dbg) {
-  // return target_->NewLogger(fname, options, result, dbg);
+  return target_->NewLogger(fname, options, result, dbg);
   // (void)(fname);
   // (void)(result);
   // (void)(options);
