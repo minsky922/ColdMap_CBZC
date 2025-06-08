@@ -1952,13 +1952,16 @@ void ZenFS::ZoneCleaning(bool forced) {
         // total_age>>=30;
       uint64_t extent_n=0;
 
-      // for (auto& ext : snapshot.extents_) {
-      //   if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
-      //     total_age+=timestamp_ms-ext.create_time;
-      //     extent_n++;
-      //   }
-      // }
-
+      for (auto& ext : snapshot.extents_) {
+        if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
+          // total_age+=timestamp_ms-ext.create_time;
+          extent_n++;
+        }
+      }
+      if(extent_n==0){
+        continue;
+      }
+      extent_n=0;
 
       for(auto& file : snapshot.zone_files_){
         if(file.extents.size()){
