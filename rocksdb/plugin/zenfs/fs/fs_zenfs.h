@@ -30,7 +30,7 @@ namespace fs = std::filesystem;
 #include "zbd_zenfs.h"
 
 // #include "port/port.h"
-#include "port/port_posix.h"
+// #include "port/port_posix.h"
 
 #include "rocksdb/perf_level.h"
 #include "rocksdb/system_clock.h"
@@ -716,10 +716,10 @@ class ZenFSLogger : public Logger {
       // need a better solution than this.
       SetPerfLevel(PerfLevel::kDisable);
       // IOSTATS_SET_DISABLE(true);
-      logger.mutex_.Lock();
+      logger.mutex_.lock();
     }
     ~FileOpGuard() {
-      logger_.mutex_.Unlock();
+      logger_.mutex_.unlock();
       // IOSTATS_SET_DISABLE(false);
       SetPerfLevel(prev_perf_level_);
     }
@@ -730,7 +730,7 @@ class ZenFSLogger : public Logger {
   };
 
   void FlushLocked() {
-    mutex_.AssertHeld();
+    // mutex_.AssertHeld();
     if (flush_pending_) {
       flush_pending_ = false;
       // file_->Flush();
@@ -862,7 +862,8 @@ class ZenFSLogger : public Logger {
   std::unique_ptr<ZonedWritableFile> file_;
   std::string fname_;
   EnvOptions envoptions_;
-  mutable port::Mutex mutex_;  // Mutex to protect the shared variables below.
+  // mutable port::Mutex mutex_;  // Mutex to protect the shared variables below.
+  std::mutex mutex_;
   const static uint64_t flush_every_seconds_ = 5;
   std::atomic_uint_fast64_t last_flush_micros_;
   std::atomic<bool> flush_pending_;
