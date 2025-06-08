@@ -1,0 +1,127 @@
+[Switching to Thread 0x7ffff6f98640 (LWP 1452750)]
+
+Thread 3 "ycsb" hit Breakpoint 1, rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//LOG", file_opts=..., result=0x7ffff6f93240) at plugin/zenfs/fs/fs_zenfs.cc:2579
+2579	                                IODebugContext* /*dbg*/) {
+(gdb) bt
+#0  rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//LOG", file_opts=..., result=0x7ffff6f93240) at plugin/zenfs/fs/fs_zenfs.cc:2579
+#1  0x000055555587b183 in rocksdb::ZenFS::NewLogger (this=0x7fffe8012780, fname="//LOG", options=..., result=0x7fffe80210b8, dbg=0x7ffff6f933c0) at plugin/zenfs/fs/fs_zenfs.cc:2768
+#2  0x00005555556d8320 in rocksdb::CompositeEnv::NewLogger (this=<optimized out>, fname=..., result=<optimized out>) at ./env/composite_env_wrapper.h:174
+#3  0x00005555557210bf in rocksdb::CreateLoggerFromOptions (dbname="/", options=..., logger=logger@entry=0x7fffe80210b8) at logging/auto_roll_logger.cc:352
+#4  0x000055555562008a in rocksdb::SanitizeOptions (dbname="/", src=..., read_only=read_only@entry=false, logger_creation_s=logger_creation_s@entry=0x7fffe8021078) at db/db_impl/db_impl_open.cc:59
+#5  0x0000555555910b1b in rocksdb::DBImpl::DBImpl (this=this@entry=0x7fffe8021000, options=..., dbname="/", seq_per_batch=seq_per_batch@entry=false, batch_per_txn=batch_per_txn@entry=true, 
+    read_only=read_only@entry=false) at db/db_impl/db_impl.cc:160
+#6  0x0000555555622c5e in rocksdb::DBImpl::Open (db_options=..., dbname="/", column_families=std::vector of length 1, capacity 1 = {...}, handles=0x7ffff6f94a10, 
+    dbptr=0x555555b8f3d0 <ycsbc::RocksdbDB::db_>, seq_per_batch=false, batch_per_txn=true) at db/db_impl/db_impl_open.cc:1752
+#7  0x0000555555624f19 in rocksdb::DB::Open (db_options=..., dbname=..., column_families=..., handles=<optimized out>, dbptr=<optimized out>) at db/db_impl/db_impl_open.cc:1612
+#8  0x00005555555f7c7a in ycsbc::RocksdbDB::Init() ()
+#9  0x000055555560a0a2 in ycsbc::ClientThread(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*) ()
+#10 0x000055555560993f in std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<int>, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int> >::_M_invoke(std::_Any_data const&) ()
+#11 0x000055555560a26d in std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*) ()
+#12 0x00007ffff7899ee8 in __pthread_once_slow (once_control=0x555555bdd668, init_routine=0x7ffff7cdad50 <__once_proxy>) at ./nptl/pthread_once.c:116
+#13 0x000055555560c0db in std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int>::_M_run() ()
+#14 0x00007ffff7cdc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#15 0x00007ffff7894ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#16 0x00007ffff7926850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+(gdb) 
+
+
+
+
+Thread 3 "ycsb" hit Breakpoint 1, rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//000000.dbtmp", file_opts=..., result=0x7ffff6f932e8) at plugin/zenfs/fs/fs_zenfs.cc:2579
+2579	                                IODebugContext* /*dbg*/) {
+(gdb) bt
+#0  rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//000000.dbtmp", file_opts=..., result=0x7ffff6f932e8) at plugin/zenfs/fs/fs_zenfs.cc:2579
+#1  0x00005555556dcdb8 in rocksdb::WriteStringToFile (fs=0x7fffe8012780, data=..., fname="//000000.dbtmp", should_sync=should_sync@entry=true) at env/file_system.cc:175
+#2  0x00005555556c9231 in rocksdb::WriteStringToFile (env=env@entry=0x7fffe8013780, data=..., fname="//000000.dbtmp", should_sync=should_sync@entry=true)
+    at /usr/include/c++/11/bits/shared_ptr_base.h:1295
+#3  0x00005555557117c3 in rocksdb::SetIdentityFile (env=0x7fffe8013780, dbname="/", db_id="") at file/filename.cc:433
+#4  0x00005555556207c0 in rocksdb::DBImpl::NewDB (this=0x7fffe8021000, new_filenames=0x7ffff6f93bc0) at db/db_impl/db_impl_open.cc:300
+#5  0x000055555562b556 in rocksdb::DBImpl::Recover (this=0x7fffe8021000, column_families=std::vector of length 1, capacity 1 = {...}, read_only=<optimized out>, error_if_wal_file_exists=<optimized out>, 
+    error_if_data_exists_in_wals=<optimized out>, recovered_seq=0x7ffff6f93f68, recovery_ctx=0x7ffff6f94430) at db/db_impl/db_impl_open.cc:454
+#6  0x0000555555623018 in rocksdb::DBImpl::Open (db_options=..., dbname="/", column_families=std::vector of length 1, capacity 1 = {...}, handles=0x7ffff6f94a10, 
+    dbptr=0x555555b8f3d0 <ycsbc::RocksdbDB::db_>, seq_per_batch=false, batch_per_txn=true) at db/db_impl/db_impl_open.cc:1798
+#7  0x0000555555624f19 in rocksdb::DB::Open (db_options=..., dbname=..., column_families=..., handles=<optimized out>, dbptr=<optimized out>) at db/db_impl/db_impl_open.cc:1612
+#8  0x00005555555f7c7a in ycsbc::RocksdbDB::Init() ()
+#9  0x000055555560a0a2 in ycsbc::ClientThread(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*) ()
+#10 0x000055555560993f in std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<int>, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int> >::_M_invoke(std::_Any_data const&) ()
+#11 0x000055555560a26d in std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*) ()
+#12 0x00007ffff7899ee8 in __pthread_once_slow (once_control=0x555555bdd668, init_routine=0x7ffff7cdad50 <__once_proxy>) at ./nptl/pthread_once.c:116
+#13 0x000055555560c0db in std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int>::_M_run() ()
+#14 0x00007ffff7cdc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#15 0x00007ffff7894ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#16 0x00007ffff7926850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+(gdb) 
+
+
+
+Thread 3 "ycsb" hit Breakpoint 1, rocksdb::NewWritableFile (fs=0x7fffe8012780, fname="//MANIFEST-000001", result=result@entry=0x7ffff6f936e0, options=...) at file/read_write_util.cc:19
+19	                         const FileOptions& options) {
+(gdb) bt
+#0  rocksdb::NewWritableFile (fs=0x7fffe8012780, fname="//MANIFEST-000001", result=result@entry=0x7ffff6f936e0, options=...) at file/read_write_util.cc:19
+#1  0x0000555555620b1a in rocksdb::DBImpl::NewDB (this=0x7fffe8021000, new_filenames=0x7ffff6f93bc0) at db/db_impl/db_impl_open.cc:321
+#2  0x000055555562b556 in rocksdb::DBImpl::Recover (this=0x7fffe8021000, column_families=std::vector of length 1, capacity 1 = {...}, read_only=<optimized out>, error_if_wal_file_exists=<optimized out>, 
+    error_if_data_exists_in_wals=<optimized out>, recovered_seq=0x7ffff6f93f68, recovery_ctx=0x7ffff6f94430) at db/db_impl/db_impl_open.cc:454
+#3  0x0000555555623018 in rocksdb::DBImpl::Open (db_options=..., dbname="/", column_families=std::vector of length 1, capacity 1 = {...}, handles=0x7ffff6f94a10, 
+    dbptr=0x555555b8f3d0 <ycsbc::RocksdbDB::db_>, seq_per_batch=false, batch_per_txn=true) at db/db_impl/db_impl_open.cc:1798
+#4  0x0000555555624f19 in rocksdb::DB::Open (db_options=..., dbname=..., column_families=..., handles=<optimized out>, dbptr=<optimized out>) at db/db_impl/db_impl_open.cc:1612
+#5  0x00005555555f7c7a in ycsbc::RocksdbDB::Init() ()
+#6  0x000055555560a0a2 in ycsbc::ClientThread(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*) ()
+#7  0x000055555560993f in std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<int>, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int> >::_M_invoke(std::_Any_data const&) ()
+#8  0x000055555560a26d in std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*) ()
+#9  0x00007ffff7899ee8 in __pthread_once_slow (once_control=0x555555bdd668, init_routine=0x7ffff7cdad50 <__once_proxy>) at ./nptl/pthread_once.c:116
+#10 0x000055555560c0db in std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int>::_M_run() ()
+#11 0x00007ffff7cdc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007ffff7894ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#13 0x00007ffff7926850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+(gdb) 
+
+
+2025-06-08 16:15:52 64 sec: 0 operations;
+
+Thread 3 "ycsb" hit Breakpoint 1, rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//MANIFEST-000001", file_opts=..., result=0x7ffff6f936e0) at plugin/zenfs/fs/fs_zenfs.cc:2579
+2579	                                IODebugContext* /*dbg*/) {
+(gdb) bt
+#0  rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//MANIFEST-000001", file_opts=..., result=0x7ffff6f936e0) at plugin/zenfs/fs/fs_zenfs.cc:2579
+#1  0x0000555555712414 in rocksdb::NewWritableFile (fs=<optimized out>, fname="//MANIFEST-000001", result=result@entry=0x7ffff6f936e0, options=...) at file/read_write_util.cc:22
+#2  0x0000555555620b1a in rocksdb::DBImpl::NewDB (this=0x7fffe8021000, new_filenames=0x7ffff6f93bc0) at db/db_impl/db_impl_open.cc:321
+#3  0x000055555562b556 in rocksdb::DBImpl::Recover (this=0x7fffe8021000, column_families=std::vector of length 1, capacity 1 = {...}, read_only=<optimized out>, error_if_wal_file_exists=<optimized out>, 
+    error_if_data_exists_in_wals=<optimized out>, recovered_seq=0x7ffff6f93f68, recovery_ctx=0x7ffff6f94430) at db/db_impl/db_impl_open.cc:454
+#4  0x0000555555623018 in rocksdb::DBImpl::Open (db_options=..., dbname="/", column_families=std::vector of length 1, capacity 1 = {...}, handles=0x7ffff6f94a10, 
+    dbptr=0x555555b8f3d0 <ycsbc::RocksdbDB::db_>, seq_per_batch=false, batch_per_txn=true) at db/db_impl/db_impl_open.cc:1798
+#5  0x0000555555624f19 in rocksdb::DB::Open (db_options=..., dbname=..., column_families=..., handles=<optimized out>, dbptr=<optimized out>) at db/db_impl/db_impl_open.cc:1612
+#6  0x00005555555f7c7a in ycsbc::RocksdbDB::Init() ()
+#7  0x000055555560a0a2 in ycsbc::ClientThread(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*) ()
+#8  0x000055555560993f in std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<int>, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int> >::_M_invoke(std::_Any_data const&) ()
+#9  0x000055555560a26d in std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*) ()
+#10 0x00007ffff7899ee8 in __pthread_once_slow (once_control=0x555555bdd668, init_routine=0x7ffff7cdad50 <__once_proxy>) at ./nptl/pthread_once.c:116
+#11 0x000055555560c0db in std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int>::_M_run() ()
+#12 0x00007ffff7cdc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#13 0x00007ffff7894ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#14 0x00007ffff7926850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+(gdb) 
+
+nuing.
+
+Thread 3 "ycsb" hit Breakpoint 1, rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//000001.dbtmp", file_opts=..., result=0x7ffff6f93348) at plugin/zenfs/fs/fs_zenfs.cc:2579
+2579	                                IODebugContext* /*dbg*/) {
+(gdb) bt
+#0  rocksdb::ZenFS::NewWritableFile (this=0x7fffe8012780, filename="//000001.dbtmp", file_opts=..., result=0x7ffff6f93348) at plugin/zenfs/fs/fs_zenfs.cc:2579
+#1  0x00005555556dcdb8 in rocksdb::WriteStringToFile (fs=fs@entry=0x7fffe8012780, data=..., fname="//000001.dbtmp", should_sync=should_sync@entry=true) at env/file_system.cc:175
+#2  0x0000555555711036 in rocksdb::SetCurrentFile (fs=0x7fffe8012780, dbname="/", descriptor_number=descriptor_number@entry=1, directory_to_fsync=0x7fffe8016160) at file/filename.cc:398
+#3  0x0000555555620e1f in rocksdb::DBImpl::NewDB (this=0x7fffe8021000, new_filenames=0x7ffff6f93bc0) at db/db_impl/db_impl_open.cc:343
+#4  0x000055555562b556 in rocksdb::DBImpl::Recover (this=0x7fffe8021000, column_families=std::vector of length 1, capacity 1 = {...}, read_only=<optimized out>, error_if_wal_file_exists=<optimized out>, 
+    error_if_data_exists_in_wals=<optimized out>, recovered_seq=0x7ffff6f93f68, recovery_ctx=0x7ffff6f94430) at db/db_impl/db_impl_open.cc:454
+#5  0x0000555555623018 in rocksdb::DBImpl::Open (db_options=..., dbname="/", column_families=std::vector of length 1, capacity 1 = {...}, handles=0x7ffff6f94a10, 
+    dbptr=0x555555b8f3d0 <ycsbc::RocksdbDB::db_>, seq_per_batch=false, batch_per_txn=true) at db/db_impl/db_impl_open.cc:1798
+#6  0x0000555555624f19 in rocksdb::DB::Open (db_options=..., dbname=..., column_families=..., handles=<optimized out>, dbptr=<optimized out>) at db/db_impl/db_impl_open.cc:1612
+#7  0x00005555555f7c7a in ycsbc::RocksdbDB::Init() ()
+#8  0x000055555560a0a2 in ycsbc::ClientThread(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*) ()
+#9  0x000055555560993f in std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<int>, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int> >::_M_invoke(std::_Any_data const&) ()
+#10 0x000055555560a26d in std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*) ()
+#11 0x00007ffff7899ee8 in __pthread_once_slow (once_control=0x555555bdd668, init_routine=0x7ffff7cdad50 <__once_proxy>) at ./nptl/pthread_once.c:116
+#12 0x000055555560c0db in std::__future_base::_Async_state_impl<std::thread::_Invoker<std::tuple<int (*)(ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, ycsbc::utils::RateLimiter*), ycsbc::DB*, ycsbc::CoreWorkload*, int, bool, bool, bool, ycsbc::utils::CountDownLatch*, decltype(nullptr)> >, int>::_M_run() ()
+#13 0x00007ffff7cdc253 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6
+#14 0x00007ffff7894ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442
+#15 0x00007ffff7926850 in clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:81
+(gdb) 
+

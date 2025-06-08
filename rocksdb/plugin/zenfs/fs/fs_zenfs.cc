@@ -2580,8 +2580,16 @@ IOStatus ZenFS::NewWritableFile(const std::string& filename,
   std::string fname = FormatPathLexically(filename);
   Debug(logger_, "New writable file: %s direct: %d\n", fname.c_str(),
         file_opts.use_direct_writes);
+  if(ends_with(fname, ".sst")){
+    return OpenWritableFile(fname, file_opts, result, nullptr, false);
 
-  return OpenWritableFile(fname, file_opts, result, nullptr, false);
+  }else if(ends_with(fname, ".log")){
+    return OpenWritableFile(fname, file_opts, result, nullptr, false);
+
+  }
+  // return OpenWritableFile(fname, file_opts, result, nullptr, false);
+  printf("target()->NewWritableFile %s\n",fname.c_str());
+return target()->NewWritableFile(fname, file_opts, result, nullptr);
 }
 
 IOStatus ZenFS::ReuseWritableFile(const std::string& filename,
