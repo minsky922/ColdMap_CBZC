@@ -1355,8 +1355,8 @@ void ZenFS::PredictCompaction(int step) {
                                           excluded_levels);
 
       pivot_fno = GetMaxHorizontalFno(pivot_level);
-      printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
-             pivot_level, pivot_fno);
+      // printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
+      //        pivot_level, pivot_fno);
 
       // if (pivot_fno != 0) {
       //   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
@@ -1950,19 +1950,21 @@ void ZenFS::ZoneCleaning(bool forced) {
         //   total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
         // }
         // total_age>>=30;
-
+      uint64_t extent_n=0;
       for (auto& ext : snapshot.extents_) {
         if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
           total_age+=timestamp_ms-ext.create_time;
+          extent_n++;
         }
       }
 
 
 
-        uint64_t cost = (100 - ((garbage_percent_approx*garbage_percent_approx)/100) ) * 2;
-        uint64_t benefit =  ((garbage_percent_approx*garbage_percent_approx)/100)  * total_age;
+        // uint64_t cost = (100 - ((garbage_percent_approx*garbage_percent_approx)/100) ) * 2;
+        // uint64_t benefit =  ((garbage_percent_approx*garbage_percent_approx)/100)  * total_age;
 
-
+        uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t benefit = (garbage_percent_approx * total_age)/extent_n;
 
 
         if (cost != 0) {

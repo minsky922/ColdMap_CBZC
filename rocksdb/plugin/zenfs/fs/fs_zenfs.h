@@ -471,10 +471,9 @@ class ZenFS : public FileSystemWrapper {
 
   IOStatus NewLogger(const std::string& fname, const IOOptions& options,
                      std::shared_ptr<Logger>* result,
-                     IODebugContext* dbg) override;
-  //                     {
-  //   return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
-  // }
+                     IODebugContext* dbg) override{
+    return target()->NewLogger(ToAuxPath(fname), options, result, dbg);
+  }
 
   // Not supported (at least not yet)
   IOStatus Truncate(const std::string& /*fname*/, size_t /*size*/,
