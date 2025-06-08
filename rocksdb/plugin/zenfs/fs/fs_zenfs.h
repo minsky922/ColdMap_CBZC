@@ -28,6 +28,8 @@ namespace fs = std::filesystem;
 #include "snapshot.h"
 #include "version.h"
 #include "zbd_zenfs.h"
+
+#include "port/port.h"
 #include "rocksdb/perf_level.h"
 #include "rocksdb/system_clock.h"
 namespace ROCKSDB_NAMESPACE {
@@ -845,8 +847,8 @@ class ZenFSLogger : public Logger {
     // return file_->GetFileSize();
     // size_t ret;
     // ZenFS_->GetFileSize(fname_,IOOptions(),&ret);
-    if(file_->fdp_file_)
-      return file_->fdp_file_->size_;
+    if(file_->zoneFile_)
+      return file_->zoneFile_->size_;
     return 0;
   }
 
