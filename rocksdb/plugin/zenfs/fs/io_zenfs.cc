@@ -288,8 +288,8 @@ ZoneFile::ZoneFile(ZonedBlockDevice* zbd, uint64_t file_id,
       m_time_(0),
       metadata_writer_(metadata_writer),
       zenfs_(zenfs) {
-        created_time_= std::chrono::duration_cast<std::chrono::milliseconds>(
-                                    now.time_since_epoch()).count();
+        // created_time_= std::chrono::duration_cast<std::chrono::milliseconds>(
+        //                             now.time_since_epoch()).count();
 
       }  ///
 

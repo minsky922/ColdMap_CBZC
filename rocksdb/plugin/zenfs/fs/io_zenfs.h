@@ -112,7 +112,7 @@ class ZoneFile {
   std::mutex open_for_wr_mtx_;
 
   time_t m_time_;
-  uint64_t created_time_;
+  // uint64_t created_time_int64;
   bool is_sparse_ = false;
   bool is_deleted_ = false;
 
