@@ -1999,11 +1999,11 @@ void ZenFS::ZoneCleaning(bool forced) {
       ZLV = candidate.ZoneLifetimeValue;
       // std::cout << "ZLV: " << ZLV << std::endl;
 
-      std::cout << "[Picked] cost-benefit score: " << candidate.score
-                << ", zone start: " << candidate.zone_start
-                << ", Garbage Percentage: " <<
-                candidate.garbage_percent_approx
-                << "%" << std::endl;
+      // std::cout << "[Picked] cost-benefit score: " << candidate.score
+      //           << ", zone start: " << candidate.zone_start
+      //           << ", Garbage Percentage: " <<
+      //           candidate.garbage_percent_approx
+      //           << "%" << std::endl;
 
       break;
     }

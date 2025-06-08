@@ -695,6 +695,7 @@ class ZenFSLogger : public Logger {
         envoptions_(options),
         last_flush_micros_(0)
         {
+          printf("ZenFSLoggerZenFSLogger fname_ %s\n",fname_.c_str());
             flush_pending_=false;
         }
 
