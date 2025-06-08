@@ -848,7 +848,7 @@ class ZenFSLogger : public Logger {
     // size_t ret;
     // ZenFS_->GetFileSize(fname_,IOOptions(),&ret);
     if(file_->zoneFile_)
-      return file_->zoneFile_->file_size_;
+      return file_->zoneFile_->GetFileSize();
     return 0;
   }
 
