@@ -104,7 +104,6 @@ class ZoneFile {
 
   Env::WriteLifeTimeHint lifetime_;
   IOType io_type_; /* Only used when writing */
-  uint64_t file_size_;
   uint64_t file_id_;
 
   uint32_t nr_synced_extents_ = 0;
@@ -124,6 +123,8 @@ class ZoneFile {
   FileSystemWrapper* zenfs_;
 
  public:
+  uint64_t file_size_;
+
   bool GetZCRunning_() { return zbd_->GetZCRunning(); }
   bool is_sst_ = false;
   bool is_wal_ = false;
