@@ -1355,8 +1355,8 @@ void ZenFS::PredictCompaction(int step) {
                                           excluded_levels);
 
       pivot_fno = GetMaxHorizontalFno(pivot_level);
-      printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
-             pivot_level, pivot_fno);
+      // printf("[Fix] pivot_fno was 0, so reselect => level=%lu, fno=%lu\n",
+      //        pivot_level, pivot_fno);
 
       // if (pivot_fno != 0) {
       //   GetOverlappingFno(pivot_fno, pivot_level, unpivot_fno_list);
@@ -1903,8 +1903,8 @@ void ZenFS::ZoneCleaning(bool forced) {
       if(extent_n){
         total_age/=extent_n;
       }else{
-        // total_age=0;
-        continue;
+        total_age=0;
+        // continue;
       }
 
 
