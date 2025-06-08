@@ -3729,7 +3729,7 @@ Status NewZenFS(FileSystem** fs, const ZbdBackendType backend_type,
 #if !defined(NDEBUG) || defined(WITH_TERARKDB)
   // s = Env::Default()->NewLogger(GetLogFilename(backend_name), &logger);
     s = Env::Default()->NewLogger("/rocksdb.log", &logger);
-    printf("%s",GetLogFilename(backend_name).c_str());
+    printf("LOG2222222222 %s",GetLogFilename(backend_name).c_str());
 
 
   if (!s.ok()) {
