@@ -1,4 +1,4 @@
-# Currently in VLDB '26 submission.
+# Currently in Eurosys '26 submission.
 
 | Authors             | Institute                         |
 |------------------|------------------------------|
