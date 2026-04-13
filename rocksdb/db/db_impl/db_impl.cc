@@ -313,6 +313,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
   other_options.push_back(immutable_db_options_.input_aware_scheme);
   other_options.push_back(immutable_db_options_.cbzc_enabled);
   other_options.push_back(immutable_db_options_.default_extent_size);
+  other_options.push_back(immutable_db_options_.adaptive_predict_cnt ? 1 : 0);
   fs_->SetResetScheme(
       immutable_db_options_.reset_scheme,
       immutable_db_options_.partial_reset_scheme,
@@ -320,7 +321,7 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
       immutable_db_options_.until, immutable_db_options_.allocation_scheme,
       immutable_db_options_.zc_scheme, immutable_db_options_.alpha_value,
       immutable_db_options_.sigma_value, immutable_db_options_.finish_scheme,
-      immutable_db_options_.predict_cnt, other_options);
+      immutable_db_options_.predict_cnt, immutable_db_options_.zones_per_zc, other_options);
 }
 
 Status DBImpl::Resume() {

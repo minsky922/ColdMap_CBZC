@@ -154,7 +154,7 @@ class ZenFS : public FileSystemWrapper {
   std::shared_ptr<Logger> GetLogger() { return logger_; }  // 로거 반환
 
   std::unique_ptr<std::thread> gc_worker_ = nullptr;  // 가비지 컬렉션 스레드
-  //
+
   std::unique_ptr<std::thread> bg_reset_worker_ =
       nullptr;  // 매초마다 빈공간 계산하는 백그라운드 스레드
   //
@@ -499,7 +499,7 @@ class ZenFS : public FileSystemWrapper {
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
                       double sigma_value, uint64_t finish_scheme,
-                      uint64_t predict_cnt,
+                      uint64_t predict_cnt, uint64_t zones_per_zc,
                       std::vector<uint64_t>& other_options) override;
   void GiveZenFStoLSMTreeHint(
       std::vector<uint64_t>& compaction_inputs_input_level_fno,
@@ -585,6 +585,7 @@ class ZenFS : public FileSystemWrapper {
   // void ZoneCleaningWorker(bool run_once=false) override;
   void ZoneCleaning(bool forced);
   void ReCalculateLifetimes();
+  void ReCalculateLifetimes_Universal();
   void Adv_ReCalculateLifetimes();
   void NormalizeZoneLifetimes();
   double CalculateZoneLifetimeVariance();
@@ -596,6 +597,10 @@ class ZenFS : public FileSystemWrapper {
     bool is_compacting;
     bool is_trivial;
     double sst_lifetime_value_;
+    uint64_t file_creation_time;    // For age calculation (like INVAL)
+    uint64_t oldest_ancester_time;  // For age calculation
+    uint64_t num_reads_sampled;     // For read frequency (hotness)
+    bool being_compacted;            // Currently being compacted
   };
   struct ZoneLifetimeData {
     double total_lifetime;
@@ -607,6 +612,9 @@ class ZenFS : public FileSystemWrapper {
   };
   std::map<int, std::vector<FileInfo_>> level_file_map_;
   std::map<uint64_t, ZoneLifetimeData> zone_lifetime_map_;
+
+  // Cache for Universal Compaction lifetime calculation
+  std::atomic<uint64_t> universal_recalc_counter_{0};
   // std::unordered_map<int, std::vector<FileInfo_>> simulated_file_map;
   std::set<uint64_t> fno_already_propagated;
   std::set<uint64_t> fno_not_should_selected_as_pivot_again;

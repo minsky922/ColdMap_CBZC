@@ -385,7 +385,7 @@ class Env : public Customizable {
   //
   virtual void SetResetScheme(uint32_t, uint32_t, uint64_t, uint64_t, uint64_t,
                               uint64_t, uint64_t, double, double, uint64_t,
-                              uint64_t, std::vector<uint64_t>&) {}
+                              uint64_t, uint64_t, std::vector<uint64_t>&) {}
 
   virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
                                       std::vector<uint64_t>&, int, bool) {}
@@ -1496,11 +1496,11 @@ class EnvWrapper : public Env {
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
                       double sigma_value, uint64_t finish_scheme,
-                      uint64_t predict_cnt,
-                      std::vector<uint64_t>& other_options) override {
+                      uint64_t predict_cnt, uint64_t zones_per_zc,
+                      std::vector<uint64_t>& other_options) {
     target_.env->SetResetScheme(
         r, partial_reset_scheme, T, zc, until, allocation_scheme, zc_scheme,
-        alpha_value, sigma_value, finish_scheme, predict_cnt, other_options);
+        alpha_value, sigma_value, finish_scheme, predict_cnt, zones_per_zc, other_options);
   }
 
   void GiveZenFStoLSMTreeHint(

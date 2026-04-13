@@ -681,7 +681,7 @@ ZonedBlockDevice::~ZonedBlockDevice() {
     }
     delete z;
   }
-  PrintMisPredictStats();
+  // PrintMisPredictStats();
 
   std::cout << "[Accumulated Stats] right_vertical_total="
   << predict_right_vertical_.load()
@@ -766,11 +766,74 @@ IOStatus ZonedBlockDevice::AllocateMetaZone(Zone **out_meta_zone) {
   return IOStatus::NoSpace("Out of metadata zones");
 }
 
+void ZonedBlockDevice::UpdatePredictCnt() {
+  // Get current compaction count (atomic load)
+  uint64_t compactions_since_last_zc = current_compaction_count_.load(std::memory_order_relaxed);
+
+  if (!adaptive_predict_cnt_) {
+    // Static mode: use fixed predict_cnt value from command line
+    if (is_first_zc_) {
+      // No print when adaptive mode is disabled
+      is_first_zc_ = false;
+    }
+    // predict_cnt_ remains unchanged - uses value from SetResetScheme()
+  } else {
+    // Adaptive mode: update predict_cnt based on moving average of recent K intervals
+    if (is_first_zc_) {
+      // First ZC: use default value (no history available)
+      // If predict_cnt was set via command line, use it; otherwise use default 4
+      if (predict_cnt_ == 0) {
+        predict_cnt_ = 4;
+      }
+      printf("[Adaptive predict_cnt] First ZC: using initial predict_cnt=%lu\n", predict_cnt_);
+      is_first_zc_ = false;
+    } else {
+      // Add current interval's compaction count to history
+      compaction_history_.push_back(compactions_since_last_zc);
+
+      // Maintain window size K
+      if (compaction_history_.size() > MOVING_AVG_WINDOW_K) {
+        compaction_history_.pop_front();
+      }
+
+      // Calculate moving average: N_t = floor( (1/min(t,K)) * sum(C_{t-i+1}) )
+      uint64_t sum = 0;
+      for (uint64_t count : compaction_history_) {
+        sum += count;
+      }
+      uint64_t avg = sum / compaction_history_.size();
+
+      // Use moving average directly (no upper bound)
+      predict_cnt_ = avg;
+
+      // Log the calculation details
+      printf("[Adaptive predict_cnt] ZC: compactions_since_last_zc=%lu, history_size=%zu, "
+             "sum=%lu, moving_avg=%lu, predict_cnt=%lu\n",
+             compactions_since_last_zc, compaction_history_.size(), sum, avg,
+             predict_cnt_);
+
+      // Debug: print history
+      printf("  History: [");
+      for (size_t i = 0; i < compaction_history_.size(); i++) {
+        if (i > 0) printf(", ");
+        printf("%lu", compaction_history_[i]);
+      }
+      printf("]\n");
+    }
+  }
+
+  // Reset counter for next interval
+  current_compaction_count_.store(0, std::memory_order_relaxed);
+}
+
 void ZonedBlockDevice::GiveZenFStoLSMTreeHint(
     std::vector<uint64_t> &compaction_inputs_input_level_fno,
     std::vector<uint64_t> &compaction_inputs_output_level_fno, int output_level,
     bool trivial_move) {
   ZoneFile *zfile = nullptr;
+
+  // Track compaction count (atomic increment)
+  current_compaction_count_.fetch_add(1, std::memory_order_relaxed);
 
   if (allocation_scheme_ == LIZA) {
     return;
@@ -3516,6 +3579,21 @@ std::array<uint64_t, 10> ZonedBlockDevice::GetCurrentLSMTree() {
   }
 
   return lsm_tree_snapshot;
+}
+
+void ZonedBlockDevice::GetUniversalCompactionFileList(
+    std::vector<uint64_t>& fno_list,
+    std::set<uint64_t>& compacting_files) {
+  fno_list.clear();
+  compacting_files.clear();
+
+  if (db_ptr_ == nullptr) {
+    return;
+  }
+
+  // Universal Compaction: all files are in level 0
+  // Delegate to RocksDB layer to get file list
+  db_ptr_->SameLevelFileList(0, fno_list, compacting_files);
 }
 
 }  // namespace ROCKSDB_NAMESPACE

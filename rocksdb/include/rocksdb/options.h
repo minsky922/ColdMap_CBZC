@@ -674,6 +674,8 @@ struct DBOptions {
   double sigma_value;
   uint64_t finish_scheme;
   uint64_t predict_cnt;
+  bool adaptive_predict_cnt = false;  // Enable adaptive predict_cnt with moving average
+  uint64_t zones_per_zc = 4;  // Number of zones to reclaim per ZC call
   uint64_t compaction_scheme;
   uint64_t input_aware_scheme;
   uint64_t max_compaction_kick;

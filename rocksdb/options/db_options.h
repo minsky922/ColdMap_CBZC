@@ -121,6 +121,8 @@ struct ImmutableDBOptions {
   double sigma_value;
   uint64_t finish_scheme;
   uint64_t predict_cnt;
+  bool adaptive_predict_cnt;
+  uint64_t zones_per_zc;
 
   uint64_t input_aware_scheme;
   uint64_t cbzc_enabled;

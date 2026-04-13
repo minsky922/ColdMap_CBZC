@@ -205,6 +205,8 @@ DBOptions BuildDBOptions(const ImmutableDBOptions& immutable_db_options,
   options.sigma_value = immutable_db_options.sigma_value;
   options.finish_scheme = immutable_db_options.finish_scheme;
   options.predict_cnt = immutable_db_options.predict_cnt;
+  options.adaptive_predict_cnt = immutable_db_options.adaptive_predict_cnt;
+  options.zones_per_zc = immutable_db_options.zones_per_zc;
   return options;
 }
 

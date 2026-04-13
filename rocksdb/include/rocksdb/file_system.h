@@ -524,7 +524,7 @@ class FileSystem : public Customizable {
   //
   virtual void SetResetScheme(uint32_t, uint32_t, uint64_t, uint64_t, uint64_t,
                               uint64_t, uint64_t, double, double, uint64_t,
-                              uint64_t, std::vector<uint64_t>&) {}
+                              uint64_t, uint64_t, std::vector<uint64_t>&) {}
   virtual void GiveZenFStoLSMTreeHint(std::vector<uint64_t>&,
                                       std::vector<uint64_t>&, int, bool) {}
   virtual double GetMaxInvalidateCompactionScore(std::vector<uint64_t>&,
@@ -1462,11 +1462,11 @@ class FileSystemWrapper : public FileSystem {
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
                       double sigma_value, uint64_t finish_scheme,
-                      uint64_t predict_cnt,
+                      uint64_t predict_cnt, uint64_t zones_per_zc,
                       std::vector<uint64_t>& other_options) {
     target_->SetResetScheme(
         r, partial_reset_scheme, T, zc, until, allocation_scheme, zc_scheme,
-        alpha_value, sigma_value, finish_scheme, predict_cnt, other_options);
+        alpha_value, sigma_value, finish_scheme, predict_cnt, zones_per_zc, other_options);
   }
   void GiveZenFStoLSMTreeHint(
       std::vector<uint64_t>& compaction_inputs_input_level_fno,

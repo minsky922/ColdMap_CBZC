@@ -634,6 +634,14 @@ static std::unordered_map<std::string, OptionTypeInfo>
          {offsetof(struct ImmutableDBOptions, predict_cnt),
           OptionType::kUInt64T, OptionVerificationType::kNormal,
           OptionTypeFlags::kNone}},
+        {"adaptive_predict_cnt",
+         {offsetof(struct ImmutableDBOptions, adaptive_predict_cnt),
+          OptionType::kBoolean, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
+        {"zones_per_zc",
+         {offsetof(struct ImmutableDBOptions, zones_per_zc),
+          OptionType::kUInt64T, OptionVerificationType::kNormal,
+          OptionTypeFlags::kNone}},
 };
 
 const std::string OptionsHelper::kDBOptionsName = "DBOptions";
@@ -846,6 +854,8 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       sigma_value(options.sigma_value),
       finish_scheme(options.finish_scheme),
       predict_cnt(options.predict_cnt),
+      adaptive_predict_cnt(options.adaptive_predict_cnt),
+      zones_per_zc(options.zones_per_zc),
       input_aware_scheme(options.input_aware_scheme),
       cbzc_enabled(options.cbzc_enabled),
       default_extent_size(options.default_extent_size),

@@ -12,6 +12,7 @@
 #include <ctime>
 #include <iostream>
 #include <numeric>
+#include <unordered_set>
 
 /// cur_ops_
 #include <dirent.h>
@@ -268,11 +269,11 @@ ZenFS::~ZenFS() {
   zbd_->LogZoneUsage();                  
   LogFiles();                           
 
-  run_gc_worker_ = false;  
+  run_gc_worker_ = false;
   run_bg_reset_worker_ = false;
 
-  if (gc_worker_) {      
-    gc_worker_->join();  
+  if (gc_worker_) {
+    gc_worker_->join();
   }
 
   if (bg_reset_worker_) {
@@ -314,7 +315,7 @@ void ZenFS::BackgroundStatTimeLapse() {
     sleep(1);
     int cur_time = mount_time_.fetch_add(1);
     // uint64_t total = 0;
-    if (cur_time % 50 == 0|| run_bg_reset_worker_==false) {
+    if (cur_time % 1 == 0|| run_bg_reset_worker_==false) {
       struct timespec timespec;
       clock_gettime(CLOCK_MONOTONIC, &timespec);
       uint64_t gc_bytes_written = zbd_->GetGCBytesWritten();
@@ -406,11 +407,11 @@ void ZenFS::BackgroundStatTimeLapse() {
                total_time_ms, total_count, avg_ms, actual_cost_benefit_score,average_actual_cost_benefit_score,total_deletion_after_copy_size);
       }
       printf("\n");
-      printf("A_CD_sequence = %lu / %lu = %lu\n", ( zbd_->total_deletion_after_copy_seq_.load()/100),
-      (total_count),A_CD_sequence);
-      printf("WA_CD_sequence = %lu / %lu = %lu\n", ( cost_benefit_score_sum_sequence_mb),
-      (total_deletion_after_copy_size >> 20),WA_CD_sequence);
-      zbd_->PrintMisPredictStats();
+      // printf("A_CD_sequence = %lu / %lu = %lu\n", ( zbd_->total_deletion_after_copy_seq_.load()/100),
+      // (total_count),A_CD_sequence);
+      // printf("WA_CD_sequence = %lu / %lu = %lu\n", ( cost_benefit_score_sum_sequence_mb),
+      // (total_deletion_after_copy_size >> 20),WA_CD_sequence);
+      // zbd_->PrintMisPredictStats();
       // printf("\n");
       fflush(stdout);
       fflush(stderr);
@@ -851,8 +852,8 @@ void ZenFS::CalculateHorizontalLifetimes(
 
       if (!is_compacting && !is_trivial) {
         if (level == 0) {
-          // Level 0이면 무조건 1.0
-          normalized_index = 1.0;
+          // Level 0이면 0.1로 설정
+          normalized_index = 0.1;
         } else {
           // Level > 0
           if (num_normal_files > 1) {
@@ -939,7 +940,7 @@ void ZenFS::ReCalculateLifetimes() {
 
   uint64_t predict_cnt = zbd_->GetPredictCnt();
 
-  // std::cout << "predict cnt : " << predict_cnt << std::endl;
+  printf("[ReCalculateLifetimes] Using predict_cnt=%lu for PredictCompaction simulation\n", predict_cnt);
 
   PredictCompaction(predict_cnt);
 
@@ -1056,7 +1057,82 @@ void ZenFS::ReCalculateLifetimes() {
   }
 }
 
-// trivial move -> iteration 포함 안함
+
+void ZenFS::ReCalculateLifetimes_Universal() {
+  zone_lifetime_map_.clear();
+  if (db_ptr_ == nullptr) return;
+
+  std::vector<uint64_t> fno_list;
+  std::set<uint64_t> compacting_files;
+  zbd_->GetUniversalCompactionFileList(fno_list, compacting_files);
+  if (fno_list.empty()) return;
+
+  struct FileInfo {
+    uint64_t fno;
+    uint64_t size_bytes;
+    double size_mb;
+    uint64_t create_time;
+  };
+  std::vector<FileInfo> files;
+
+  for (uint64_t fno : fno_list) {
+    ZoneFile* zone_file = zbd_->GetSSTZoneFileInZBDNoLock(fno);
+    if (!zone_file || zone_file->IsDeleted()) continue;
+    
+    const auto& extents = zone_file->GetExtents();
+    if (extents.empty()) continue;
+
+    uint64_t f_size = 0;
+    for (const auto* ex : extents) f_size += ex->length_;
+    files.push_back({fno, f_size, (double)f_size / (1024.0 * 1024.0), extents[0]->create_time_});
+  }
+
+  std::sort(files.begin(), files.end(), [](const FileInfo& a, const FileInfo& b) {
+    return a.create_time < b.create_time;
+  });
+
+  std::set<uint64_t> predicted_hot_files;
+  const unsigned int SIZE_RATIO = 100; 
+  const size_t L0_TRIGGER = 4;
+  
+  uint64_t running_total_size = 0;
+  for (size_t i = 0; i < files.size(); i++) {
+    if (files.size() >= L0_TRIGGER && i < L0_TRIGGER) {
+      predicted_hot_files.insert(files[i].fno);
+    }
+    
+    if (i > 0 && files[i].size_bytes * (100 + SIZE_RATIO) / 100 <= running_total_size) {
+      predicted_hot_files.insert(files[i].fno);
+      predicted_hot_files.insert(files[i-1].fno);
+    }
+    running_total_size += files[i].size_bytes;
+  }
+
+  for (const auto& file_info : files) {
+    double lifetime = 0.5; 
+
+    if (compacting_files.count(file_info.fno)) {
+      lifetime = 0.0;    
+    } else if (predicted_hot_files.count(file_info.fno)) {
+      lifetime = 0.02;   
+    } else {
+      if (file_info.size_mb <= 40.0) lifetime = 0.1;
+      else if (file_info.size_mb <= 110.0) lifetime = 0.2 + ((file_info.size_mb - 40.0) / 70.0) * 0.1;
+      else if (file_info.size_mb <= 500.0) lifetime = 0.4 + ((file_info.size_mb - 110.0) / 390.0) * 0.3;
+      else lifetime = 0.7 + std::min(0.3, (file_info.size_mb - 500.0) / 1500.0);
+    }
+
+    ZoneFile* zf = zbd_->GetSSTZoneFileInZBDNoLock(file_info.fno);
+    if (!zf) continue;
+    for (const auto* ex : zf->GetExtents()) {
+      auto& entry = zone_lifetime_map_[ex->zone_->start_];
+      entry.total_lifetime += lifetime;
+      entry.file_count++;
+      entry.file_lifetimes[file_info.fno] = lifetime;
+    }
+  }
+}
+
 
 void ZenFS::PredictCompaction(int step) {
   std::array<uint64_t, 10> tmp_lsm_tree = zbd_->GetCurrentLSMTree();
@@ -1173,7 +1249,7 @@ void ZenFS::PredictCompaction(int step) {
     }
     if (pivot_file->IsDeleted()) {
       // printf("[PredictCompaction] pivot_file is deleted (fno=%lu)\n",
-      //  pivot_fno);
+      //        pivot_fno);
       continue;
     }
 
@@ -1550,7 +1626,6 @@ uint64_t ZenFS::GetMaxHorizontalFno(int pivot_level) {
 void ZenFS::ZoneCleaning(bool forced) {
   uint64_t zc_scheme = zbd_->GetZCScheme();
   if (db_ptr_ == nullptr) {
-    // printf("ZenFS::ZoneCleaning - db_ptr is nullptr!!");
     return;
   }
   if(zbd_->coldest_type_set_==false){
@@ -1562,18 +1637,25 @@ void ZenFS::ZoneCleaning(bool forced) {
     zbd_->coldest_type_set_= true;
   }
 
-  struct timespec start_ts, end_ts;
-  clock_gettime(CLOCK_MONOTONIC, &start_ts);
+  // Dynamic predict_cnt update based on previous ZC interval compaction count
+  zbd_->UpdatePredictCnt();
 
-  ReCalculateLifetimes();
+    struct timespec start_ts, end_ts;
+    clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
-  // NormalizeZoneLifetimes();
-  // double cur_variance = CalculateZoneLifetimeVariance();
-  // std::cout << "Zone Lifetime Variance: " << cur_variance << std::endl;
-  clock_gettime(CLOCK_MONOTONIC, &end_ts);
-  long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
-                       (end_ts.tv_nsec - start_ts.tv_nsec);
-  zbd_->AddCalculatelifetimeLapse(elapsed_ns_ts);
+    // Call appropriate lifetime calculation based on compaction style
+    if (zc_scheme == 8) {
+      // Universal Compaction
+      ReCalculateLifetimes_Universal();
+    } else {
+      // Leveled Compaction (default)
+      ReCalculateLifetimes();
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &end_ts);
+    long elapsed_ns_ts = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 +
+                         (end_ts.tv_nsec - start_ts.tv_nsec);
+    zbd_->AddCalculatelifetimeLapse(elapsed_ns_ts);
   // }
   // printf("zonecleaning->zc_scheme : %lu\n", zc_scheme);
   // uint64_t zone_size = zbd_->GetZoneSize();
@@ -1600,19 +1682,31 @@ void ZenFS::ZoneCleaning(bool forced) {
   std::vector<ZoneInfo> victim_candidate;
   std::set<uint64_t> migrate_zones_start;
 
+  int total_zones = 0;
+  int skipped_not_full = 0;
+  int skipped_all_valid = 0;
+  int skipped_no_valid = 0;
+  int processed_zones = 0;
+
   for (const auto& zone : snapshot.zones_) {
+    total_zones++;
     // zone.capacity == 0 -> full-zone
     if (zone.capacity != 0) {  // skip not-full zone
+      skipped_not_full++;
       continue;
     }
     if (zone.used_capacity == zone.max_capacity) {  // skip all valid zone
+      skipped_all_valid++;
       continue;
     }
     uint64_t garbage_percent_approx =
-        100 - 100 * zone.used_capacity / zone.max_capacity;  
+        100 - 100 * zone.used_capacity / zone.max_capacity;
     if (zone.used_capacity > 0) {  // 유효 데이터(valid data)가 있는 경우
 
-      if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
+      if (zc_scheme == GREEDY) {
+        // GREEDY는 단순히 garbage percentage만 사용
+        victim_candidate.push_back({0.0, zone.start, garbage_percent_approx, 0.0});
+      } else if (zc_scheme == CBZC1 || zc_scheme == CBZC2) {
         struct timespec start_age_ts, end_age_ts;
         clock_gettime(CLOCK_MONOTONIC, &start_age_ts);
         auto current_time = std::chrono::system_clock::now();
@@ -1709,7 +1803,129 @@ void ZenFS::ZoneCleaning(bool forced) {
         // std::cout << "benefit : " << benefit << std::endl;
         // std::cout << "garbage : " << garbage_percent_approx << std::endl;
         // printf("============================================\n");
+      } else if(zc_scheme==CBZC6){
+
+
+        auto now = std::chrono::system_clock::now();
+        uint64_t timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    now.time_since_epoch()).count();
+        uint64_t total_age=0;
+        
+
+        // for(uint64_t i = 0; i<(zone.max_capacity>>12);i++){
+        //   if(zone.i_bitmap[i]==0){
+        //     total_age  += timestamp_ms-zone.v_bitmap[i];
+        //     (void)(timestamp_ms);
+        //     continue;
+        //   }
+        //   total_age  += (zone.i_bitmap[i]-zone.v_bitmap[i]);
+        // }
+        // total_age>>=30;
+      uint64_t extent_n=0;
+
+      // for (auto& ext : snapshot.extents_) {
+      //   // if (migrate_zones_start.find(ext.zone_start) != migrate_zones_start.end()) {
+      //   if(zone.start==ext.zone_start){
+      //     // total_age+=timestamp_ms-ext.create_time;
+      //     extent_n++;
+      //   }
+      // }
+      // if(extent_n==0){
+      //   continue;
+      // }
+      // extent_n=0;
+
+      for(auto& file : snapshot.zone_files_){
+        if(file.extents.size()){
+          // if (migrate_zones_start.find(file.extents[0].start) != migrate_zones_start.end()) {
+          if(zone.start==file.extents[0].start){
+            total_age+=timestamp_ms-file.extents[0].create_time;
+            extent_n++;
+          }
+        }
+      }
+
+
+      if(extent_n){
+        total_age/=extent_n;
+      }else{
+        total_age=0;
+        // continue;
+      }
+
+
+        // uint64_t cost = (100 - ((garbage_percent_approx*garbage_percent_approx)/100) ) * 2;
+        // uint64_t benefit =  ((garbage_percent_approx*garbage_percent_approx)/100)  * total_age;
+
+        uint64_t cost = (100 - garbage_percent_approx) * 2;
+        uint64_t benefit = (garbage_percent_approx * total_age);
+
+
+        if (cost != 0) {
+          double cost_benefit_score = benefit / cost;
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
+          //     printf("garbage_percent_approx %lu total_age %lu cost %lu benefit %lu cost_benefit_score %f\n",
+          // garbage_percent_approx,total_age,cost,benefit,cost_benefit_score);
+        }
+        // else{
+        //   victim_candidate.push_back(
+        //       {DBL_MAX, zone.start, garbage_percent_approx, 0.0});
+        // }
+
+      } else if (zc_scheme == 8) {
+        // UNIVERSAL_CBZC - Use zone_lifetime_map_ populated by ReCalculateLifetimes_Universal()
+        // Lower age = HOT (recently created, will be compacted soon)
+        // Higher age = COLD (old, will survive long)
+        // NOTE: ReCalculateLifetimes_Universal() is called at the beginning of ZoneCleaning()
+
+        if (zone_lifetime_map_.empty()) {
+          // Fallback to simple calculation if no metadata
+          double avg_age = 0.5;
+          double cost = 2 * (static_cast<double>(zone.used_capacity) /
+                             static_cast<double>(zone.max_capacity));
+          double freeSpace = static_cast<double>(zone.max_capacity - zone.used_capacity) /
+                            static_cast<double>(zone.max_capacity);
+          double benefit = freeSpace * avg_age * 1000.0;
+          if (cost != 0) {
+            victim_candidate.push_back({benefit / cost, zone.start, garbage_percent_approx, 0.0});
+          }
+          continue;
+        }
+
+        // Get average lifetime from zone_lifetime_map_ (populated by ReCalculateLifetimes_Universal)
+        uint64_t zone_start = zone.start;
+        double avg_age = 0.5;  // Default if zone not in map
+
+        auto it = zone_lifetime_map_.find(zone_start);
+        if (it != zone_lifetime_map_.end()) {
+          const auto& entry = it->second;
+          if (entry.file_count > 0) {
+            avg_age = entry.total_lifetime / entry.file_count;
+          }
+        }
+
+        double cost = 2 * (static_cast<double>(zone.used_capacity) /
+                           static_cast<double>(zone.max_capacity));
+
+        double freeSpace =
+            static_cast<double>(zone.max_capacity - zone.used_capacity) /
+            static_cast<double>(zone.max_capacity);
+
+        // Pure cost-benefit calculation without boosting
+        // Benefit = freeSpace * avg_age
+        // Higher age (COLD) = higher benefit = better to clean
+        // Lower age (HOT) = lower benefit = avoid cleaning (will be invalidated soon)
+        double benefit = freeSpace * avg_age * 1000.0;
+
+        if (cost != 0) {
+          double cost_benefit_score =
+              static_cast<double>(benefit) / static_cast<double>(cost);
+          victim_candidate.push_back(
+              {cost_benefit_score, zone.start, garbage_percent_approx, 0.0});
+        }
       } else {
+        // CBZC3 and other default schemes - Use zone_lifetime_map_
         // printf("CBZC3!!");
         // std::cout << "zc_scheme: " << zc_scheme << std::endl;
         uint64_t zone_start = zone.start;
@@ -1814,12 +2030,19 @@ void ZenFS::ZoneCleaning(bool forced) {
             //           << ",age: " << weighted_age << std::endl;
           }
         }
-      }
+      }  // End of CBZC3/UNIVERSAL_CBZC zone processing
+      processed_zones++;
     } else {  // 유효 데이터가 없는 경우
       all_inval_zone_n++;
+      skipped_no_valid++;
       // std::cout << "all_inal_zone..." << std::endl;
     }
   }
+
+  // printf("[ZC_DEBUG] Zone stats: total=%d, not_full=%d, all_valid=%d, no_valid=%d, processed=%d\n",
+  //        total_zones, skipped_not_full, skipped_all_valid, skipped_no_valid, processed_zones);
+  // printf("[ZC_DEBUG] Total victim candidates: %zu, all_invalid_zones: %zu\n",
+  //        victim_candidate.size(), all_inval_zone_n);
 
   if (zc_scheme == GREEDY) {
     // GREEDY에서는 garbage_percent_approx 를 기준으로 내림차순 정렬
@@ -1847,19 +2070,22 @@ void ZenFS::ZoneCleaning(bool forced) {
   // }
 
   if (!victim_candidate.empty()) {
-    for (const auto& candidate : victim_candidate) {
-      migrate_zones_start.emplace(candidate.zone_start);
-      ZLV = candidate.ZoneLifetimeValue;
-      // std::cout << "ZLV: " << ZLV << std::endl;
+    // 한 번의 ZC에서 여러 zone을 동시에 회수
+    size_t zones_to_reclaim = std::min(size_t(zbd_->zones_per_zc_), victim_candidate.size());
 
-      // std::cout << "[Picked] cost-benefit score: " << candidate.score
-      //           << ", zone start: " << candidate.zone_start
-      //           << ", Garbage Percentage: " <<
-      //           candidate.garbage_percent_approx
-      //           << "%" << std::endl;
+    printf("[ZC] Reclaiming %zu zones in this ZC call (zones_per_zc=%lu)\n",
+           zones_to_reclaim, zbd_->zones_per_zc_);
 
-      break;
+    for (size_t i = 0; i < zones_to_reclaim; i++) {
+      migrate_zones_start.emplace(victim_candidate[i].zone_start);
+      ZLV = victim_candidate[i].ZoneLifetimeValue;
+      printf("[ZC]   Zone %zu: start=%lu, score=%.4f, garbage%%=%lu\n",
+             i+1, victim_candidate[i].zone_start, victim_candidate[i].score,
+             victim_candidate[i].garbage_percent_approx);
     }
+  } else {
+    // printf("[ZC_DEBUG] No victim candidates found! Returning early.\n");
+    return;  // No point continuing if there are no victims
   }
 
   // uint64_t threshold = 0;
@@ -1885,10 +2111,13 @@ void ZenFS::ZoneCleaning(bool forced) {
     }
   }
 
+  // printf("[ZC_DEBUG] migrate_zones=%zu, migrate_exts=%zu, should_be_copied=%zu bytes\n",
+  //        migrate_zones_start.size(), migrate_exts.size(), should_be_copied);
+
   if (migrate_zones_start.size() > 0) {
     IOStatus s;
     Info(logger_, "Garbage collecting %d extents \n", (int)migrate_exts.size());
-    // printf("Garbage collecting %d extents \n", (int)migrate_exts.size());
+    // printf("Garbage collecting %d extents \n", (int)migrate_exts.size());                       
     clock_gettime(CLOCK_MONOTONIC, &start_timespec);
     s = MigrateExtents(migrate_exts);
     clock_gettime(CLOCK_MONOTONIC, &end_timespec);
@@ -1913,10 +2142,14 @@ void ZenFS::ZoneCleaning(bool forced) {
     }
     zc_triggerd_count_.fetch_add(1);
   }
+
+  // Log ZC end for compaction tracking analysis
+  // uint64_t micros = 0; printf("[ZC_EVENT] Zone Cleaning #%llu END (migrated_zones=%zu, time_micros=%llu)\n", (unsigned long long)zc_call_count, migrate_zones_start.size(), (unsigned long long)micros); fflush(stdout);
 }
 
 void ZenFS::GCWorker() {
   while (run_gc_worker_) {
+    // usleep(100 * 1000 * 1000);
     // free_percent_ = zbd_->CalculateFreePercent();
     // if (free_percent_ > 20) {
     //   usleep(100 * 1000);
@@ -1935,8 +2168,8 @@ void ZenFS::GCWorker() {
     //   usleep(100 * 1000);
     //   continue;
     // }
-    bool shoudl_zc = zbd_->zc_ > zbd_->CalculateFreePercent() ||
-                     zbd_->ShouldZCByEmptyZoneN();
+    bool shoudl_zc = zbd_->zc_ > zbd_->CalculateFreePercent()
+    || zbd_->ShouldZCByEmptyZoneN();
     if (!shoudl_zc) {
       usleep(100 * 1000);
       continue;
@@ -1944,24 +2177,20 @@ void ZenFS::GCWorker() {
 
     zbd_->SetZCRunning(false);
     // std::cout << "GCWorker : free_percent_ : " << free_percent_ << "\n";
+    // ZC 루프: Free space 비율 기반
     int try_n = 0;
-    while (zbd_->ShouldZCByEmptyZoneN()) {
+    while (zbd_->ShouldZCByEmptyZoneN() || zbd_->CalculateFreePercent() < zbd_->zc_) {
       zbd_->SetZCRunning(true);
-      ZoneCleaning(true);
+      printf("[GCWorker] ZC iteration %d (EmptyZones=%lu, FreePercent=%lu, Threshold=%lu)\n",
+             try_n + 1, zbd_->GetEmptyZoneN(), zbd_->CalculateFreePercent(), zbd_->zc_);
+      ZoneCleaning(true);  // 한 번에 최대 4개 zone 회수
       try_n++;
       if (try_n > 8) {
+        printf("[GCWorker] Reached max tries (%d), stopping ZC loop\n", try_n);
         break;
       }
     }
-    try_n = 0;
-    while (zbd_->CalculateFreePercent() < zbd_->zc_) {
-      zbd_->SetZCRunning(true);
-      ZoneCleaning(true);
-      try_n++;
-      if (try_n > 8) {
-        break;
-      }
-    }
+    printf("[GCWorker] Completed ZC loop after %d iterations\n", try_n);
 
     zbd_->SetZCRunning(false);
 
@@ -2008,6 +2237,7 @@ void ZenFS::GCWorker() {
     //     }
     //   }
     // }
+    usleep(100 * 1000);
   }
 }
 
@@ -2828,15 +3058,17 @@ void ZenFS::SetResetScheme(uint32_t r, uint32_t partial_reset_scheme,
                            uint64_t allocation_scheme, uint64_t zc_scheme,
                            double alpha_value, double sigma_value,
                            uint64_t finish_scheme, uint64_t predict_cnt,
+                           uint64_t zones_per_zc,
                            std::vector<uint64_t>& other_options) {
   std::cout << "ZenFS::SetResetScheme: r = " << r << ", T = " << T
             << ", allocation_schme = " << allocation_scheme
             << ", zc_scheme = " << zc_scheme
             << ", finish_scheme = " << finish_scheme
-            << ", predict_cnt = " << predict_cnt << std::endl;
+            << ", predict_cnt = " << predict_cnt
+            << ", zones_per_zc = " << zones_per_zc << std::endl;
   zbd_->SetResetScheme(r, partial_reset_scheme, T, zc, until, allocation_scheme,
                        zc_scheme, alpha_value, sigma_value, finish_scheme,
-                       predict_cnt, other_options);
+                       predict_cnt, zones_per_zc, other_options);
   run_bg_reset_worker_ = true;
   if (gc_worker_ != nullptr) {
     if (bg_reset_worker_ == nullptr) {
@@ -3451,6 +3683,7 @@ Status ZenFS::Mount(bool readonly) {
             new std::thread(&ZenFS::BackgroundStatTimeLapse, this));
       }
     }
+
   }
 
   LogFiles();

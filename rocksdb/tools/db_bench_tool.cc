@@ -1710,6 +1710,10 @@ DEFINE_uint64(finish_scheme, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(predict_cnt, 0, "0<Tuninig point<100");
 
+DEFINE_bool(adaptive_predict_cnt, false, "Enable adaptive predict_cnt using moving average (K=5)");
+
+DEFINE_uint64(zones_per_zc, 4, "Number of zones to reclaim per ZC call");
+
 DEFINE_uint64(compaction_scheme, 0, "0<Tuninig point<100");
 
 DEFINE_uint64(max_compaction_kick, 25, "0<Tuninig point<100");
@@ -4084,6 +4088,8 @@ class Benchmark {
     options.sigma_value = FLAGS_sigma_value;
     options.finish_scheme = FLAGS_finish_scheme;
     options.predict_cnt = FLAGS_predict_cnt;
+    options.adaptive_predict_cnt = FLAGS_adaptive_predict_cnt;
+    options.zones_per_zc = FLAGS_zones_per_zc;
     options.compaction_scheme = FLAGS_compaction_scheme;
     options.max_compaction_kick = FLAGS_max_compaction_kick;
     options.partial_reset_scheme = FLAGS_partial_reset_scheme;

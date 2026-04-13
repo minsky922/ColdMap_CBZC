@@ -19,6 +19,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <iostream>
 #include <mutex>
 #include <set>
@@ -88,7 +89,8 @@ class ZoneFile;
 #define CBZC3 3
 #define CBZC4 4
 #define CBZC5 5
-
+#define CBZC6 6
+#define UNIVERSAL_CBZC 8
 #define PARTIAL_RESET_KICKED_THRESHOLD 40
 // | zone-reset | partial-reset |
 #define RUNTIME_ZONE_RESET_DISABLED 0    // |      x     |       x       |
@@ -423,6 +425,14 @@ class ZonedBlockDevice {
   double sigma_value_;
   uint64_t finish_scheme_;
   uint64_t predict_cnt_;
+  bool adaptive_predict_cnt_{false};  // Enable adaptive predict_cnt using moving average
+  std::atomic<uint64_t> prev_zc_compaction_count_{0};  // 이전 ZC 이후 발생한 컴팩션 횟수
+  std::atomic<uint64_t> current_compaction_count_{0};  // 현재 구간에서 발생한 컴팩션 횟수
+  bool is_first_zc_{true};  // 첫 번째 ZC 여부 추적
+
+  // Moving average for adaptive N calculation
+  static constexpr size_t MOVING_AVG_WINDOW_K = 3;  // K=3 for moving average (faster adaptation)
+  std::deque<uint64_t> compaction_history_;  // Recent K compaction counts (C_t)
   uint32_t partial_reset_scheme_;
   uint64_t input_aware_scheme_;
   uint64_t tuning_point_;
@@ -506,11 +516,13 @@ class ZonedBlockDevice {
   std::atomic<uint64_t> compaction_triggered_[10];
 
  public:
+  uint64_t zones_per_zc_{4};  // Number of zones to reclaim per ZC call
   uint64_t GetZCScheme() const { return zc_scheme_; }
   double GetAlphaValue() const { return alpha_value_; }
   double GetSigmaValue() const { return sigma_value_; }
   uint64_t GetDisableFinish() const { return finish_scheme_; }
   uint64_t GetPredictCnt() const { return predict_cnt_; }
+  void UpdatePredictCnt();
 
   std::atomic<long> active_io_zones_;
   std::atomic<long> open_io_zones_;
@@ -930,7 +942,7 @@ class ZonedBlockDevice {
                       uint64_t zc, uint64_t until, uint64_t allocation_scheme,
                       uint64_t zc_scheme, double alpha_value,
                       double sigma_value, uint64_t finish_scheme,
-                      uint64_t predict_cnt,
+                      uint64_t predict_cnt, uint64_t zones_per_zc,
                       std::vector<uint64_t> &other_options) {
     reset_scheme_ = r;
     allocation_scheme_ = allocation_scheme;
@@ -939,17 +951,20 @@ class ZonedBlockDevice {
     sigma_value_ = sigma_value;
     finish_scheme_ = finish_scheme;
     predict_cnt_ = predict_cnt;
+    zones_per_zc_ = zones_per_zc;
     partial_reset_scheme_ = partial_reset_scheme;
     tuning_point_ = T;
     input_aware_scheme_ = other_options[0];
     cbzc_enabled_ = other_options[1];
     default_extent_size_ = other_options[2];
+    adaptive_predict_cnt_ = (other_options.size() > 3 && other_options[3] == 1);
 
     std::cout << "zbd_->SetResetScheme: r = " << r << ", T = " << T
               << ", allocation_schme = " << allocation_scheme
               << ", zc_scheme = " << zc_scheme
               << ", finish_scheme = " << finish_scheme
-              << ", predict_cnt = " << predict_cnt << std::endl;
+              << ", predict_cnt = " << predict_cnt
+              << ", adaptive_predict_cnt = " << adaptive_predict_cnt_ << std::endl;
 
     for (auto opt : other_options) {
       printf("other options %lu\n", opt);
@@ -1026,6 +1041,11 @@ class ZonedBlockDevice {
   void DownwardAdjacentFileList(Slice &s, Slice &l, int level,
                                 std::vector<uint64_t> &fno_list);
   double GetAvgCompressibilityOflevel(int output_level);
+
+  // Get Universal Compaction file list with creation time
+  void GetUniversalCompactionFileList(
+      std::vector<uint64_t>& fno_list,
+      std::set<uint64_t>& compacting_files);
   //
  private:
   std::vector<std::pair<uint64_t, uint64_t>> SortedByZoneScore(
