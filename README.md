@@ -1,4 +1,4 @@
-# *ColdMap*: Compaction-Aware Victim Zone Selection for LSM–ZNS Systems (ICS'26)
+# *ColdMap*: Compaction-Aware Cost-Benefit Zone Cleaning for ZNS-Based Key-Value Stores (ICS'26)
 
 | Authors             | Institute                         |
 |------------------|------------------------------|
